@@ -24,14 +24,14 @@ model Company {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  users     User[]
-  employees Employee[]
+  memberships UserCompany[]
+  employees   Employee[]
 
   @@map("companies")
 }
 
 model User {
-  id        String   @id @default(uuid()) // Maps to Supabase Auth UID if possible, or internal UUID
+  id        String   @id @default(uuid()) // Maps to Supabase Auth UID
   email     String   @unique
   
   nameWithInitials String?
@@ -39,17 +39,38 @@ model User {
   address          String?
   phone            String?
 
-  role      Role     @default(EMPLOYEE)
+  role      Role     @default(EMPLOYEE) // Global role
   active    Boolean  @default(true)
   
-  // Foreign Keys
-  companyId String?
-  company   Company? @relation(fields: [companyId], references: [id])
+  // Relationships
+  memberships UserCompany[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model UserCompany {
+  id        String   @id @default(uuid())
+  userId    String
+  companyId String
+  
+  // Specific role within this company
+  role      Role     @default(EMPLOYEE)
+  
+  // Granular permissions for this company
+  // Example: { "can_edit_payroll": true, "can_view_audit": false }
+  permissions Json?    @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([userId, companyId])
+  @@map("user_companies")
 }
 
 model Employee {
@@ -62,6 +83,11 @@ model Employee {
   // Foreign Keys
   companyId  String
   company    Company @relation(fields: [companyId], references: [id])
+
+  // Manager Self-Relation
+  managerId  String?
+  manager    Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
+  reports    Employee[] @relation("EmployeeManager")
 
   // Future relations for Payroll, Attendance, etc.
   // payrolls Payroll[]
@@ -80,11 +106,11 @@ model AuditLog {
   resource   String   // User, Company, Employee
   resourceId String?  // ID of affected resource
   
-  userId     String?  // Who performed the action (can be null if system)
+  userId     String?  // Who performed the action
   ipAddress  String?
   userAgent  String?
 
-  details    Json?    // Store old/new values or diff
+  details    Json?    // Store old/new values
 
   createdAt  DateTime @default(now())
 

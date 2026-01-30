@@ -37,6 +37,11 @@ export class SupabaseStrategy extends PassportStrategy(Strategy) {
         // Check local DB
         const user = await this.prisma.user.findUnique({
             where: { email },
+            include: {
+                memberships: {
+                    include: { company: true }
+                }
+            },
         });
 
         if (user) {

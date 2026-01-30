@@ -21,6 +21,8 @@ const employees_module_1 = require("./employees/employees.module");
 const user_exists_guard_1 = require("./auth/user-exists.guard");
 const audit_module_1 = require("./audit/audit.module");
 const audit_interceptor_1 = require("./audit/audit.interceptor");
+const roles_guard_1 = require("./auth/roles.guard");
+const permissions_guard_1 = require("./auth/permissions.guard");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -49,6 +51,14 @@ exports.AppModule = AppModule = __decorate([
             {
                 provide: core_1.APP_GUARD,
                 useClass: user_exists_guard_1.UserExistsGuard,
+            },
+            {
+                provide: core_1.APP_GUARD,
+                useClass: roles_guard_1.RolesGuard,
+            },
+            {
+                provide: core_1.APP_GUARD,
+                useClass: permissions_guard_1.PermissionsGuard,
             },
             {
                 provide: core_1.APP_INTERCEPTOR,

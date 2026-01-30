@@ -8,19 +8,36 @@ export declare class SupabaseStrategy extends SupabaseStrategy_base {
     private readonly configService;
     private readonly prisma;
     constructor(configService: ConfigService, prisma: PrismaService);
-    validate(payload: any): Promise<{
-        email: string;
+    validate(payload: any): Promise<({
+        memberships: ({
+            company: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                name: string;
+                active: boolean;
+            };
+        } & {
+            role: import("@prisma/client").$Enums.Role;
+            id: string;
+            permissions: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
+            userId: string;
+            companyId: string;
+        })[];
+    } & {
         role: import("@prisma/client").$Enums.Role;
-        companyId: string | null;
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        email: string;
         nameWithInitials: string | null;
         fullName: string | null;
         address: string | null;
         phone: string | null;
         active: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-    } | {
+    }) | {
         isGuest: boolean;
         email: any;
         supabaseUid: any;

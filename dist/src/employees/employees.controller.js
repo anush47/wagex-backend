@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var EmployeesController_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmployeesController = void 0;
 const common_1 = require("@nestjs/common");
@@ -19,27 +20,85 @@ const create_employee_dto_1 = require("./dto/create-employee.dto");
 const update_employee_dto_1 = require("./dto/update-employee.dto");
 const swagger_1 = require("@nestjs/swagger");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
-const roles_guard_1 = require("../auth/roles.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const client_1 = require("@prisma/client");
-let EmployeesController = class EmployeesController {
+const permissions_1 = require("../auth/permissions");
+const permissions_decorator_1 = require("../auth/permissions.decorator");
+const common_2 = require("@nestjs/common");
+let EmployeesController = EmployeesController_1 = class EmployeesController {
     employeesService;
+    logger = new common_2.Logger(EmployeesController_1.name);
     constructor(employeesService) {
         this.employeesService = employeesService;
     }
-    create(createEmployeeDto) {
+    async create(createEmployeeDto, req) {
+        const user = req.user;
+        if (user.role === client_1.Role.EMPLOYER) {
+            const hasAccess = user.memberships?.some((m) => m.companyId === createEmployeeDto.companyId);
+            if (!hasAccess) {
+                throw new common_1.ForbiddenException('You do not have access to this company.');
+            }
+        }
         return this.employeesService.create(createEmployeeDto);
     }
-    findAll(companyId) {
-        return this.employeesService.findAll(companyId);
+    findAll(companyId, req) {
+        const user = req.user;
+        if (user.role === client_1.Role.ADMIN) {
+            return this.employeesService.findAll(companyId);
+        }
+        if (user.role === client_1.Role.EMPLOYER) {
+            if (companyId) {
+                const hasAccess = user.memberships?.some((m) => m.companyId === companyId);
+                if (!hasAccess) {
+                    throw new common_1.ForbiddenException('You do not have access to this company.');
+                }
+                return this.employeesService.findAll(companyId);
+            }
+            if (!user.memberships || user.memberships.length === 0) {
+                return [];
+            }
+            return this.employeesService.findAll(user.memberships[0].companyId);
+        }
+        return [];
     }
-    findOne(id) {
-        return this.employeesService.findOne(id);
+    async findOne(id, req) {
+        const user = req.user;
+        const employee = await this.employeesService.findOne(id);
+        if (user.role === client_1.Role.EMPLOYER) {
+            const hasAccess = user.memberships?.some((m) => m.companyId === employee.companyId);
+            if (!hasAccess) {
+                throw new common_1.ForbiddenException('You do not have access to this employee.');
+            }
+        }
+        return employee;
     }
-    update(id, updateEmployeeDto) {
+    async update(id, updateEmployeeDto, req) {
+        const user = req.user;
+        const employee = await this.employeesService.findOne(id);
+        if (user.role === client_1.Role.EMPLOYER) {
+            const hasAccess = user.memberships?.some((m) => m.companyId === employee.companyId);
+            if (!hasAccess) {
+                throw new common_1.ForbiddenException('You do not have access to this employee.');
+            }
+            if (updateEmployeeDto.companyId &&
+                updateEmployeeDto.companyId !== employee.companyId) {
+                const hasNewAccess = user.memberships?.some((m) => m.companyId === updateEmployeeDto.companyId);
+                if (!hasNewAccess) {
+                    throw new common_1.ForbiddenException('You do not have access to the target company.');
+                }
+            }
+        }
         return this.employeesService.update(id, updateEmployeeDto);
     }
-    remove(id) {
+    async remove(id, req) {
+        const user = req.user;
+        const employee = await this.employeesService.findOne(id);
+        if (user.role === client_1.Role.EMPLOYER) {
+            const hasAccess = user.memberships?.some((m) => m.companyId === employee.companyId);
+            if (!hasAccess) {
+                throw new common_1.ForbiddenException('You do not have access to this employee.');
+            }
+        }
         return this.employeesService.remove(id);
     }
 };
@@ -47,22 +106,26 @@ exports.EmployeesController = EmployeesController;
 __decorate([
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER),
+    (0, permissions_decorator_1.Permissions)(permissions_1.Permission.MANAGE_EMPLOYEES),
     (0, swagger_1.ApiOperation)({ summary: 'Create employee' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Employee created.' }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_employee_dto_1.CreateEmployeeDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [create_employee_dto_1.CreateEmployeeDto, Object]),
+    __metadata("design:returntype", Promise)
 ], EmployeesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER),
+    (0, permissions_decorator_1.Permissions)(permissions_1.Permission.MANAGE_EMPLOYEES),
     (0, swagger_1.ApiOperation)({ summary: 'List employees' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Return employees.' }),
     (0, swagger_1.ApiQuery)({ name: 'companyId', required: false, type: String }),
     __param(0, (0, common_1.Query)('companyId')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], EmployeesController.prototype, "findAll", null);
 __decorate([
@@ -71,9 +134,10 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Get employee by ID' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Return employee.' }),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
 ], EmployeesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Put)(':id'),
@@ -82,24 +146,27 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Employee updated.' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, update_employee_dto_1.UpdateEmployeeDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, update_employee_dto_1.UpdateEmployeeDto, Object]),
+    __metadata("design:returntype", Promise)
 ], EmployeesController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER),
+    (0, permissions_decorator_1.Permissions)(permissions_1.Permission.MANAGE_EMPLOYEES),
     (0, swagger_1.ApiOperation)({ summary: 'Delete employee' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Employee deleted.' }),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
 ], EmployeesController.prototype, "remove", null);
-exports.EmployeesController = EmployeesController = __decorate([
+exports.EmployeesController = EmployeesController = EmployeesController_1 = __decorate([
     (0, swagger_1.ApiTags)('Employees'),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('employees'),
     __metadata("design:paramtypes", [employees_service_1.EmployeesService])
 ], EmployeesController);

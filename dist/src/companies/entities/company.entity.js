@@ -11,10 +11,12 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Company = void 0;
 const swagger_1 = require("@nestjs/swagger");
+const user_company_entity_1 = require("../../users/entities/user-company.entity");
 class Company {
     id;
     name;
     active;
+    memberships;
     createdAt;
     updatedAt;
 }
@@ -31,6 +33,10 @@ __decorate([
     (0, swagger_1.ApiProperty)({ example: true, description: 'Is company active' }),
     __metadata("design:type", Boolean)
 ], Company.prototype, "active", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: () => [user_company_entity_1.UserCompany], description: 'Company memberships/users' }),
+    __metadata("design:type", Array)
+], Company.prototype, "memberships", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

@@ -44,6 +44,11 @@ let SupabaseStrategy = class SupabaseStrategy extends (0, passport_1.PassportStr
         const { email, sub: supabaseUid } = payload;
         const user = await this.prisma.user.findUnique({
             where: { email },
+            include: {
+                memberships: {
+                    include: { company: true }
+                }
+            },
         });
         if (user) {
             if (!user.active)

@@ -17,6 +17,7 @@ class CreateEmployeeDto {
     name;
     basicSalary;
     companyId;
+    managerId;
 }
 exports.CreateEmployeeDto = CreateEmployeeDto;
 __decorate([
@@ -42,4 +43,10 @@ __decorate([
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "companyId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'manager-uuid', description: 'Manager ID', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "managerId", void 0);
 //# sourceMappingURL=create-employee.dto.js.map

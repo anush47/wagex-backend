@@ -18,6 +18,7 @@ class Employee {
     basicSalary;
     status;
     companyId;
+    managerId;
     createdAt;
     updatedAt;
 }
@@ -46,6 +47,10 @@ __decorate([
     (0, swagger_1.ApiProperty)({ example: 'company-uuid', description: 'Company ID' }),
     __metadata("design:type", String)
 ], Employee.prototype, "companyId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'manager-uuid', description: 'Manager ID', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "managerId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

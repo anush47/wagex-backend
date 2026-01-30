@@ -1,13 +1,21 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '@prisma/client';
+import { DEFAULT_EMPLOYER_PERMISSIONS } from './permissions';
 
 @Injectable()
 export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+
     constructor(private readonly prisma: PrismaService) { }
 
     async registerUser(supabaseUid: string, email: string, dto: RegisterDto) {
+        this.logger.log(`Registering user: ${email} with role: ${dto.role}`);
+        if (dto.role === Role.ADMIN) {
+            throw new BadRequestException('Cannot register as ADMIN directly.');
+        }
+
         // 1. Handle Employer Registration (Create Company + User)
         if (dto.role === Role.EMPLOYER) {
             const { companyName } = dto;
@@ -30,7 +38,13 @@ export class AuthService {
                         address: dto.address,
                         phone: dto.phone,
                         role: Role.EMPLOYER,
-                        companyId: company.id,
+                        memberships: {
+                            create: {
+                                companyId: company.id,
+                                role: Role.EMPLOYER,
+                                permissions: DEFAULT_EMPLOYER_PERMISSIONS,
+                            }
+                        }
                     },
                 });
 

@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Role, User as PrismaUser } from '@prisma/client';
+import { Company } from '../../companies/entities/company.entity';
+import { UserCompany } from './user-company.entity';
 
 export class User implements PrismaUser {
     @ApiProperty({ example: 'uuid-1234', description: 'Unique identifier' })
@@ -26,8 +28,8 @@ export class User implements PrismaUser {
     @ApiProperty({ example: true, description: 'Is account active' })
     active: boolean;
 
-    @ApiProperty({ example: 'company-uuid', description: 'Company ID', nullable: true })
-    companyId: string | null;
+    @ApiProperty({ type: () => [UserCompany], description: 'Company memberships' })
+    memberships?: UserCompany[];
 
     @ApiProperty()
     createdAt: Date;

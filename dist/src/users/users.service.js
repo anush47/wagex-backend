@@ -8,47 +8,75 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var UsersService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
-let UsersService = class UsersService {
+let UsersService = UsersService_1 = class UsersService {
     prisma;
+    logger = new common_1.Logger(UsersService_1.name);
     constructor(prisma) {
         this.prisma = prisma;
     }
     async create(createUserDto) {
+        this.logger.log(`Creating new user: ${createUserDto.email}`);
         return this.prisma.user.create({
             data: createUserDto,
         });
     }
     async findAll() {
-        return this.prisma.user.findMany();
+        return this.prisma.user.findMany({
+            include: {
+                memberships: {
+                    include: { company: true }
+                }
+            }
+        });
     }
     async findOne(id) {
-        return this.prisma.user.findUnique({
+        const user = await this.prisma.user.findUnique({
             where: { id },
+            include: {
+                memberships: {
+                    include: { company: true }
+                }
+            }
         });
+        if (!user) {
+            this.logger.error(`User not found with ID: ${id}`);
+            throw new common_1.NotFoundException(`User with ID "${id}" not found`);
+        }
+        return user;
     }
     async findOneByEmail(email) {
         return this.prisma.user.findUnique({
             where: { email },
+            include: {
+                memberships: {
+                    include: { company: true }
+                }
+            }
         });
     }
     async update(id, updateUserDto) {
+        await this.findOne(id);
+        this.logger.log(`Updating user ID: ${id}`);
         return this.prisma.user.update({
             where: { id },
             data: updateUserDto,
         });
     }
     async remove(id) {
+        await this.findOne(id);
+        this.logger.log(`Deleting user ID: ${id}`);
         return this.prisma.user.delete({
             where: { id },
         });
     }
 };
 exports.UsersService = UsersService;
-exports.UsersService = UsersService = __decorate([
+exports.UsersService = UsersService = UsersService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], UsersService);

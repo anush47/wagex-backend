@@ -8,17 +8,24 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var AuthService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
-let AuthService = class AuthService {
+const permissions_1 = require("./permissions");
+let AuthService = AuthService_1 = class AuthService {
     prisma;
+    logger = new common_1.Logger(AuthService_1.name);
     constructor(prisma) {
         this.prisma = prisma;
     }
     async registerUser(supabaseUid, email, dto) {
+        this.logger.log(`Registering user: ${email} with role: ${dto.role}`);
+        if (dto.role === client_1.Role.ADMIN) {
+            throw new common_1.BadRequestException('Cannot register as ADMIN directly.');
+        }
         if (dto.role === client_1.Role.EMPLOYER) {
             const { companyName } = dto;
             if (!companyName) {
@@ -37,7 +44,13 @@ let AuthService = class AuthService {
                         address: dto.address,
                         phone: dto.phone,
                         role: client_1.Role.EMPLOYER,
-                        companyId: company.id,
+                        memberships: {
+                            create: {
+                                companyId: company.id,
+                                role: client_1.Role.EMPLOYER,
+                                permissions: permissions_1.DEFAULT_EMPLOYER_PERMISSIONS,
+                            }
+                        }
                     },
                 });
                 return { user, company };
@@ -59,7 +72,7 @@ let AuthService = class AuthService {
     }
 };
 exports.AuthService = AuthService;
-exports.AuthService = AuthService = __decorate([
+exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], AuthService);

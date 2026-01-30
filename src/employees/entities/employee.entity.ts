@@ -20,6 +20,9 @@ export class Employee implements PrismaEmployee {
     @ApiProperty({ example: 'company-uuid', description: 'Company ID' })
     companyId: string;
 
+    @ApiProperty({ example: 'manager-uuid', description: 'Manager ID', nullable: true })
+    managerId: string | null;
+
     @ApiProperty()
     createdAt: Date;
 

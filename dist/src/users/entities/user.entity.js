@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const client_1 = require("@prisma/client");
+const user_company_entity_1 = require("./user-company.entity");
 class User {
     id;
     email;
@@ -21,7 +22,7 @@ class User {
     phone;
     role;
     active;
-    companyId;
+    memberships;
     createdAt;
     updatedAt;
 }
@@ -59,9 +60,9 @@ __decorate([
     __metadata("design:type", Boolean)
 ], User.prototype, "active", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'company-uuid', description: 'Company ID', nullable: true }),
-    __metadata("design:type", Object)
-], User.prototype, "companyId", void 0);
+    (0, swagger_1.ApiProperty)({ type: () => [user_company_entity_1.UserCompany], description: 'Company memberships' }),
+    __metadata("design:type", Array)
+], User.prototype, "memberships", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

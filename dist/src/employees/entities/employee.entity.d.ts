@@ -6,6 +6,7 @@ export declare class Employee implements PrismaEmployee {
     basicSalary: number;
     status: string;
     companyId: string;
+    managerId: string | null;
     createdAt: Date;
     updatedAt: Date;
 }

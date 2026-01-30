@@ -12,6 +12,8 @@ import { EmployeesModule } from './employees/employees.module';
 import { UserExistsGuard } from './auth/user-exists.guard';
 import { AuditModule } from './audit/audit.module';
 import { AuditInterceptor } from './audit/audit.interceptor';
+import { RolesGuard } from './auth/roles.guard';
+import { PermissionsGuard } from './auth/permissions.guard';
 
 @Module({
   imports: [
@@ -37,6 +39,14 @@ import { AuditInterceptor } from './audit/audit.interceptor';
     {
       provide: APP_GUARD,
       useClass: UserExistsGuard, // Auth Logic
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard, // Role-based Access Control
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard, // Granular Permissions
     },
     {
       provide: APP_INTERCEPTOR,

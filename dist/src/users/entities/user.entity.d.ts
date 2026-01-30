@@ -1,4 +1,5 @@
 import { Role, User as PrismaUser } from '@prisma/client';
+import { UserCompany } from './user-company.entity';
 export declare class User implements PrismaUser {
     id: string;
     email: string;
@@ -8,7 +9,7 @@ export declare class User implements PrismaUser {
     phone: string | null;
     role: Role;
     active: boolean;
-    companyId: string | null;
+    memberships?: UserCompany[];
     createdAt: Date;
     updatedAt: Date;
 }

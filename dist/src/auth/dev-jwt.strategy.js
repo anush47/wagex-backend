@@ -39,6 +39,11 @@ let DevJwtStrategy = class DevJwtStrategy extends (0, passport_1.PassportStrateg
         const { email } = payload;
         const user = await this.prisma.user.findUnique({
             where: { email },
+            include: {
+                memberships: {
+                    include: { company: true }
+                }
+            },
         });
         if (!user) {
             return {

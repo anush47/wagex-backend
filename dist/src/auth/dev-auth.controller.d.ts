@@ -9,17 +9,16 @@ export declare class DevAuthController {
     getDevToken(email: string): Promise<{
         accessToken: string;
         user: {
+            role: import("@prisma/client").$Enums.Role;
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
             email: string;
             nameWithInitials: string | null;
             fullName: string | null;
             address: string | null;
             phone: string | null;
-            role: import("@prisma/client").$Enums.Role;
             active: boolean;
-            companyId: string | null;
-            createdAt: Date;
-            updatedAt: Date;
         };
     }>;
 }
