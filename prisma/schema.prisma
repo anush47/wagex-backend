@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -71,4 +72,21 @@ model Employee {
 
   @@unique([companyId, employeeNo]) // Employee No unique per company
   @@map("employees")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String   // CREATE, UPDATE, DELETE, PATCH
+  resource   String   // User, Company, Employee
+  resourceId String?  // ID of affected resource
+  
+  userId     String?  // Who performed the action (can be null if system)
+  ipAddress  String?
+  userAgent  String?
+
+  details    Json?    // Store old/new values or diff
+
+  createdAt  DateTime @default(now())
+
+  @@map("audit_logs")
 }

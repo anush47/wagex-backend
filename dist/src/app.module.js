@@ -10,6 +10,7 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const core_1 = require("@nestjs/core");
+const throttler_1 = require("@nestjs/throttler");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const prisma_module_1 = require("./prisma/prisma.module");
@@ -18,6 +19,8 @@ const auth_module_1 = require("./auth/auth.module");
 const companies_module_1 = require("./companies/companies.module");
 const employees_module_1 = require("./employees/employees.module");
 const user_exists_guard_1 = require("./auth/user-exists.guard");
+const audit_module_1 = require("./audit/audit.module");
+const audit_interceptor_1 = require("./audit/audit.interceptor");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -25,19 +28,32 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_1.ConfigModule.forRoot({ isGlobal: true }),
+            throttler_1.ThrottlerModule.forRoot([{
+                    ttl: 60000,
+                    limit: 100,
+                }]),
             prisma_module_1.PrismaModule,
             users_module_1.UsersModule,
             auth_module_1.AuthModule,
             companies_module_1.CompaniesModule,
             employees_module_1.EmployeesModule,
+            audit_module_1.AuditModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [
             app_service_1.AppService,
             {
                 provide: core_1.APP_GUARD,
+                useClass: throttler_1.ThrottlerGuard,
+            },
+            {
+                provide: core_1.APP_GUARD,
                 useClass: user_exists_guard_1.UserExistsGuard,
             },
+            {
+                provide: core_1.APP_INTERCEPTOR,
+                useClass: audit_interceptor_1.AuditInterceptor,
+            }
         ],
     })
 ], AppModule);

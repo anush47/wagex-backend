@@ -12,12 +12,12 @@ export declare class SupabaseStrategy extends SupabaseStrategy_base {
         email: string;
         role: import("@prisma/client").$Enums.Role;
         companyId: string | null;
-        active: boolean;
         id: string;
         nameWithInitials: string | null;
         fullName: string | null;
         address: string | null;
         phone: string | null;
+        active: boolean;
         createdAt: Date;
         updatedAt: Date;
     } | {

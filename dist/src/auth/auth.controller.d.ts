@@ -7,37 +7,37 @@ export declare class AuthController {
         message: string;
     };
     register(req: any, dto: RegisterDto): Promise<{
-        id: string;
         email: string;
+        role: import("@prisma/client").$Enums.Role;
+        companyId: string | null;
+        id: string;
         nameWithInitials: string | null;
         fullName: string | null;
         address: string | null;
         phone: string | null;
-        role: import("@prisma/client").$Enums.Role;
         active: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string | null;
     } | {
         user: {
-            id: string;
             email: string;
+            role: import("@prisma/client").$Enums.Role;
+            companyId: string | null;
+            id: string;
             nameWithInitials: string | null;
             fullName: string | null;
             address: string | null;
             phone: string | null;
-            role: import("@prisma/client").$Enums.Role;
             active: boolean;
             createdAt: Date;
             updatedAt: Date;
-            companyId: string | null;
         };
         company: {
+            name: string;
             id: string;
             active: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
         };
     }>;
 }
