@@ -5,16 +5,16 @@ export declare class MeController {
     constructor(usersService: UsersService);
     getProfile(req: any): any;
     updateProfile(req: any, updateUserDto: UpdateUserDto): Promise<{
-        email: string;
-        role: import("@prisma/client").$Enums.Role;
-        companyId: string | null;
         id: string;
+        email: string;
         nameWithInitials: string | null;
         fullName: string | null;
         address: string | null;
         phone: string | null;
+        role: import("@prisma/client").$Enums.Role;
         active: boolean;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string | null;
     }>;
 }

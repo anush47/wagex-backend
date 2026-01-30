@@ -9,19 +9,41 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthModule = void 0;
 const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
+const jwt_1 = require("@nestjs/jwt");
+const config_1 = require("@nestjs/config");
 const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
 const supabase_strategy_1 = require("./supabase.strategy");
+const dev_jwt_strategy_1 = require("./dev-jwt.strategy");
+const dev_auth_controller_1 = require("./dev-auth.controller");
 const jwt_auth_guard_1 = require("./jwt-auth.guard");
+const user_exists_guard_1 = require("./user-exists.guard");
 const roles_guard_1 = require("./roles.guard");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
 exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
-        imports: [passport_1.PassportModule],
-        controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService, supabase_strategy_1.SupabaseStrategy, jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard],
+        imports: [
+            passport_1.PassportModule,
+            jwt_1.JwtModule.registerAsync({
+                imports: [config_1.ConfigModule],
+                inject: [config_1.ConfigService],
+                useFactory: async (configService) => ({
+                    secret: configService.get('DEV_JWT_SECRET'),
+                    signOptions: { expiresIn: '1d' },
+                }),
+            }),
+        ],
+        controllers: [auth_controller_1.AuthController, dev_auth_controller_1.DevAuthController],
+        providers: [
+            auth_service_1.AuthService,
+            supabase_strategy_1.SupabaseStrategy,
+            dev_jwt_strategy_1.DevJwtStrategy,
+            jwt_auth_guard_1.JwtAuthGuard,
+            roles_guard_1.RolesGuard,
+            user_exists_guard_1.UserExistsGuard
+        ],
         exports: [auth_service_1.AuthService, supabase_strategy_1.SupabaseStrategy, jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard],
     })
 ], AuthModule);
