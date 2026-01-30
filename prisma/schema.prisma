@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  EMPLOYER
+  EMPLOYEE
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  users     User[]
+  employees Employee[]
+
+  @@map("companies")
+}
+
+model User {
+  id        String   @id @default(uuid()) // Maps to Supabase Auth UID if possible, or internal UUID
+  email     String   @unique
+  name      String?
+  role      Role     @default(EMPLOYEE)
+  active    Boolean  @default(true)
+  
+  // Foreign Keys
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Employee {
+  id         String   @id @default(uuid())
+  employeeNo String
+  name       String
+  basicSalary Float   @default(0.0)
+  status     String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+
+  // Foreign Keys
+  companyId  String
+  company    Company @relation(fields: [companyId], references: [id])
+
+  // Future relations for Payroll, Attendance, etc.
+  // payrolls Payroll[]
+  // attendance Attendance[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([companyId, employeeNo]) // Employee No unique per company
+  @@map("employees")
+}

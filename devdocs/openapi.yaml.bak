@@ -1,0 +1,341 @@
+openapi: 3.0.0
+info:
+  title: SalaryApp API
+  version: 1.0.0
+  description: Optimized RESTful API specification for SalaryApp with modular employee/payroll design
+servers:
+  - url: /api/v1
+tags:
+  - name: Authentication
+  - name: Users
+  - name: Companies
+  - name: Employees
+  - name: Departments
+  - name: Attendance
+  - name: Shifts
+  - name: Leave
+  - name: Payroll
+  - name: Kiosk
+  - name: Dashboard
+  - name: Notifications
+  - name: Miscellaneous
+
+paths:
+  # --- Authentication ---
+  /auth/change-password:
+    post:
+      tags: [Authentication]
+      summary: Change password
+
+  # --- Users ---
+  /users:
+    get:
+      tags: [Users]
+      summary: List users (optional filters: role, status)
+    post:
+      tags: [Users]
+      summary: Create user
+  /users/{id}:
+    put:
+      tags: [Users]
+      summary: Update user
+    delete:
+      tags: [Users]
+      summary: Delete user
+
+  # --- Authenticated User / Me Endpoints ---
+  /me:
+    get:
+      tags: [Users]
+      summary: Get profile of the authenticated user
+    put:
+      tags: [Users]
+      summary: Update profile of the authenticated user
+
+  /me/preferences:
+    get:
+      tags: [Users]
+      summary: Get preferences of authenticated user
+    put:
+      tags: [Users]
+      summary: Update preferences of authenticated user
+
+  /me/payment-preferences:
+    get:
+      tags: [Employees, Payroll]
+      summary: Get payment preferences of authenticated user (if employee)
+    put:
+      tags: [Employees, Payroll]
+      summary: Update payment preferences of authenticated user
+
+  /me/bank-details:
+    get:
+      tags: [Employees, Payroll]
+      summary: Get bank details of authenticated user (if employee)
+    post:
+      tags: [Employees, Payroll]
+      summary: Add bank details
+    put:
+      tags: [Employees, Payroll]
+      summary: Update bank details
+    delete:
+      tags: [Employees, Payroll]
+      summary: Delete bank details
+
+  # --- Companies ---
+  /companies:
+    get:
+      tags: [Companies]
+      summary: List companies (filters: name, active)
+    post:
+      tags: [Companies]
+      summary: Create company
+  /companies/{id}:
+    get:
+      tags: [Companies]
+      summary: Get company by ID
+    put:
+      tags: [Companies]
+      summary: Update company by ID
+    delete:
+      tags: [Companies]
+      summary: Delete company by ID
+  /companies/{id}/documents:
+    put:
+      tags: [Companies]
+      summary: Upload/update company documents
+  /companies/{id}/ot-config:
+    get:
+      tags: [Companies]
+      summary: Get OT configuration
+    put:
+      tags: [Companies]
+      summary: Update OT configuration
+  /companies/{id}/working-days:
+    get:
+      tags: [Companies]
+      summary: Get company working days
+    put:
+      tags: [Companies]
+      summary: Update working days
+  /companies/{id}/policies:
+    get:
+      tags: [Companies]
+      summary: List company policies
+    post:
+      tags: [Companies]
+      summary: Create company policy
+  /companies/{id}/policies/{policyId}:
+    put:
+      tags: [Companies]
+      summary: Update company policy
+    delete:
+      tags: [Companies]
+      summary: Delete company policy
+  /companies/{id}/shifts:
+    get:
+      tags: [Companies, Shifts]
+      summary: List company shifts
+    post:
+      tags: [Companies, Shifts]
+      summary: Create shift for company
+  /companies/{id}/shifts/{shiftId}:
+    put:
+      tags: [Companies, Shifts]
+      summary: Update shift
+    delete:
+      tags: [Companies, Shifts]
+      summary: Delete shift
+  /companies/{id}/payment-items:
+    get:
+      tags: [Companies, Payroll]
+      summary: List company payment items
+    post:
+      tags: [Companies, Payroll]
+      summary: Create company payment item
+  /companies/{id}/payment-items/{itemId}:
+    put:
+      tags: [Companies, Payroll]
+      summary: Update company payment item
+    delete:
+      tags: [Companies, Payroll]
+      summary: Delete company payment item
+
+  # --- Employees ---
+  /employees:
+    get:
+      tags: [Employees]
+      summary: List employees (filters: departmentId, status)
+    post:
+      tags: [Employees]
+      summary: Create employee
+  /employees/{id}:
+    get:
+      tags: [Employees]
+      summary: Get employee by ID
+    put:
+      tags: [Employees]
+      summary: Update employee by ID
+    delete:
+      tags: [Employees]
+      summary: Delete employee by ID
+  /employees/{id}/status:
+    patch:
+      tags: [Employees]
+      summary: Enable or disable employee login
+  /employees/{id}/working-days:
+    get:
+      tags: [Employees]
+      summary: Get employee working days
+    put:
+      tags: [Employees]
+      summary: Update employee working days
+  /employees/{id}/shifts:
+    get:
+      tags: [Employees, Shifts]
+      summary: List assigned shifts
+    post:
+      tags: [Employees, Shifts]
+      summary: Assign shift
+  /employees/{id}/shifts/{shiftId}:
+    put:
+      tags: [Employees, Shifts]
+      summary: Update employee shift
+    delete:
+      tags: [Employees, Shifts]
+      summary: Delete employee shift
+  /employees/{id}/payment-items:
+    get:
+      tags: [Employees, Payroll]
+      summary: List employee payment items
+    post:
+      tags: [Employees, Payroll]
+      summary: Create employee payment item
+  /employees/{id}/payment-items/{itemId}:
+    put:
+      tags: [Employees, Payroll]
+      summary: Update employee payment item
+    delete:
+      tags: [Employees, Payroll]
+      summary: Delete employee payment item
+
+  # --- Employee Salary Advances ---
+  /employees/{id}/salary-advances:
+    get:
+      tags: [Employees, Payroll]
+      summary: List salary advances
+    post:
+      tags: [Employees, Payroll]
+      summary: Request salary advance
+  /employees/{id}/salary-advances/{advanceId}:
+    patch:
+      tags: [Employees, Payroll]
+      summary: Approve or update salary advance
+    delete:
+      tags: [Employees, Payroll]
+      summary: Delete/cancel salary advance
+
+  # --- Payslips ---
+  /employees/{id}/payslips:
+    get:
+      tags: [Employees, Payroll]
+      summary: List payslips (filters: month, year)
+  /employees/{id}/payslips/{payslipId}:
+    get:
+      tags: [Employees, Payroll]
+      summary: Download payslip PDF
+
+  # --- Departments ---
+  /departments:
+    get:
+      tags: [Departments]
+      summary: List departments
+    post:
+      tags: [Departments]
+      summary: Create department
+  /departments/{id}:
+    get:
+      tags: [Departments]
+      summary: Get department by ID
+    put:
+      tags: [Departments]
+      summary: Update department
+    delete:
+      tags: [Departments]
+      summary: Delete department
+
+  # --- Attendance ---
+  /attendance:
+    get:
+      tags: [Attendance]
+      summary: List attendance records (filters: employeeId, date)
+    post:
+      tags: [Attendance]
+      summary: Create attendance record
+  /attendance/{id}:
+    get:
+      tags: [Attendance]
+      summary: Get attendance record
+  /attendance/{id}/approve:
+    post:
+      tags: [Attendance]
+      summary: Approve attendance
+
+  # --- Shifts ---
+  /shifts/active:
+    get:
+      tags: [Shifts]
+      summary: List active shifts
+  /shifts/assignments:
+    get:
+      tags: [Shifts]
+      summary: List shift assignments
+    post:
+      tags: [Shifts]
+      summary: Create shift assignment
+    delete:
+      tags: [Shifts]
+      summary: Delete shift assignment
+
+  # --- Leave ---
+  /leave-types:
+    get:
+      tags: [Leave]
+      summary: List leave types
+    post:
+      tags: [Leave]
+      summary: Create leave type
+  /leave-requests:
+    get:
+      tags: [Leave]
+      summary: List leave requests
+    post:
+      tags: [Leave]
+      summary: Create leave request
+  /leave-requests/{id}:
+    get:
+      tags: [Leave]
+      summary: Get leave request by ID
+
+  # --- Payroll / Salaries ---
+  /salaries:
+    get:
+      tags: [Payroll]
+      summary: List salaries (filters: month, year)
+    post:
+      tags: [Payroll]
+      summary: Create salary
+    put:
+      tags: [Payroll]
+      summary: Update salary
+    delete:
+      tags: [Payroll]
+      summary: Delete salary
+  /salaries/generate:
+    post:
+      tags: [Payroll]
+      summary: Generate salaries
+  /salaries/acknowledge:
+    patch:
+      tags: [Payroll]
+      summary: Acknowledge salary
