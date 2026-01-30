@@ -32,7 +32,12 @@ model Company {
 model User {
   id        String   @id @default(uuid()) // Maps to Supabase Auth UID if possible, or internal UUID
   email     String   @unique
-  name      String?
+  
+  nameWithInitials String?
+  fullName         String?
+  address          String?
+  phone            String?
+
   role      Role     @default(EMPLOYEE)
   active    Boolean  @default(true)
   

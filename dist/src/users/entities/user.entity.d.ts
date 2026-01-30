@@ -2,7 +2,10 @@ import { Role, User as PrismaUser } from '@prisma/client';
 export declare class User implements PrismaUser {
     id: string;
     email: string;
-    name: string | null;
+    nameWithInitials: string | null;
+    fullName: string | null;
+    address: string | null;
+    phone: string | null;
     role: Role;
     active: boolean;
     companyId: string | null;

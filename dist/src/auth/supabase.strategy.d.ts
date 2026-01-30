@@ -10,13 +10,21 @@ export declare class SupabaseStrategy extends SupabaseStrategy_base {
     constructor(configService: ConfigService, prisma: PrismaService);
     validate(payload: any): Promise<{
         email: string;
-        name: string | null;
         role: import("@prisma/client").$Enums.Role;
         companyId: string | null;
         active: boolean;
         id: string;
+        nameWithInitials: string | null;
+        fullName: string | null;
+        address: string | null;
+        phone: string | null;
         createdAt: Date;
         updatedAt: Date;
+    } | {
+        isGuest: boolean;
+        email: any;
+        supabaseUid: any;
+        roles: never[];
     }>;
 }
 export {};

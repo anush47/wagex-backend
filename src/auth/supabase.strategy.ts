@@ -12,9 +12,7 @@ export class SupabaseStrategy extends PassportStrategy(Strategy) {
         private readonly prisma: PrismaService,
     ) {
         const supabaseUrl = configService.get<string>('SUPABASE_URL');
-        if (!supabaseUrl) {
-            throw new Error('SUPABASE_URL not defined in config');
-        }
+        if (!supabaseUrl) throw new Error('SUPABASE_URL not defined');
 
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -34,19 +32,24 @@ export class SupabaseStrategy extends PassportStrategy(Strategy) {
             throw new UnauthorizedException('Invalid Token');
         }
 
-        const { email } = payload;
+        const { email, sub: supabaseUid } = payload;
+
+        // Check local DB
         const user = await this.prisma.user.findUnique({
             where: { email },
         });
 
-        if (!user) {
-            throw new UnauthorizedException('User not registered in SalaryApp');
+        if (user) {
+            if (!user.active) throw new UnauthorizedException('User inactive');
+            return user; // Return full user entity
         }
 
-        if (!user.active) {
-            throw new UnauthorizedException('User account is inactive');
-        }
-
-        return user;
+        // User not found in DB -> Return "Guest" context for Registration
+        return {
+            isGuest: true,
+            email,
+            supabaseUid,
+            roles: [] // Guest has no roles yet
+        };
     }
 }

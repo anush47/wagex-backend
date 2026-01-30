@@ -9,19 +9,25 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateUserDto = void 0;
+exports.RegisterDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
-const base_user_profile_dto_1 = require("./base-user-profile.dto");
-const swagger_2 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
-class UpdateUserDto extends (0, swagger_1.PartialType)(base_user_profile_dto_1.BaseUserProfileDto) {
-    active;
+const client_1 = require("@prisma/client");
+const base_user_profile_dto_1 = require("../../users/dto/base-user-profile.dto");
+class RegisterDto extends base_user_profile_dto_1.BaseUserProfileDto {
+    role;
+    companyName;
 }
-exports.UpdateUserDto = UpdateUserDto;
+exports.RegisterDto = RegisterDto;
 __decorate([
-    (0, swagger_2.ApiPropertyOptional)({ example: true, description: 'Whether the user account is active' }),
+    (0, swagger_1.ApiProperty)({ example: client_1.Role.EMPLOYER, enum: client_1.Role, description: 'Role to register as (EMPLOYER/EMPLOYEE)' }),
+    (0, class_validator_1.IsEnum)(client_1.Role),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "role", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'My Company Inc.', required: false, description: 'Company Name (Required if role is EMPLOYER)' }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsBoolean)(),
-    __metadata("design:type", Boolean)
-], UpdateUserDto.prototype, "active", void 0);
-//# sourceMappingURL=update-user.dto.js.map
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "companyName", void 0);
+//# sourceMappingURL=register.dto.js.map

@@ -8,8 +8,17 @@ export class User implements PrismaUser {
     @ApiProperty({ example: 'user@example.com', description: 'Email address' })
     email: string;
 
-    @ApiProperty({ example: 'John Doe', description: 'Full name', nullable: true })
-    name: string | null;
+    @ApiProperty({ example: 'J. Doe', description: 'Name with Initials', nullable: true })
+    nameWithInitials: string | null;
+
+    @ApiProperty({ example: 'John Doe', description: 'Full Name', nullable: true })
+    fullName: string | null;
+
+    @ApiProperty({ example: '123 Main St', description: 'Address', nullable: true })
+    address: string | null;
+
+    @ApiProperty({ example: '+1 555 123 4567', description: 'Phone', nullable: true })
+    phone: string | null;
 
     @ApiProperty({ enum: Role, example: Role.EMPLOYEE, description: 'User role' })
     role: Role;

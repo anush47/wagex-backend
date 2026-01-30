@@ -15,7 +15,10 @@ const client_1 = require("@prisma/client");
 class User {
     id;
     email;
-    name;
+    nameWithInitials;
+    fullName;
+    address;
+    phone;
     role;
     active;
     companyId;
@@ -32,9 +35,21 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "email", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'John Doe', description: 'Full name', nullable: true }),
+    (0, swagger_1.ApiProperty)({ example: 'J. Doe', description: 'Name with Initials', nullable: true }),
     __metadata("design:type", Object)
-], User.prototype, "name", void 0);
+], User.prototype, "nameWithInitials", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'John Doe', description: 'Full Name', nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "fullName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '123 Main St', description: 'Address', nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '+1 555 123 4567', description: 'Phone', nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ enum: client_1.Role, example: client_1.Role.EMPLOYEE, description: 'User role' }),
     __metadata("design:type", String)
