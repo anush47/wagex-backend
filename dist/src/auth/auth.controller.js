@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const uuid_1 = require("uuid");
 const jwt_auth_guard_1 = require("./jwt-auth.guard");
 const register_dto_1 = require("./dto/register.dto");
 const auth_service_1 = require("./auth.service");
@@ -30,6 +31,9 @@ let AuthController = class AuthController {
     }
     async register(req, dto) {
         const { email, sub: id, isGuest } = req.user;
+        if (!id || !(0, uuid_1.validate)(id)) {
+            throw new common_1.BadRequestException('Invalid Supabase UID');
+        }
         if (!isGuest) {
             throw new common_1.BadRequestException('User already registered.');
         }

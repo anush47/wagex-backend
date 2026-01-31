@@ -10,8 +10,15 @@ export class AuthService {
 
     constructor(private readonly prisma: PrismaService) { }
 
-    async registerUser(supabaseUid: string, email: string, dto: RegisterDto) {
+    async registerUser(supabaseUid: string, email: string, dto: RegisterDto): Promise<{ user: any; company?: any }> {
         this.logger.log(`Registering user: ${email} with role: ${dto.role}`);
+
+        // Check for duplicate registration
+        const existingUser = await this.prisma.user.findUnique({ where: { id: supabaseUid } });
+        if (existingUser) {
+            throw new BadRequestException('User already registered.');
+        }
+
         if (dto.role === Role.ADMIN) {
             throw new BadRequestException('Cannot register as ADMIN directly.');
         }
@@ -67,6 +74,6 @@ export class AuthService {
             },
         });
 
-        return user;
+        return { user };
     }
 }

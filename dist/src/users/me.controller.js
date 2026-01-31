@@ -27,7 +27,8 @@ let MeController = class MeController {
         return req.user;
     }
     updateProfile(req, updateUserDto) {
-        return this.usersService.update(req.user.id, updateUserDto);
+        const { active, ...safeFields } = updateUserDto;
+        return this.usersService.update(req.user.id, safeFields);
     }
 };
 exports.MeController = MeController;

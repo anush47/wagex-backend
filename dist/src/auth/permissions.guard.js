@@ -8,14 +8,16 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var PermissionsGuard_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PermissionsGuard = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const permissions_decorator_1 = require("./permissions.decorator");
 const client_1 = require("@prisma/client");
-let PermissionsGuard = class PermissionsGuard {
+let PermissionsGuard = PermissionsGuard_1 = class PermissionsGuard {
     reflector;
+    logger = new common_1.Logger(PermissionsGuard_1.name);
     constructor(reflector) {
         this.reflector = reflector;
     }
@@ -34,8 +36,8 @@ let PermissionsGuard = class PermissionsGuard {
         if (user.role === client_1.Role.ADMIN)
             return true;
         const companyId = request.query.companyId || request.params.companyId || request.body.companyId;
-        if (!companyId && user.role === client_1.Role.EMPLOYER) {
-            return true;
+        if (!companyId) {
+            throw new common_1.ForbiddenException('companyId is required for permission-protected operations.');
         }
         const membership = user.memberships?.find(m => m.companyId === companyId);
         if (!membership) {
@@ -46,7 +48,7 @@ let PermissionsGuard = class PermissionsGuard {
     }
 };
 exports.PermissionsGuard = PermissionsGuard;
-exports.PermissionsGuard = PermissionsGuard = __decorate([
+exports.PermissionsGuard = PermissionsGuard = PermissionsGuard_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [core_1.Reflector])
 ], PermissionsGuard);

@@ -23,6 +23,10 @@ let AuthService = AuthService_1 = class AuthService {
     }
     async registerUser(supabaseUid, email, dto) {
         this.logger.log(`Registering user: ${email} with role: ${dto.role}`);
+        const existingUser = await this.prisma.user.findUnique({ where: { id: supabaseUid } });
+        if (existingUser) {
+            throw new common_1.BadRequestException('User already registered.');
+        }
         if (dto.role === client_1.Role.ADMIN) {
             throw new common_1.BadRequestException('Cannot register as ADMIN directly.');
         }
@@ -68,7 +72,7 @@ let AuthService = AuthService_1 = class AuthService {
                 role: dto.role,
             },
         });
-        return user;
+        return { user };
     }
 };
 exports.AuthService = AuthService;

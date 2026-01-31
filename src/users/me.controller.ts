@@ -22,8 +22,9 @@ export class MeController {
     @ApiOperation({ summary: 'Update profile of the authenticated user' })
     @ApiResponse({ status: 200, description: 'Profile updated.' })
     updateProfile(@Request() req, @Body() updateUserDto: UpdateUserDto) {
-        // Prevent updating role/companyId via self-update if necessary
-        // for MVP trusting the DTO for now, but usually strip sensitive fields
-        return this.usersService.update(req.user.id, updateUserDto);
+        // Strip sensitive fields that users shouldn't be able to self-update
+        const { active, ...safeFields } = updateUserDto;
+
+        return this.usersService.update(req.user.id, safeFields);
     }
 }

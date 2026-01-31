@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from './permissions.decorator';
 import { Role } from '@prisma/client';
@@ -6,6 +6,8 @@ import { Permission } from './permissions';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
+    private readonly logger = new Logger(PermissionsGuard.name);
+
     constructor(private reflector: Reflector) { }
 
     canActivate(context: ExecutionContext): boolean {
@@ -27,14 +29,10 @@ export class PermissionsGuard implements CanActivate {
         if (user.role === Role.ADMIN) return true;
 
         // We need a companyId context to check permissions
-        // This could be in query (companyId), params (companyId), or body
         const companyId = request.query.companyId || request.params.companyId || request.body.companyId;
 
-        if (!companyId && user.role === Role.EMPLOYER) {
-            // If no companyId, but they are an employer, we might allow it 
-            // if the endpoint handles it (e.g. list all my companies).
-            // But for specific permissions, we usually need a context.
-            return true;
+        if (!companyId) {
+            throw new ForbiddenException('companyId is required for permission-protected operations.');
         }
 
         const membership = user.memberships?.find(m => m.companyId === companyId);

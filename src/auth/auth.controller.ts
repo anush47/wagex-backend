@@ -1,5 +1,6 @@
 import { Controller, Post, Body, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { validate as isUuid } from 'uuid';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RegisterDto } from './dto/register.dto';
 import { AuthService } from './auth.service';
@@ -28,6 +29,11 @@ export class AuthController {
     @ApiResponse({ status: 201, description: 'User profile created in database.' })
     async register(@Request() req, @Body() dto: RegisterDto) {
         const { email, sub: id, isGuest } = req.user;
+
+        // Validate Supabase UID
+        if (!id || !isUuid(id)) {
+            throw new BadRequestException('Invalid Supabase UID');
+        }
 
         if (!isGuest) {
             throw new BadRequestException('User already registered.');
