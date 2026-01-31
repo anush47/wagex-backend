@@ -12,31 +12,31 @@ export declare class SupabaseStrategy extends SupabaseStrategy_base {
         memberships: ({
             company: {
                 id: string;
-                active: boolean;
                 createdAt: Date;
                 updatedAt: Date;
                 name: string;
+                active: boolean;
             };
         } & {
-            id: string;
             role: import("@prisma/client").$Enums.Role;
+            id: string;
+            permissions: import("@prisma/client/runtime/client").JsonValue | null;
             createdAt: Date;
             updatedAt: Date;
             userId: string;
             companyId: string;
-            permissions: import("@prisma/client/runtime/client").JsonValue | null;
         })[];
     } & {
+        role: import("@prisma/client").$Enums.Role;
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         email: string;
         nameWithInitials: string | null;
         fullName: string | null;
         address: string | null;
         phone: string | null;
-        role: import("@prisma/client").$Enums.Role;
         active: boolean;
-        createdAt: Date;
-        updatedAt: Date;
     }) | {
         isGuest: boolean;
         email: any;

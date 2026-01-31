@@ -19,15 +19,14 @@ const employees_service_1 = require("./employees.service");
 const create_employee_dto_1 = require("./dto/create-employee.dto");
 const update_employee_dto_1 = require("./dto/update-employee.dto");
 const swagger_1 = require("@nestjs/swagger");
-const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const client_1 = require("@prisma/client");
 const permissions_1 = require("../auth/permissions");
 const permissions_decorator_1 = require("../auth/permissions.decorator");
-const common_2 = require("@nestjs/common");
+const query_dto_1 = require("../common/dto/query.dto");
 let EmployeesController = EmployeesController_1 = class EmployeesController {
     employeesService;
-    logger = new common_2.Logger(EmployeesController_1.name);
+    logger = new common_1.Logger(EmployeesController_1.name);
     constructor(employeesService) {
         this.employeesService = employeesService;
     }
@@ -41,10 +40,10 @@ let EmployeesController = EmployeesController_1 = class EmployeesController {
         }
         return this.employeesService.create(createEmployeeDto);
     }
-    findAll(companyId, req) {
+    findAll(companyId, queryDto, req) {
         const user = req.user;
         if (user.role === client_1.Role.ADMIN) {
-            return this.employeesService.findAll(companyId);
+            return this.employeesService.findAll(companyId, queryDto);
         }
         if (user.role === client_1.Role.EMPLOYER) {
             if (companyId) {
@@ -52,14 +51,14 @@ let EmployeesController = EmployeesController_1 = class EmployeesController {
                 if (!hasAccess) {
                     throw new common_1.ForbiddenException('You do not have access to this company.');
                 }
-                return this.employeesService.findAll(companyId);
+                return this.employeesService.findAll(companyId, queryDto);
             }
             if (!user.memberships || user.memberships.length === 0) {
-                return [];
+                return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
             }
-            return this.employeesService.findAll(user.memberships[0].companyId);
+            return this.employeesService.findAll(user.memberships[0].companyId, queryDto);
         }
-        return [];
+        return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
     }
     async findOne(id, req) {
         const user = req.user;
@@ -123,9 +122,10 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Return employees.' }),
     (0, swagger_1.ApiQuery)({ name: 'companyId', required: false, type: String }),
     __param(0, (0, common_1.Query)('companyId')),
-    __param(1, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, query_dto_1.QueryDto, Object]),
     __metadata("design:returntype", void 0)
 ], EmployeesController.prototype, "findAll", null);
 __decorate([
@@ -166,7 +166,6 @@ __decorate([
 exports.EmployeesController = EmployeesController = EmployeesController_1 = __decorate([
     (0, swagger_1.ApiTags)('Employees'),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('employees'),
     __metadata("design:paramtypes", [employees_service_1.EmployeesService])
 ], EmployeesController);

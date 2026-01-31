@@ -28,22 +28,29 @@ export class PermissionsGuard implements CanActivate {
         // Admins bypass all permission checks
         if (user.role === Role.ADMIN) return true;
 
-        // We need a companyId context to check permissions
+        // We need a companyId context to check permissions for employers
         const companyId = request.query.companyId || request.params.companyId || request.body.companyId;
 
         if (!companyId) {
+            this.logger.warn(`Permission check failed: companyId is required for ${user.role}`);
             throw new ForbiddenException('companyId is required for permission-protected operations.');
         }
 
         const membership = user.memberships?.find(m => m.companyId === companyId);
         if (!membership) {
+            this.logger.warn(`Permission check failed: No membership found for company ${companyId}`);
             throw new ForbiddenException('No membership found for this company.');
         }
 
         const userPermissions = membership.permissions || {};
 
         // Check if user has all required permissions for this specific company
-        // This assumes permissions are a simple object { can_view: true }
-        return requiredPermissions.every(permission => userPermissions[permission] === true);
+        const hasPermissions = requiredPermissions.every(permission => userPermissions[permission] === true);
+
+        if (!hasPermissions) {
+            this.logger.warn(`Permission check failed: User lacks required permissions ${requiredPermissions.join(', ')}`);
+        }
+
+        return hasPermissions;
     }
 }

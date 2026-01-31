@@ -25,14 +25,40 @@ let UsersService = UsersService_1 = class UsersService {
             data: createUserDto,
         });
     }
-    async findAll() {
-        return this.prisma.user.findMany({
-            include: {
-                memberships: {
-                    include: { company: true }
+    async findAll(queryDto) {
+        const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto;
+        const skip = (page - 1) * limit;
+        const where = search ? {
+            OR: [
+                { email: { contains: search, mode: 'insensitive' } },
+                { nameWithInitials: { contains: search, mode: 'insensitive' } },
+                { fullName: { contains: search, mode: 'insensitive' } },
+            ]
+        } : {};
+        const orderBy = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
+        const [data, total] = await Promise.all([
+            this.prisma.user.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy,
+                include: {
+                    memberships: {
+                        include: { company: true }
+                    }
                 }
+            }),
+            this.prisma.user.count({ where })
+        ]);
+        return {
+            data,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
             }
-        });
+        };
     }
     async findOne(id) {
         const user = await this.prisma.user.findUnique({

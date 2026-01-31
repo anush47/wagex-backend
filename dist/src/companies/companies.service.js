@@ -25,8 +25,72 @@ let CompaniesService = CompaniesService_1 = class CompaniesService {
             data: createCompanyDto,
         });
     }
-    async findAll() {
-        return this.prisma.company.findMany();
+    async createWithMembership(createCompanyDto, userId) {
+        this.logger.log(`Creating company with membership for user: ${userId}`);
+        return this.prisma.$transaction(async (tx) => {
+            const company = await tx.company.create({
+                data: createCompanyDto,
+            });
+            await tx.userCompany.create({
+                data: {
+                    userId,
+                    companyId: company.id,
+                    role: 'EMPLOYER',
+                    permissions: {
+                        VIEW_COMPANY: true,
+                        EDIT_COMPANY: true,
+                        MANAGE_EMPLOYEES: true
+                    }
+                }
+            });
+            return company;
+        });
+    }
+    async findAll(queryDto) {
+        const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto;
+        const skip = (page - 1) * limit;
+        const where = search ? {
+            name: { contains: search, mode: 'insensitive' }
+        } : {};
+        const orderBy = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
+        const [data, total] = await Promise.all([
+            this.prisma.company.findMany({ where, skip, take: limit, orderBy }),
+            this.prisma.company.count({ where })
+        ]);
+        return {
+            data,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
+    }
+    async findByIds(ids, queryDto) {
+        if (ids.length === 0) {
+            return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+        }
+        const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto;
+        const skip = (page - 1) * limit;
+        const where = { id: { in: ids } };
+        if (search) {
+            where.name = { contains: search, mode: 'insensitive' };
+        }
+        const orderBy = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
+        const [data, total] = await Promise.all([
+            this.prisma.company.findMany({ where, skip, take: limit, orderBy }),
+            this.prisma.company.count({ where })
+        ]);
+        return {
+            data,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
     }
     async findOne(id) {
         const company = await this.prisma.company.findUnique({

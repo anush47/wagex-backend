@@ -1,18 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Query, Request, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Query, Request, ForbiddenException, Logger } from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { Permission } from '../auth/permissions';
 import { Permissions } from '../auth/permissions.decorator';
-import { Logger } from '@nestjs/common';
+import { QueryDto } from '../common/dto/query.dto';
 
 @ApiTags('Employees')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard) // RolesGuard and PermissionsGuard are global
 @Controller('employees')
 export class EmployeesController {
   private readonly logger = new Logger(EmployeesController.name);
@@ -46,12 +44,12 @@ export class EmployeesController {
   @ApiOperation({ summary: 'List employees' })
   @ApiResponse({ status: 200, description: 'Return employees.' })
   @ApiQuery({ name: 'companyId', required: false, type: String })
-  findAll(@Query('companyId') companyId: string, @Request() req) {
+  findAll(@Query('companyId') companyId: string, @Query() queryDto: QueryDto, @Request() req) {
     const user = req.user;
 
     // If Admin, allow any companyId or none (all)
     if (user.role === Role.ADMIN) {
-      return this.employeesService.findAll(companyId);
+      return this.employeesService.findAll(companyId, queryDto);
     }
 
     // Role.EMPLOYER Enforcement
@@ -62,18 +60,18 @@ export class EmployeesController {
         if (!hasAccess) {
           throw new ForbiddenException('You do not have access to this company.');
         }
-        return this.employeesService.findAll(companyId);
+        return this.employeesService.findAll(companyId, queryDto);
       }
 
       // If no companyId, default to the first company they have access to
       if (!user.memberships || user.memberships.length === 0) {
-        return [];
+        return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
       }
 
-      return this.employeesService.findAll(user.memberships[0].companyId);
+      return this.employeesService.findAll(user.memberships[0].companyId, queryDto);
     }
 
-    return [];
+    return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
   }
 
   @Get(':id')

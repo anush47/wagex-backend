@@ -19,23 +19,35 @@ const companies_service_1 = require("./companies.service");
 const create_company_dto_1 = require("./dto/create-company.dto");
 const update_company_dto_1 = require("./dto/update-company.dto");
 const swagger_1 = require("@nestjs/swagger");
-const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const client_1 = require("@prisma/client");
 const permissions_1 = require("../auth/permissions");
 const permissions_decorator_1 = require("../auth/permissions.decorator");
+const query_dto_1 = require("../common/dto/query.dto");
 let CompaniesController = CompaniesController_1 = class CompaniesController {
     companiesService;
     logger = new common_1.Logger(CompaniesController_1.name);
     constructor(companiesService) {
         this.companiesService = companiesService;
     }
-    async create(createCompanyDto) {
-        this.logger.log(`Admin creating company: ${createCompanyDto.name}`);
+    async create(createCompanyDto, req) {
+        const user = req.user;
+        this.logger.log(`${user.role} creating company: ${createCompanyDto.name}`);
+        if (user.role === client_1.Role.EMPLOYER) {
+            return this.companiesService.createWithMembership(createCompanyDto, user.id);
+        }
         return this.companiesService.create(createCompanyDto);
     }
-    async findAll() {
-        return this.companiesService.findAll();
+    async findAll(req, queryDto) {
+        const user = req.user;
+        if (user.role === client_1.Role.ADMIN) {
+            return this.companiesService.findAll(queryDto);
+        }
+        if (user.role === client_1.Role.EMPLOYER) {
+            const companyIds = user.memberships?.map(m => m.companyId) || [];
+            return this.companiesService.findByIds(companyIds, queryDto);
+        }
+        return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
     }
     async findOne(id, req) {
         const user = req.user;
@@ -67,21 +79,24 @@ let CompaniesController = CompaniesController_1 = class CompaniesController {
 exports.CompaniesController = CompaniesController;
 __decorate([
     (0, common_1.Post)(),
-    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER),
     (0, swagger_1.ApiOperation)({ summary: 'Create company' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Company created.' }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_company_dto_1.CreateCompanyDto]),
+    __metadata("design:paramtypes", [create_company_dto_1.CreateCompanyDto, Object]),
     __metadata("design:returntype", Promise)
 ], CompaniesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN),
-    (0, swagger_1.ApiOperation)({ summary: 'List all companies' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Return all companies.' }),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER),
+    (0, swagger_1.ApiOperation)({ summary: 'List companies' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Return companies (all for admin, own for employer).' }),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object, query_dto_1.QueryDto]),
     __metadata("design:returntype", Promise)
 ], CompaniesController.prototype, "findAll", null);
 __decorate([
@@ -122,7 +137,6 @@ __decorate([
 exports.CompaniesController = CompaniesController = CompaniesController_1 = __decorate([
     (0, swagger_1.ApiTags)('Companies'),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('companies'),
     __metadata("design:paramtypes", [companies_service_1.CompaniesService])
 ], CompaniesController);

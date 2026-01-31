@@ -1,18 +1,17 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Request, ForbiddenException, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Request, ForbiddenException, Logger, Query } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { Permission } from '../auth/permissions';
 import { Permissions } from '../auth/permissions.decorator';
+import { QueryDto } from '../common/dto/query.dto';
 
 @ApiTags('Companies')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard) // RolesGuard and PermissionsGuard are global
 @Controller('companies')
 export class CompaniesController {
   private readonly logger = new Logger(CompaniesController.name);
@@ -20,20 +19,40 @@ export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) { }
 
   @Post()
-  @Roles(Role.ADMIN) // Only system admins create companies
+  @Roles(Role.ADMIN, Role.EMPLOYER)
   @ApiOperation({ summary: 'Create company' })
   @ApiResponse({ status: 201, description: 'Company created.' })
-  async create(@Body() createCompanyDto: CreateCompanyDto) {
-    this.logger.log(`Admin creating company: ${createCompanyDto.name}`);
+  async create(@Body() createCompanyDto: CreateCompanyDto, @Request() req) {
+    const user = req.user;
+    this.logger.log(`${user.role} creating company: ${createCompanyDto.name}`);
+
+    // If employer, automatically add them as a member
+    if (user.role === Role.EMPLOYER) {
+      return this.companiesService.createWithMembership(createCompanyDto, user.id);
+    }
+
     return this.companiesService.create(createCompanyDto);
   }
 
   @Get()
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'List all companies' })
-  @ApiResponse({ status: 200, description: 'Return all companies.' })
-  async findAll() {
-    return this.companiesService.findAll();
+  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @ApiOperation({ summary: 'List companies' })
+  @ApiResponse({ status: 200, description: 'Return companies (all for admin, own for employer).' })
+  async findAll(@Request() req, @Query() queryDto: QueryDto) {
+    const user = req.user;
+
+    // Admin sees all companies
+    if (user.role === Role.ADMIN) {
+      return this.companiesService.findAll(queryDto);
+    }
+
+    // Employer sees only their companies
+    if (user.role === Role.EMPLOYER) {
+      const companyIds = user.memberships?.map(m => m.companyId) || [];
+      return this.companiesService.findByIds(companyIds, queryDto);
+    }
+
+    return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
   }
 
   @Get(':id')

@@ -1,17 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Request, Logger, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Request, Logger, ForbiddenException, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { User } from './entities/user.entity';
+import { QueryDto } from '../common/dto/query.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard) // RolesGuard is global
 @Controller('users')
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
@@ -31,8 +30,8 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'List all users' })
   @ApiResponse({ status: 200, type: [User] })
-  async findAll(): Promise<User[]> {
-    return this.usersService.findAll();
+  async findAll(@Query() queryDto: QueryDto) {
+    return this.usersService.findAll(queryDto);
   }
 
   @Get(':id')

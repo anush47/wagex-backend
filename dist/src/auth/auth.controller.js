@@ -17,11 +17,9 @@ exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const uuid_1 = require("uuid");
-const jwt_auth_guard_1 = require("./jwt-auth.guard");
 const register_dto_1 = require("./dto/register.dto");
 const auth_service_1 = require("./auth.service");
 const skip_user_check_decorator_1 = require("./skip-user-check.decorator");
-const user_exists_guard_1 = require("./user-exists.guard");
 let AuthController = AuthController_1 = class AuthController {
     authService;
     logger = new common_1.Logger(AuthController_1.name);
@@ -46,7 +44,6 @@ let AuthController = AuthController_1 = class AuthController {
 exports.AuthController = AuthController;
 __decorate([
     (0, common_1.Post)('change-password'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, user_exists_guard_1.UserExistsGuard),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Change password' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Password change handled by Supabase or internal.' }),
@@ -57,7 +54,6 @@ __decorate([
 ], AuthController.prototype, "changePassword", null);
 __decorate([
     (0, common_1.Post)('register'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, user_exists_guard_1.UserExistsGuard),
     (0, skip_user_check_decorator_1.SkipUserCheck)(),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Register User from Supabase Token' }),

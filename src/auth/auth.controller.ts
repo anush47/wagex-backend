@@ -1,11 +1,9 @@
 import { Controller, Post, Body, UseGuards, Request, BadRequestException, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { validate as isUuid } from 'uuid';
-import { JwtAuthGuard } from './jwt-auth.guard';
 import { RegisterDto } from './dto/register.dto';
 import { AuthService } from './auth.service';
 import { SkipUserCheck } from './skip-user-check.decorator';
-import { UserExistsGuard } from './user-exists.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -15,7 +13,6 @@ export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
     @Post('change-password')
-    @UseGuards(JwtAuthGuard, UserExistsGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Change password' })
     @ApiResponse({ status: 200, description: 'Password change handled by Supabase or internal.' })
@@ -24,7 +21,6 @@ export class AuthController {
     }
 
     @Post('register')
-    @UseGuards(JwtAuthGuard, UserExistsGuard)
     @SkipUserCheck()
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Register User from Supabase Token' })

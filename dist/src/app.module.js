@@ -23,6 +23,7 @@ const audit_module_1 = require("./audit/audit.module");
 const audit_interceptor_1 = require("./audit/audit.interceptor");
 const roles_guard_1 = require("./auth/roles.guard");
 const permissions_guard_1 = require("./auth/permissions.guard");
+const jwt_auth_guard_1 = require("./auth/jwt-auth.guard");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -47,6 +48,10 @@ exports.AppModule = AppModule = __decorate([
             {
                 provide: core_1.APP_GUARD,
                 useClass: throttler_1.ThrottlerGuard,
+            },
+            {
+                provide: core_1.APP_GUARD,
+                useClass: jwt_auth_guard_1.JwtAuthGuard,
             },
             {
                 provide: core_1.APP_GUARD,

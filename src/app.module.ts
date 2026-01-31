@@ -14,6 +14,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuditInterceptor } from './audit/audit.interceptor';
 import { RolesGuard } from './auth/roles.guard';
 import { PermissionsGuard } from './auth/permissions.guard';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -35,6 +36,10 @@ import { PermissionsGuard } from './auth/permissions.guard';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard, // Rate Limiting
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard, // Global Authentication
     },
     {
       provide: APP_GUARD,

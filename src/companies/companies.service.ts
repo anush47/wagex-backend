@@ -3,6 +3,8 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { Company } from './entities/company.entity';
+import { QueryDto } from '../common/dto/query.dto';
+import { PaginatedResponse } from '../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class CompaniesService {
@@ -17,8 +19,92 @@ export class CompaniesService {
     });
   }
 
-  async findAll(): Promise<Company[]> {
-    return this.prisma.company.findMany();
+  async createWithMembership(createCompanyDto: CreateCompanyDto, userId: string): Promise<Company> {
+    this.logger.log(`Creating company with membership for user: ${userId}`);
+
+    return this.prisma.$transaction(async (tx) => {
+      // Create company
+      const company = await tx.company.create({
+        data: createCompanyDto,
+      });
+
+      // Add user as company member with employer role
+      await tx.userCompany.create({
+        data: {
+          userId,
+          companyId: company.id,
+          role: 'EMPLOYER',
+          permissions: {
+            VIEW_COMPANY: true,
+            EDIT_COMPANY: true,
+            MANAGE_EMPLOYEES: true
+          }
+        }
+      });
+
+      return company;
+    });
+  }
+
+  async findAll(queryDto: QueryDto): Promise<PaginatedResponse<Company>> {
+    const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto;
+    const skip = (page - 1) * limit;
+
+    // Build where clause for search
+    const where = search ? {
+      name: { contains: search, mode: 'insensitive' as const }
+    } : {};
+
+    // Build orderBy clause
+    const orderBy: any = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
+
+    const [data, total] = await Promise.all([
+      this.prisma.company.findMany({ where, skip, take: limit, orderBy }),
+      this.prisma.company.count({ where })
+    ]);
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  async findByIds(ids: string[], queryDto: QueryDto): Promise<PaginatedResponse<Company>> {
+    if (ids.length === 0) {
+      return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+    }
+
+    const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto;
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const where: any = { id: { in: ids } };
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' as const };
+    }
+
+    // Build orderBy clause
+    const orderBy: any = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
+
+    const [data, total] = await Promise.all([
+      this.prisma.company.findMany({ where, skip, take: limit, orderBy }),
+      this.prisma.company.count({ where })
+    ]);
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   async findOne(id: string): Promise<Company> {

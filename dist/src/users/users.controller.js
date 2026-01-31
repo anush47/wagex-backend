@@ -19,10 +19,10 @@ const users_service_1 = require("./users.service");
 const create_user_dto_1 = require("./dto/create-user.dto");
 const update_user_dto_1 = require("./dto/update-user.dto");
 const swagger_1 = require("@nestjs/swagger");
-const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const client_1 = require("@prisma/client");
 const user_entity_1 = require("./entities/user.entity");
+const query_dto_1 = require("../common/dto/query.dto");
 let UsersController = UsersController_1 = class UsersController {
     usersService;
     logger = new common_1.Logger(UsersController_1.name);
@@ -33,8 +33,8 @@ let UsersController = UsersController_1 = class UsersController {
         this.logger.log(`Admin creating user: ${createUserDto.email}`);
         return this.usersService.create(createUserDto);
     }
-    async findAll() {
-        return this.usersService.findAll();
+    async findAll(queryDto) {
+        return this.usersService.findAll(queryDto);
     }
     async findOne(id, req) {
         const user = req.user;
@@ -69,8 +69,9 @@ __decorate([
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN),
     (0, swagger_1.ApiOperation)({ summary: 'List all users' }),
     (0, swagger_1.ApiResponse)({ status: 200, type: [user_entity_1.User] }),
+    __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [query_dto_1.QueryDto]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findAll", null);
 __decorate([
@@ -108,7 +109,6 @@ __decorate([
 exports.UsersController = UsersController = UsersController_1 = __decorate([
     (0, swagger_1.ApiTags)('Users'),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('users'),
     __metadata("design:paramtypes", [users_service_1.UsersService])
 ], UsersController);

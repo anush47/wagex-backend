@@ -3,6 +3,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { User } from './entities/user.entity';
+import { QueryDto } from '../common/dto/query.dto';
+import { PaginatedResponse } from '../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class UsersService {
@@ -17,14 +19,46 @@ export class UsersService {
     });
   }
 
-  async findAll(): Promise<User[]> {
-    return this.prisma.user.findMany({
-      include: {
-        memberships: {
-          include: { company: true }
+  async findAll(queryDto: QueryDto): Promise<PaginatedResponse<User>> {
+    const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto;
+    const skip = (page - 1) * limit;
+
+    // Build where clause for search
+    const where = search ? {
+      OR: [
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { nameWithInitials: { contains: search, mode: 'insensitive' as const } },
+        { fullName: { contains: search, mode: 'insensitive' as const } },
+      ]
+    } : {};
+
+    // Build orderBy clause
+    const orderBy: any = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          memberships: {
+            include: { company: true }
+          }
         }
+      }),
+      this.prisma.user.count({ where })
+    ]);
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
       }
-    });
+    };
   }
 
   async findOne(id: string): Promise<User> {

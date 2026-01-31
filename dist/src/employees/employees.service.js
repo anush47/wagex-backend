@@ -25,14 +25,34 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             data: createEmployeeDto,
         });
     }
-    async findAll(companyId) {
+    async findAll(companyId, queryDto) {
+        const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto || {};
+        const skip = (page - 1) * limit;
         if (!companyId) {
             this.logger.warn('findAll called without companyId context. Returning empty.');
-            return [];
+            return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
         }
-        return this.prisma.employee.findMany({
-            where: { companyId }
-        });
+        const where = { companyId };
+        if (search) {
+            where.OR = [
+                { employeeNo: { contains: search, mode: 'insensitive' } },
+                { name: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+        const orderBy = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
+        const [data, total] = await Promise.all([
+            this.prisma.employee.findMany({ where, skip, take: limit, orderBy }),
+            this.prisma.employee.count({ where })
+        ]);
+        return {
+            data,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
     }
     async findOne(id) {
         const employee = await this.prisma.employee.findUnique({

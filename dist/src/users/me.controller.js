@@ -15,7 +15,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MeController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
-const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const update_user_dto_1 = require("./dto/update-user.dto");
 const users_service_1 = require("./users.service");
 let MeController = class MeController {
@@ -54,7 +53,6 @@ __decorate([
 exports.MeController = MeController = __decorate([
     (0, swagger_1.ApiTags)('Users'),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('me'),
     __metadata("design:paramtypes", [users_service_1.UsersService])
 ], MeController);

@@ -1,12 +1,21 @@
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { QueryDto } from '../common/dto/query.dto';
 export declare class EmployeesController {
     private readonly employeesService;
     private readonly logger;
     constructor(employeesService: EmployeesService);
     create(createEmployeeDto: CreateEmployeeDto, req: any): Promise<import("./entities/employee.entity").Employee>;
-    findAll(companyId: string, req: any): Promise<import("./entities/employee.entity").Employee[]> | never[];
+    findAll(companyId: string, queryDto: QueryDto, req: any): Promise<import("../common/interfaces/paginated-response.interface").PaginatedResponse<import("./entities/employee.entity").Employee>> | {
+        data: never[];
+        meta: {
+            page: number;
+            limit: number;
+            total: number;
+            totalPages: number;
+        };
+    };
     findOne(id: string, req: any): Promise<import("./entities/employee.entity").Employee>;
     update(id: string, updateEmployeeDto: UpdateEmployeeDto, req: any): Promise<import("./entities/employee.entity").Employee>;
     remove(id: string, req: any): Promise<import("./entities/employee.entity").Employee>;

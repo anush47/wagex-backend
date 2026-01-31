@@ -37,14 +37,20 @@ let PermissionsGuard = PermissionsGuard_1 = class PermissionsGuard {
             return true;
         const companyId = request.query.companyId || request.params.companyId || request.body.companyId;
         if (!companyId) {
+            this.logger.warn(`Permission check failed: companyId is required for ${user.role}`);
             throw new common_1.ForbiddenException('companyId is required for permission-protected operations.');
         }
         const membership = user.memberships?.find(m => m.companyId === companyId);
         if (!membership) {
+            this.logger.warn(`Permission check failed: No membership found for company ${companyId}`);
             throw new common_1.ForbiddenException('No membership found for this company.');
         }
         const userPermissions = membership.permissions || {};
-        return requiredPermissions.every(permission => userPermissions[permission] === true);
+        const hasPermissions = requiredPermissions.every(permission => userPermissions[permission] === true);
+        if (!hasPermissions) {
+            this.logger.warn(`Permission check failed: User lacks required permissions ${requiredPermissions.join(', ')}`);
+        }
+        return hasPermissions;
     }
 };
 exports.PermissionsGuard = PermissionsGuard;
