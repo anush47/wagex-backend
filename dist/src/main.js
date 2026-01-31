@@ -23,6 +23,7 @@ async function bootstrap() {
     app.useGlobalFilters(new http_exception_filter_1.AllExceptionsFilter(httpAdapter));
     app.useGlobalInterceptors(new transform_interceptor_1.TransformInterceptor());
     app.enableCors();
+    app.setGlobalPrefix('api/v1');
     const config = new swagger_1.DocumentBuilder()
         .setTitle('SalaryApp API')
         .setDescription('Enterprise Grade Salary Management API')
@@ -30,7 +31,7 @@ async function bootstrap() {
         .addBearerAuth()
         .build();
     const document = swagger_1.SwaggerModule.createDocument(app, config);
-    swagger_1.SwaggerModule.setup('api', app, document);
+    swagger_1.SwaggerModule.setup('api/docs', app, document);
     await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
