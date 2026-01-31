@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var AuthController_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
@@ -21,8 +22,9 @@ const register_dto_1 = require("./dto/register.dto");
 const auth_service_1 = require("./auth.service");
 const skip_user_check_decorator_1 = require("./skip-user-check.decorator");
 const user_exists_guard_1 = require("./user-exists.guard");
-let AuthController = class AuthController {
+let AuthController = AuthController_1 = class AuthController {
     authService;
+    logger = new common_1.Logger(AuthController_1.name);
     constructor(authService) {
         this.authService = authService;
     }
@@ -32,6 +34,7 @@ let AuthController = class AuthController {
     async register(req, dto) {
         const { email, sub: id, isGuest } = req.user;
         if (!id || !(0, uuid_1.validate)(id)) {
+            this.logger.error(`UUID validation failed. id: ${id}, type: ${typeof id}`);
             throw new common_1.BadRequestException('Invalid Supabase UID');
         }
         if (!isGuest) {
@@ -65,7 +68,7 @@ __decorate([
     __metadata("design:paramtypes", [Object, register_dto_1.RegisterDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "register", null);
-exports.AuthController = AuthController = __decorate([
+exports.AuthController = AuthController = AuthController_1 = __decorate([
     (0, swagger_1.ApiTags)('Authentication'),
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

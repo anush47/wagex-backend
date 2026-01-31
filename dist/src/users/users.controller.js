@@ -29,9 +29,6 @@ let UsersController = UsersController_1 = class UsersController {
     constructor(usersService) {
         this.usersService = usersService;
     }
-    async getProfile(req) {
-        return this.usersService.findOne(req.user.id);
-    }
     async create(createUserDto) {
         this.logger.log(`Admin creating user: ${createUserDto.email}`);
         return this.usersService.create(createUserDto);
@@ -57,15 +54,6 @@ let UsersController = UsersController_1 = class UsersController {
     }
 };
 exports.UsersController = UsersController;
-__decorate([
-    (0, common_1.Get)('me'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get current user profile' }),
-    (0, swagger_1.ApiResponse)({ status: 200, type: user_entity_1.User }),
-    __param(0, (0, common_1.Request)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], UsersController.prototype, "getProfile", null);
 __decorate([
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN),

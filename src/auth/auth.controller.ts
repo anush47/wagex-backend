@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, BadRequestException, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { validate as isUuid } from 'uuid';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -10,6 +10,8 @@ import { UserExistsGuard } from './user-exists.guard';
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
+    private readonly logger = new Logger(AuthController.name);
+
     constructor(private readonly authService: AuthService) { }
 
     @Post('change-password')
@@ -32,6 +34,7 @@ export class AuthController {
 
         // Validate Supabase UID
         if (!id || !isUuid(id)) {
+            this.logger.error(`UUID validation failed. id: ${id}, type: ${typeof id}`);
             throw new BadRequestException('Invalid Supabase UID');
         }
 

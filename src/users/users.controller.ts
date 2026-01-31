@@ -18,13 +18,6 @@ export class UsersController {
 
   constructor(private readonly usersService: UsersService) { }
 
-  @Get('me')
-  @ApiOperation({ summary: 'Get current user profile' })
-  @ApiResponse({ status: 200, type: User })
-  async getProfile(@Request() req): Promise<User> {
-    return this.usersService.findOne(req.user.id);
-  }
-
   @Post()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Create user' })

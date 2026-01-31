@@ -14,7 +14,6 @@ exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
-const permissions_1 = require("./permissions");
 let AuthService = AuthService_1 = class AuthService {
     prisma;
     logger = new common_1.Logger(AuthService_1.name);
@@ -29,37 +28,6 @@ let AuthService = AuthService_1 = class AuthService {
         }
         if (dto.role === client_1.Role.ADMIN) {
             throw new common_1.BadRequestException('Cannot register as ADMIN directly.');
-        }
-        if (dto.role === client_1.Role.EMPLOYER) {
-            const { companyName } = dto;
-            if (!companyName) {
-                throw new common_1.BadRequestException('Company Name is required for Employers.');
-            }
-            const result = await this.prisma.$transaction(async (tx) => {
-                const company = await tx.company.create({
-                    data: { name: companyName },
-                });
-                const user = await tx.user.create({
-                    data: {
-                        id: supabaseUid,
-                        email,
-                        nameWithInitials: dto.nameWithInitials,
-                        fullName: dto.fullName,
-                        address: dto.address,
-                        phone: dto.phone,
-                        role: client_1.Role.EMPLOYER,
-                        memberships: {
-                            create: {
-                                companyId: company.id,
-                                role: client_1.Role.EMPLOYER,
-                                permissions: permissions_1.DEFAULT_EMPLOYER_PERMISSIONS,
-                            }
-                        }
-                    },
-                });
-                return { user, company };
-            });
-            return result;
         }
         const user = await this.prisma.user.create({
             data: {

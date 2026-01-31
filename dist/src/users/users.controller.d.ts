@@ -6,7 +6,6 @@ export declare class UsersController {
     private readonly usersService;
     private readonly logger;
     constructor(usersService: UsersService);
-    getProfile(req: any): Promise<User>;
     create(createUserDto: CreateUserDto): Promise<User>;
     findAll(): Promise<User[]>;
     findOne(id: string, req: any): Promise<User>;

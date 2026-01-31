@@ -53,7 +53,7 @@ export class SupabaseStrategy extends PassportStrategy(Strategy) {
         return {
             isGuest: true,
             email,
-            supabaseUid,
+            sub: supabaseUid,  // Use 'sub' to match JWT payload structure
             roles: [] // Guest has no roles yet
         };
     }

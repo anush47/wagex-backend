@@ -58,7 +58,7 @@ let SupabaseStrategy = class SupabaseStrategy extends (0, passport_1.PassportStr
         return {
             isGuest: true,
             email,
-            supabaseUid,
+            sub: supabaseUid,
             roles: []
         };
     }
