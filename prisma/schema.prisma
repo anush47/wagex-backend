@@ -26,6 +26,7 @@ model Company {
   // Relationships
   memberships UserCompany[]
   employees   Employee[]
+  policy      Policy?       // Optional: Company-wide default policy
 
   @@map("companies")
 }
@@ -93,6 +94,8 @@ model Employee {
   // payrolls Payroll[]
   // attendance Attendance[]
 
+  policy    Policy?     // Optional: Employee-specific override policy
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -115,4 +118,24 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@map("audit_logs")
+}
+
+model Policy {
+  id        String   @id @default(uuid())
+  
+  // The JSON structure for configuration
+  // stores { shifts: [], attendance: {}, payroll: {} }
+  settings  Json     @default("{}")
+
+  // Relationships (Polymorphic-like via optional FKs)
+  companyId String?  @unique
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  employeeId String? @unique
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("policies")
 }

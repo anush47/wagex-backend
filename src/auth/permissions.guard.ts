@@ -28,6 +28,8 @@ export class PermissionsGuard implements CanActivate {
         // Admins bypass all permission checks
         if (user.role === Role.ADMIN) return true;
 
+
+
         // We need a companyId context to check permissions for employers
         const query = request.query || {};
         const params = request.params || {};
@@ -37,7 +39,7 @@ export class PermissionsGuard implements CanActivate {
         // If no companyId, we only allow GET requests (which will be filtered by the service/controller)
         if (!companyId) {
             if (request.method === 'GET') {
-                this.logger.debug(`No companyId provided for GET request, allowing access to handle tenancy in service/controller`);
+                // GET requests handling tenancy in service/controller
                 return true;
             }
             this.logger.warn(`Permission check failed: companyId is required for ${user.role} on ${request.method} ${request.url}`);

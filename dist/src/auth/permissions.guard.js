@@ -41,7 +41,6 @@ let PermissionsGuard = PermissionsGuard_1 = class PermissionsGuard {
         const companyId = query.companyId || params.companyId || body.companyId;
         if (!companyId) {
             if (request.method === 'GET') {
-                this.logger.debug(`No companyId provided for GET request, allowing access to handle tenancy in service/controller`);
                 return true;
             }
             this.logger.warn(`Permission check failed: companyId is required for ${user.role} on ${request.method} ${request.url}`);

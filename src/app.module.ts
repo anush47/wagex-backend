@@ -15,6 +15,7 @@ import { AuditInterceptor } from './audit/audit.interceptor';
 import { RolesGuard } from './auth/roles.guard';
 import { PermissionsGuard } from './auth/permissions.guard';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { PoliciesModule } from './policies/policies.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     CompaniesModule,
     EmployeesModule,
     AuditModule,
+    PoliciesModule,
   ],
   controllers: [AppController],
   providers: [

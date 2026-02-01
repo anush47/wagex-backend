@@ -24,6 +24,7 @@ const audit_interceptor_1 = require("./audit/audit.interceptor");
 const roles_guard_1 = require("./auth/roles.guard");
 const permissions_guard_1 = require("./auth/permissions.guard");
 const jwt_auth_guard_1 = require("./auth/jwt-auth.guard");
+const policies_module_1 = require("./policies/policies.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -41,6 +42,7 @@ exports.AppModule = AppModule = __decorate([
             companies_module_1.CompaniesModule,
             employees_module_1.EmployeesModule,
             audit_module_1.AuditModule,
+            policies_module_1.PoliciesModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [
