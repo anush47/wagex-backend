@@ -16,15 +16,6 @@ enum Role {
   EMPLOYEE
 }
 
-enum AttendanceStatus {
-  PRESENT
-  ABSENT
-  HALF_DAY
-  LEAVE
-  LATE
-  EARLY_LEAVE
-}
-
 model Company {
   id        String   @id @default(uuid())
   name      String
@@ -35,7 +26,6 @@ model Company {
   // Relationships
   memberships UserCompany[]
   employees   Employee[]
-  attendance  Attendance[]
   policy      Policy?       // Optional: Company-wide default policy
 
   @@map("companies")
@@ -102,7 +92,7 @@ model Employee {
 
   // Future relations for Payroll, Attendance, etc.
   // payrolls Payroll[]
-  attendance Attendance[]
+  // attendance Attendance[]
 
   policy    Policy?     // Optional: Employee-specific override policy
 
@@ -148,35 +138,4 @@ model Policy {
   updatedAt DateTime @updatedAt
 
   @@map("policies")
-}
-
-model Attendance {
-  id         String   @id @default(uuid())
-  date       DateTime @db.Date // Stores just the date (YYYY-MM-DD)
-  
-  clockIn    DateTime
-  clockOut   DateTime?
-  
-  status     AttendanceStatus @default(ABSENT)
-  isLate     Boolean  @default(false)
-  
-  shiftSnapshot Json? // Stores the shift rule applicable at clock-in
-  
-  // R2 File Keys
-  proofFiles String[]
-  
-  // Meta (Location, Device)
-  meta       Json?    @default("{}")
-
-  companyId  String
-  company    Company  @relation(fields: [companyId], references: [id])
-  
-  employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@unique([employeeId, date]) // One record per day per employee
-  @@map("attendance")
 }
