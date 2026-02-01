@@ -17,6 +17,7 @@ import { PermissionsGuard } from './auth/permissions.guard';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PoliciesModule } from './policies/policies.module';
 import { StorageModule } from './storage/storage.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { StorageModule } from './storage/storage.module';
     AuditModule,
     PoliciesModule,
     StorageModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

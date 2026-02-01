@@ -16,6 +16,13 @@ enum Role {
   EMPLOYEE
 }
 
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
 model Company {
   id        String   @id @default(uuid())
   name      String
@@ -44,7 +51,8 @@ model User {
   active    Boolean  @default(true)
   
   // Relationships
-  memberships UserCompany[]
+  memberships   UserCompany[]
+  notifications Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -138,4 +146,19 @@ model Policy {
   updatedAt DateTime @updatedAt
 
   @@map("policies")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  metadata  Json?            @default("{}")
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("notifications")
 }
