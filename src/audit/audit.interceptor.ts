@@ -16,18 +16,34 @@ export class AuditInterceptor implements NestInterceptor {
             return next.handle().pipe(
                 tap((data) => {
                     const user = req.user;
-                    const resource = req.path.split('/')[2] || 'unknown'; // naive resource extraction
+                    // Extract resource more significantly? e.g. /api/v1/companies -> companies
+                    // Assuming /api/v1/RESOURCE/...
+                    const paths = req.path.split('/').filter(p => p.length > 0);
+                    const resource = paths.length > 2 ? paths[2] : paths[0];
+
+                    const details: any = {
+                        path: req.path,
+                        body: req.body,
+                    };
+
+                    // Capture File Metadata if present
+                    if (req.file) {
+                        details.file = {
+                            name: req.file.originalname,
+                            size: req.file.size,
+                            mimetype: req.file.mimetype
+                        };
+                    }
+                    if (req.files) {
+                        details.filesCount = req.files.length;
+                    }
 
                     this.auditService.logAction({
                         action: method,
                         resource: resource,
-                        userId: user?.id, // Supabase UID
+                        userId: user?.id,
                         ipAddress: req.ip,
-                        details: {
-                            path: req.path,
-                            body: req.body, // Be careful with sensitive data!
-                            // response_id: data?.id // Try to capture ID of created resource
-                        },
+                        details,
                     });
                 }),
             );

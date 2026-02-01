@@ -25,6 +25,7 @@ const roles_guard_1 = require("./auth/roles.guard");
 const permissions_guard_1 = require("./auth/permissions.guard");
 const jwt_auth_guard_1 = require("./auth/jwt-auth.guard");
 const policies_module_1 = require("./policies/policies.module");
+const storage_module_1 = require("./storage/storage.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -43,6 +44,7 @@ exports.AppModule = AppModule = __decorate([
             employees_module_1.EmployeesModule,
             audit_module_1.AuditModule,
             policies_module_1.PoliciesModule,
+            storage_module_1.StorageModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

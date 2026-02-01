@@ -16,6 +16,7 @@ import { RolesGuard } from './auth/roles.guard';
 import { PermissionsGuard } from './auth/permissions.guard';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PoliciesModule } from './policies/policies.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PoliciesModule } from './policies/policies.module';
     EmployeesModule,
     AuditModule,
     PoliciesModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [

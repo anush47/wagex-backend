@@ -24,16 +24,28 @@ let AuditInterceptor = class AuditInterceptor {
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
             return next.handle().pipe((0, operators_1.tap)((data) => {
                 const user = req.user;
-                const resource = req.path.split('/')[2] || 'unknown';
+                const paths = req.path.split('/').filter(p => p.length > 0);
+                const resource = paths.length > 2 ? paths[2] : paths[0];
+                const details = {
+                    path: req.path,
+                    body: req.body,
+                };
+                if (req.file) {
+                    details.file = {
+                        name: req.file.originalname,
+                        size: req.file.size,
+                        mimetype: req.file.mimetype
+                    };
+                }
+                if (req.files) {
+                    details.filesCount = req.files.length;
+                }
                 this.auditService.logAction({
                     action: method,
                     resource: resource,
                     userId: user?.id,
                     ipAddress: req.ip,
-                    details: {
-                        path: req.path,
-                        body: req.body,
-                    },
+                    details,
                 });
             }));
         }

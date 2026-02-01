@@ -20,7 +20,7 @@ export class PoliciesController {
     @Post()
     @Roles(Role.ADMIN, Role.EMPLOYER)
     @Permissions(Permission.MANAGE_COMPANY)
-    @ApiOperation({ summary: 'Create a policy. INFO: You must provide "companyId" in the body for permission validation.' })
+    @ApiOperation({ summary: 'Create policy' })
     create(@Body() createPolicyDto: CreatePolicyDto) {
         return this.policiesService.create(createPolicyDto);
     }
@@ -28,7 +28,7 @@ export class PoliciesController {
     @Get('company/:companyId')
     @Roles(Role.ADMIN, Role.EMPLOYER, Role.EMPLOYEE)
     @Permissions(Permission.VIEW_COMPANY)
-    @ApiOperation({ summary: 'Get the default policy for a company' })
+    @ApiOperation({ summary: 'Get company default policy' })
     findByCompany(@Param('companyId') companyId: string) {
         return this.policiesService.findByCompany(companyId);
     }
@@ -36,7 +36,7 @@ export class PoliciesController {
     @Get('effective/:employeeId')
     @Roles(Role.ADMIN, Role.EMPLOYER, Role.EMPLOYEE)
     @Permissions(Permission.VIEW_COMPANY) // Basic permission
-    @ApiOperation({ summary: 'Get the effective policy with source details (Effective, Company, Override)' })
+    @ApiOperation({ summary: 'Get effective employee policy' })
     getEffective(@Param('employeeId') employeeId: string) {
         return this.policiesService.getEffectivePolicyDetail(employeeId);
     }
@@ -44,7 +44,7 @@ export class PoliciesController {
     @Patch(':id')
     @Roles(Role.ADMIN, Role.EMPLOYER)
     @Permissions(Permission.MANAGE_COMPANY)
-    @ApiOperation({ summary: 'Update a policy (Requires companyId in query)' })
+    @ApiOperation({ summary: 'Update policy' })
     update(@Param('id') id: string, @Query('companyId') companyId: string, @Body() updatePolicyDto: UpdatePolicyDto) {
         return this.policiesService.update(id, updatePolicyDto);
     }
@@ -52,7 +52,7 @@ export class PoliciesController {
     @Delete(':id')
     @Roles(Role.ADMIN, Role.EMPLOYER)
     @Permissions(Permission.MANAGE_COMPANY)
-    @ApiOperation({ summary: 'Delete a policy by ID (Requires companyId in query)' })
+    @ApiOperation({ summary: 'Delete policy' })
     remove(@Param('id') id: string, @Query('companyId') companyId: string) {
         return this.policiesService.remove(id);
     }
@@ -60,7 +60,7 @@ export class PoliciesController {
     @Delete('override/:employeeId')
     @Roles(Role.ADMIN, Role.EMPLOYER)
     @Permissions(Permission.MANAGE_COMPANY)
-    @ApiOperation({ summary: 'Remove an override policy for an employee (Requires companyId in query)' })
+    @ApiOperation({ summary: 'Remove employee override' })
     removeOverride(@Param('employeeId') employeeId: string, @Query('companyId') companyId: string) {
         return this.policiesService.removeByEmployee(employeeId);
     }
