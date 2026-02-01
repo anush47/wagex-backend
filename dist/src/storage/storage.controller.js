@@ -31,13 +31,14 @@ let StorageController = class StorageController {
     }
     async uploadFile(file, body, queryCompanyId) {
         const companyId = queryCompanyId || body.companyId;
+        const employeeId = body.employeeId;
         if (!file) {
             throw new common_1.BadRequestException('File is required');
         }
         if (!companyId) {
             throw new common_1.BadRequestException('companyId is required');
         }
-        return this.storageService.uploadFile(file, companyId, body.folder);
+        return this.storageService.uploadFile(file, companyId, body.folder, employeeId);
     }
     async getSignedUrl(key, req) {
         if (!key)

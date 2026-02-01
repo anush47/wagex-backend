@@ -15,4 +15,9 @@ export class UploadFileDto {
     @IsOptional()
     @IsUUID()
     companyId?: string;
+
+    @ApiProperty({ description: 'Employee ID context', type: 'string', format: 'uuid', required: false })
+    @IsOptional()
+    @IsUUID()
+    employeeId?: string;
 }

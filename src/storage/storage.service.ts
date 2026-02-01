@@ -35,12 +35,18 @@ export class StorageService {
 
     /**
      * Uploads a file to R2 (Private bucket).
-     * Path strategy: companies/{companyId}/{folder}/{filename}
+     * Path strategy: 
+     * - Default: companies/{companyId}/{folder}/{filename}
+     * - Employee: companies/{companyId}/employees/{employeeId}/{folder}/{filename}
      */
-    async uploadFile(file: Express.Multer.File, companyId: string, folder: string = 'general'): Promise<FileUploadResponseDto> {
+    async uploadFile(file: Express.Multer.File, companyId: string, folder: string = 'general', employeeId?: string): Promise<FileUploadResponseDto> {
         const fileExtension = file.originalname.split('.').pop();
         const uniqueFilename = `${Date.now()}-${uuidv4()}.${fileExtension}`;
-        const key = `companies/${companyId}/${folder}/${uniqueFilename}`;
+
+        let key = `companies/${companyId}/${folder}/${uniqueFilename}`;
+        if (employeeId) {
+            key = `companies/${companyId}/employees/${employeeId}/${folder}/${uniqueFilename}`;
+        }
 
         try {
             await this.s3Client.send(

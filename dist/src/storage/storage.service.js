@@ -39,10 +39,13 @@ let StorageService = StorageService_1 = class StorageService {
             },
         });
     }
-    async uploadFile(file, companyId, folder = 'general') {
+    async uploadFile(file, companyId, folder = 'general', employeeId) {
         const fileExtension = file.originalname.split('.').pop();
         const uniqueFilename = `${Date.now()}-${(0, uuid_1.v4)()}.${fileExtension}`;
-        const key = `companies/${companyId}/${folder}/${uniqueFilename}`;
+        let key = `companies/${companyId}/${folder}/${uniqueFilename}`;
+        if (employeeId) {
+            key = `companies/${companyId}/employees/${employeeId}/${folder}/${uniqueFilename}`;
+        }
         try {
             await this.s3Client.send(new client_s3_1.PutObjectCommand({
                 Bucket: this.bucketName,

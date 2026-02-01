@@ -34,6 +34,7 @@ export class StorageController {
     ): Promise<FileUploadResponseDto> {
         // Resolve companyId
         const companyId = queryCompanyId || body.companyId;
+        const employeeId = body.employeeId;
 
         if (!file) {
             throw new BadRequestException('File is required');
@@ -42,7 +43,7 @@ export class StorageController {
             throw new BadRequestException('companyId is required');
         }
 
-        return this.storageService.uploadFile(file, companyId, body.folder);
+        return this.storageService.uploadFile(file, companyId, body.folder, employeeId);
     }
 
     @Get('url')

@@ -16,6 +16,7 @@ class UploadFileDto {
     file;
     folder;
     companyId;
+    employeeId;
 }
 exports.UploadFileDto = UploadFileDto;
 __decorate([
@@ -35,4 +36,10 @@ __decorate([
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
 ], UploadFileDto.prototype, "companyId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Employee ID context', type: 'string', format: 'uuid', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], UploadFileDto.prototype, "employeeId", void 0);
 //# sourceMappingURL=upload-file.dto.js.map
