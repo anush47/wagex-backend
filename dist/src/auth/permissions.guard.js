@@ -35,14 +35,21 @@ let PermissionsGuard = PermissionsGuard_1 = class PermissionsGuard {
             return false;
         if (user.role === client_1.Role.ADMIN)
             return true;
-        const companyId = request.query.companyId || request.params.companyId || request.body.companyId;
+        const query = request.query || {};
+        const params = request.params || {};
+        const body = request.body || {};
+        const companyId = query.companyId || params.companyId || body.companyId;
         if (!companyId) {
-            this.logger.warn(`Permission check failed: companyId is required for ${user.role}`);
+            if (request.method === 'GET') {
+                this.logger.debug(`No companyId provided for GET request, allowing access to handle tenancy in service/controller`);
+                return true;
+            }
+            this.logger.warn(`Permission check failed: companyId is required for ${user.role} on ${request.method} ${request.url}`);
             throw new common_1.ForbiddenException('companyId is required for permission-protected operations.');
         }
         const membership = user.memberships?.find(m => m.companyId === companyId);
         if (!membership) {
-            this.logger.warn(`Permission check failed: No membership found for company ${companyId}`);
+            this.logger.warn(`Permission check failed: No membership found for user ${user.id} in company ${companyId}`);
             throw new common_1.ForbiddenException('No membership found for this company.');
         }
         const userPermissions = membership.permissions || {};

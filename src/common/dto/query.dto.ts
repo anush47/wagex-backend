@@ -37,4 +37,9 @@ export class QueryDto {
     @IsOptional()
     @IsEnum(SortOrder)
     sortOrder?: SortOrder = SortOrder.ASC;
+
+    @ApiPropertyOptional({ example: 'uuid', description: 'Filter by Company ID' })
+    @IsOptional()
+    @IsString()
+    companyId?: string;
 }

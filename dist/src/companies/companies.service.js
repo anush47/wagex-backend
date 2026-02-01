@@ -13,6 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CompaniesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const permissions_1 = require("../auth/permissions");
 let CompaniesService = CompaniesService_1 = class CompaniesService {
     prisma;
     logger = new common_1.Logger(CompaniesService_1.name);
@@ -36,11 +37,7 @@ let CompaniesService = CompaniesService_1 = class CompaniesService {
                     userId,
                     companyId: company.id,
                     role: 'EMPLOYER',
-                    permissions: {
-                        VIEW_COMPANY: true,
-                        EDIT_COMPANY: true,
-                        MANAGE_EMPLOYEES: true
-                    }
+                    permissions: permissions_1.DEFAULT_EMPLOYER_PERMISSIONS
                 }
             });
             return company;

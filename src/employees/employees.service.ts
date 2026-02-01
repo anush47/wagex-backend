@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Employee } from './entities/employee.entity';
 import { QueryDto } from '../common/dto/query.dto';
 import { PaginatedResponse } from '../common/interfaces/paginated-response.interface';
+import { Role, User } from '@prisma/client';
 
 @Injectable()
 export class EmployeesService {
@@ -19,17 +20,42 @@ export class EmployeesService {
     });
   }
 
-  async findAll(companyId?: string, queryDto?: QueryDto): Promise<PaginatedResponse<Employee>> {
+  async findAll(companyId?: string, queryDto?: QueryDto, user?: any): Promise<PaginatedResponse<Employee>> {
     const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto || {};
     const skip = (page - 1) * limit;
 
-    if (!companyId) {
-      this.logger.warn('findAll called without companyId context. Returning empty.');
+    // Build where clause
+    const where: any = {};
+
+    if (companyId) {
+      // If specific company requested, filter by it
+      where.companyId = companyId;
+
+      // Security check for Employers: ensuring they only see their own companies
+      if (user && user.role === Role.EMPLOYER) {
+        const hasAccess = user.memberships?.some(m => m.companyId === companyId);
+        if (!hasAccess) {
+          this.logger.warn(`Unauthorized access attempt by Employer ${user.id} for company ${companyId}`);
+          return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+        }
+      }
+    } else if (user) {
+      // If no companyId, determine access based on role
+      if (user.role === Role.EMPLOYER) {
+        // Multi-tenant: show all employees from all companies this employer manages
+        const accessibleCompanyIds = user.memberships?.map(m => m.companyId) || [];
+        if (accessibleCompanyIds.length === 0) {
+          return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+        }
+        where.companyId = { in: accessibleCompanyIds };
+      }
+      // Admins see all (where clause remains empty)
+    } else {
+      // No ID and no user context -> fallback to empty (should not happen with guards)
+      this.logger.warn('findAll called without companyId and without user context');
       return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
     }
 
-    // Build where clause
-    const where: any = { companyId };
     if (search) {
       where.OR = [
         { employeeNo: { contains: search, mode: 'insensitive' as const } },
@@ -41,7 +67,20 @@ export class EmployeesService {
     const orderBy: any = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
 
     const [data, total] = await Promise.all([
-      this.prisma.employee.findMany({ where, skip, take: limit, orderBy }),
+      this.prisma.employee.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          company: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      }),
       this.prisma.employee.count({ where })
     ]);
 

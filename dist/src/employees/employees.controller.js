@@ -40,25 +40,8 @@ let EmployeesController = EmployeesController_1 = class EmployeesController {
         }
         return this.employeesService.create(createEmployeeDto);
     }
-    findAll(companyId, queryDto, req) {
-        const user = req.user;
-        if (user.role === client_1.Role.ADMIN) {
-            return this.employeesService.findAll(companyId, queryDto);
-        }
-        if (user.role === client_1.Role.EMPLOYER) {
-            if (companyId) {
-                const hasAccess = user.memberships?.some((m) => m.companyId === companyId);
-                if (!hasAccess) {
-                    throw new common_1.ForbiddenException('You do not have access to this company.');
-                }
-                return this.employeesService.findAll(companyId, queryDto);
-            }
-            if (!user.memberships || user.memberships.length === 0) {
-                return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
-            }
-            return this.employeesService.findAll(user.memberships[0].companyId, queryDto);
-        }
-        return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+    findAll(queryDto, req) {
+        return this.employeesService.findAll(queryDto.companyId, queryDto, req.user);
     }
     async findOne(id, req) {
         const user = req.user;
@@ -121,11 +104,10 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'List employees' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Return employees.' }),
     (0, swagger_1.ApiQuery)({ name: 'companyId', required: false, type: String }),
-    __param(0, (0, common_1.Query)('companyId')),
-    __param(1, (0, common_1.Query)()),
-    __param(2, (0, common_1.Request)()),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, query_dto_1.QueryDto, Object]),
+    __metadata("design:paramtypes", [query_dto_1.QueryDto, Object]),
     __metadata("design:returntype", void 0)
 ], EmployeesController.prototype, "findAll", null);
 __decorate([

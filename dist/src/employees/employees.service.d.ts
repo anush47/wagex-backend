@@ -9,7 +9,7 @@ export declare class EmployeesService {
     private readonly logger;
     constructor(prisma: PrismaService);
     create(createEmployeeDto: CreateEmployeeDto): Promise<Employee>;
-    findAll(companyId?: string, queryDto?: QueryDto): Promise<PaginatedResponse<Employee>>;
+    findAll(companyId?: string, queryDto?: QueryDto, user?: any): Promise<PaginatedResponse<Employee>>;
     findOne(id: string): Promise<Employee>;
     update(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee>;
     remove(id: string): Promise<Employee>;

@@ -13,6 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmployeesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const client_1 = require("@prisma/client");
 let EmployeesService = EmployeesService_1 = class EmployeesService {
     prisma;
     logger = new common_1.Logger(EmployeesService_1.name);
@@ -25,14 +26,33 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             data: createEmployeeDto,
         });
     }
-    async findAll(companyId, queryDto) {
+    async findAll(companyId, queryDto, user) {
         const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto || {};
         const skip = (page - 1) * limit;
-        if (!companyId) {
-            this.logger.warn('findAll called without companyId context. Returning empty.');
+        const where = {};
+        if (companyId) {
+            where.companyId = companyId;
+            if (user && user.role === client_1.Role.EMPLOYER) {
+                const hasAccess = user.memberships?.some(m => m.companyId === companyId);
+                if (!hasAccess) {
+                    this.logger.warn(`Unauthorized access attempt by Employer ${user.id} for company ${companyId}`);
+                    return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+                }
+            }
+        }
+        else if (user) {
+            if (user.role === client_1.Role.EMPLOYER) {
+                const accessibleCompanyIds = user.memberships?.map(m => m.companyId) || [];
+                if (accessibleCompanyIds.length === 0) {
+                    return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+                }
+                where.companyId = { in: accessibleCompanyIds };
+            }
+        }
+        else {
+            this.logger.warn('findAll called without companyId and without user context');
             return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
         }
-        const where = { companyId };
         if (search) {
             where.OR = [
                 { employeeNo: { contains: search, mode: 'insensitive' } },
@@ -41,7 +61,20 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
         }
         const orderBy = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
         const [data, total] = await Promise.all([
-            this.prisma.employee.findMany({ where, skip, take: limit, orderBy }),
+            this.prisma.employee.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy,
+                include: {
+                    company: {
+                        select: {
+                            id: true,
+                            name: true
+                        }
+                    }
+                }
+            }),
             this.prisma.employee.count({ where })
         ]);
         return {

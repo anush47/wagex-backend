@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Company } from './entities/company.entity';
 import { QueryDto } from '../common/dto/query.dto';
 import { PaginatedResponse } from '../common/interfaces/paginated-response.interface';
+import { DEFAULT_EMPLOYER_PERMISSIONS } from '../auth/permissions';
 
 @Injectable()
 export class CompaniesService {
@@ -34,11 +35,7 @@ export class CompaniesService {
           userId,
           companyId: company.id,
           role: 'EMPLOYER',
-          permissions: {
-            VIEW_COMPANY: true,
-            EDIT_COMPANY: true,
-            MANAGE_EMPLOYEES: true
-          }
+          permissions: DEFAULT_EMPLOYER_PERMISSIONS
         }
       });
 

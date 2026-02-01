@@ -24,6 +24,7 @@ class QueryDto {
     search;
     sortBy;
     sortOrder = SortOrder.ASC;
+    companyId;
 }
 exports.QueryDto = QueryDto;
 __decorate([
@@ -61,4 +62,10 @@ __decorate([
     (0, class_validator_1.IsEnum)(SortOrder),
     __metadata("design:type", String)
 ], QueryDto.prototype, "sortOrder", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'uuid', description: 'Filter by Company ID' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], QueryDto.prototype, "companyId", void 0);
 //# sourceMappingURL=query.dto.js.map
