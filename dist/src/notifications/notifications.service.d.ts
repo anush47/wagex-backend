@@ -7,27 +7,27 @@ export declare class NotificationsService {
     constructor(prisma: PrismaService);
     send(userId: string, title: string, message: string, type?: NotificationType, metadata?: any): Promise<{
         id: string;
-        title: string;
-        message: string;
-        type: import("@prisma/client").$Enums.NotificationType;
-        isRead: boolean;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
+        type: import("@prisma/client").$Enums.NotificationType;
+        title: string;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        message: string;
+        isRead: boolean;
     }>;
     broadcast(sender: User, targetRole: Role | null, title: string, message: string, specificUserIds?: string[], type?: NotificationType, metadata?: any): Promise<void>;
     getUserNotifications(userId: string, query: NotificationQueryDto): Promise<{
         data: {
             id: string;
-            title: string;
-            message: string;
-            type: import("@prisma/client").$Enums.NotificationType;
-            isRead: boolean;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             createdAt: Date;
             updatedAt: Date;
             userId: string;
+            type: import("@prisma/client").$Enums.NotificationType;
+            title: string;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            message: string;
+            isRead: boolean;
         }[];
         meta: {
             total: number;
@@ -38,14 +38,14 @@ export declare class NotificationsService {
     }>;
     markAsRead(id: string, userId: string): Promise<{
         id: string;
-        title: string;
-        message: string;
-        type: import("@prisma/client").$Enums.NotificationType;
-        isRead: boolean;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
+        type: import("@prisma/client").$Enums.NotificationType;
+        title: string;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        message: string;
+        isRead: boolean;
     }>;
     markAllAsRead(userId: string): Promise<import("@prisma/client").Prisma.BatchPayload>;
 }

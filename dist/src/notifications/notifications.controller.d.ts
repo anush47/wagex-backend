@@ -11,11 +11,11 @@ export declare class NotificationsController {
             createdAt: Date;
             updatedAt: Date;
             userId: string;
-            title: string;
-            message: string;
             type: import("@prisma/client").$Enums.NotificationType;
-            isRead: boolean;
+            title: string;
             metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            message: string;
+            isRead: boolean;
         }[];
         meta: {
             total: number;
@@ -29,11 +29,11 @@ export declare class NotificationsController {
         createdAt: Date;
         updatedAt: Date;
         userId: string;
-        title: string;
-        message: string;
         type: import("@prisma/client").$Enums.NotificationType;
-        isRead: boolean;
+        title: string;
         metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        message: string;
+        isRead: boolean;
     }>;
     markAllAsRead(req: any): Promise<import("@prisma/client").Prisma.BatchPayload>;
 }
