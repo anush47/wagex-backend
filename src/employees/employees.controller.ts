@@ -130,4 +130,25 @@ export class EmployeesController {
 
     return this.employeesService.remove(id);
   }
+
+  @Post(':id/provision-user')
+  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @Permissions(Permission.MANAGE_EMPLOYEES)
+  @ApiOperation({ summary: 'Provision user account for employee' })
+  @ApiResponse({ status: 201, description: 'User created/linked.' })
+  async provisionUser(@Param('id') id: string, @Request() req) {
+    // 1. Verify Access
+    const user = req.user;
+    const employee = await this.employeesService.findOne(id);
+
+    if (user.role === Role.EMPLOYER) {
+      const hasAccess = user.memberships?.some(m => m.companyId === employee.companyId);
+      if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this employee.');
+      }
+    }
+
+    // 2. Provision
+    return this.employeesService.provisionUser(id);
+  }
 }

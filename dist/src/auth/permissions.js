@@ -14,6 +14,8 @@ var Permission;
     Permission["VIEW_AUDIT_LOGS"] = "view_audit_logs";
     Permission["MANAGE_PAYROLL"] = "manage_payroll";
     Permission["VIEW_PAYROLL"] = "view_payroll";
+    Permission["CAN_UPLOAD_FILES"] = "can_upload_files";
+    Permission["CAN_DELETE_FILES"] = "can_delete_files";
 })(Permission || (exports.Permission = Permission = {}));
 exports.DEFAULT_EMPLOYER_PERMISSIONS = {
     [Permission.MANAGE_EMPLOYEES]: true,
@@ -25,6 +27,8 @@ exports.DEFAULT_EMPLOYER_PERMISSIONS = {
     [Permission.DELETE_EMPLOYEES]: true,
     [Permission.VIEW_COMPANY]: true,
     [Permission.EDIT_COMPANY]: true,
+    [Permission.CAN_UPLOAD_FILES]: true,
+    [Permission.CAN_DELETE_FILES]: true,
 };
 exports.DEFAULT_EMPLOYEE_PERMISSIONS = {
     [Permission.VIEW_EMPLOYEES]: true,

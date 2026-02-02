@@ -3,4 +3,5 @@ export declare class UploadFileDto {
     folder?: string;
     companyId?: string;
     employeeId?: string;
+    customFilename?: string;
 }

@@ -39,13 +39,19 @@ export class StorageService {
      * - Default: companies/{companyId}/{folder}/{filename}
      * - Employee: companies/{companyId}/employees/{employeeId}/{folder}/{filename}
      */
-    async uploadFile(file: Express.Multer.File, companyId: string, folder: string = 'general', employeeId?: string): Promise<FileUploadResponseDto> {
+    async uploadFile(file: Express.Multer.File, companyId: string, folder: string = 'general', employeeId?: string, customFilename?: string): Promise<FileUploadResponseDto> {
         const fileExtension = file.originalname.split('.').pop();
-        const uniqueFilename = `${Date.now()}-${uuidv4()}.${fileExtension}`;
 
-        let key = `companies/${companyId}/${folder}/${uniqueFilename}`;
+        let finalFilename = `${Date.now()}-${uuidv4()}.${fileExtension}`;
+        if (customFilename) {
+            // Sanitize custom filename
+            const sanitized = customFilename.replace(/[^a-zA-Z0-9-_]/g, '');
+            finalFilename = `${Date.now()}-${sanitized}.${fileExtension}`;
+        }
+
+        let key = `companies/${companyId}/${folder}/${finalFilename}`;
         if (employeeId) {
-            key = `companies/${companyId}/employees/${employeeId}/${folder}/${uniqueFilename}`;
+            key = `companies/${companyId}/employees/${employeeId}/${folder}/${finalFilename}`;
         }
 
         try {

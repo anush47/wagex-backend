@@ -15,10 +15,12 @@ class Employee {
     id;
     employeeNo;
     name;
+    email;
     basicSalary;
     status;
     companyId;
     managerId;
+    userId;
     createdAt;
     updatedAt;
 }
@@ -36,6 +38,10 @@ __decorate([
     __metadata("design:type", String)
 ], Employee.prototype, "name", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: 'jane@company.com', description: 'Employee Email', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "email", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ example: 50000.0, description: 'Basic Salary' }),
     __metadata("design:type", Number)
 ], Employee.prototype, "basicSalary", void 0);
@@ -51,6 +57,10 @@ __decorate([
     (0, swagger_1.ApiProperty)({ example: 'manager-uuid', description: 'Manager ID', nullable: true }),
     __metadata("design:type", Object)
 ], Employee.prototype, "managerId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'user-uuid', description: 'Linked User ID', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "userId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

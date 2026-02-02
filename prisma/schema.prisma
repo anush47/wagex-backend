@@ -53,6 +53,7 @@ model User {
   // Relationships
   memberships   UserCompany[]
   notifications Notification[]
+  employees     Employee[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -86,12 +87,16 @@ model Employee {
   id         String   @id @default(uuid())
   employeeNo String
   name       String
+  email      String?  @unique // For user linking
   basicSalary Float   @default(0.0)
   status     String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
 
   // Foreign Keys
   companyId  String
   company    Company @relation(fields: [companyId], references: [id])
+
+  userId     String? // Link to Auth User (Nullable for now to support legacy)
+  user       User?   @relation(fields: [userId], references: [id])
 
   // Manager Self-Relation
   managerId  String?

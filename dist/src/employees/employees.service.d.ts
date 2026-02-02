@@ -4,13 +4,22 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Employee } from './entities/employee.entity';
 import { QueryDto } from '../common/dto/query.dto';
 import { PaginatedResponse } from '../common/interfaces/paginated-response.interface';
+import { ConfigService } from '@nestjs/config';
 export declare class EmployeesService {
     private readonly prisma;
+    private readonly configService;
     private readonly logger;
-    constructor(prisma: PrismaService);
+    private supabaseAdmin;
+    constructor(prisma: PrismaService, configService: ConfigService);
     create(createEmployeeDto: CreateEmployeeDto): Promise<Employee>;
     findAll(companyId?: string, queryDto?: QueryDto, user?: any): Promise<PaginatedResponse<Employee>>;
     findOne(id: string): Promise<Employee>;
     update(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee>;
     remove(id: string): Promise<Employee>;
+    private generatePassword;
+    provisionUser(employeeId: string): Promise<{
+        email: string;
+        password?: string;
+        message: string;
+    }>;
 }

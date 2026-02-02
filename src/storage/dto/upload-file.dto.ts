@@ -20,4 +20,9 @@ export class UploadFileDto {
     @IsOptional()
     @IsUUID()
     employeeId?: string;
+
+    @ApiProperty({ description: 'Custom filename (without extension)', type: 'string', required: false })
+    @IsOptional()
+    @IsString()
+    customFilename?: string;
 }

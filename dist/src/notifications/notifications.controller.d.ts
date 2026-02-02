@@ -13,9 +13,9 @@ export declare class NotificationsController {
             userId: string;
             type: import("@prisma/client").$Enums.NotificationType;
             title: string;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             message: string;
             isRead: boolean;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
         meta: {
             total: number;
@@ -31,9 +31,9 @@ export declare class NotificationsController {
         userId: string;
         type: import("@prisma/client").$Enums.NotificationType;
         title: string;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         message: string;
         isRead: boolean;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
     }>;
     markAllAsRead(req: any): Promise<import("@prisma/client").Prisma.BatchPayload>;
 }

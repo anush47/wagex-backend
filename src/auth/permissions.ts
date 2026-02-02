@@ -17,6 +17,10 @@ export enum Permission {
     // Payroll (Future placeholder)
     MANAGE_PAYROLL = 'manage_payroll',
     VIEW_PAYROLL = 'view_payroll',
+
+    // File Management
+    CAN_UPLOAD_FILES = 'can_upload_files',
+    CAN_DELETE_FILES = 'can_delete_files',
 }
 
 export const DEFAULT_EMPLOYER_PERMISSIONS = {
@@ -29,6 +33,8 @@ export const DEFAULT_EMPLOYER_PERMISSIONS = {
     [Permission.DELETE_EMPLOYEES]: true,
     [Permission.VIEW_COMPANY]: true,
     [Permission.EDIT_COMPANY]: true,
+    [Permission.CAN_UPLOAD_FILES]: true,
+    [Permission.CAN_DELETE_FILES]: true,
 };
 
 export const DEFAULT_EMPLOYEE_PERMISSIONS = {

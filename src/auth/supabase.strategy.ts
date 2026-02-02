@@ -40,6 +40,9 @@ export class SupabaseStrategy extends PassportStrategy(Strategy) {
             include: {
                 memberships: {
                     include: { company: true }
+                },
+                employees: {
+                    select: { id: true, companyId: true }
                 }
             },
         });

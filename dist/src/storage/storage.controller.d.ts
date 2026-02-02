@@ -4,8 +4,11 @@ import { FileUploadResponseDto } from './dto/file-upload-response.dto';
 export declare class StorageController {
     private readonly storageService;
     constructor(storageService: StorageService);
-    uploadFile(file: Express.Multer.File, body: UploadFileDto, queryCompanyId: string): Promise<FileUploadResponseDto>;
+    uploadFile(file: Express.Multer.File, body: UploadFileDto, queryCompanyId: string, req: any): Promise<FileUploadResponseDto>;
     getSignedUrl(key: string, req: any): Promise<{
         url: string;
+    }>;
+    deleteFile(key: string, req: any): Promise<{
+        message: string;
     }>;
 }

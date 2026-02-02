@@ -47,6 +47,9 @@ let SupabaseStrategy = class SupabaseStrategy extends (0, passport_1.PassportStr
             include: {
                 memberships: {
                     include: { company: true }
+                },
+                employees: {
+                    select: { id: true, companyId: true }
                 }
             },
         });

@@ -11,4 +11,9 @@ export declare class EmployeesController {
     findOne(id: string, req: any): Promise<import("./entities/employee.entity").Employee>;
     update(id: string, updateEmployeeDto: UpdateEmployeeDto, req: any): Promise<import("./entities/employee.entity").Employee>;
     remove(id: string, req: any): Promise<import("./entities/employee.entity").Employee>;
+    provisionUser(id: string, req: any): Promise<{
+        email: string;
+        password?: string;
+        message: string;
+    }>;
 }

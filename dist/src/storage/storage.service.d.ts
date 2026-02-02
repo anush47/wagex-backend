@@ -6,7 +6,7 @@ export declare class StorageService {
     private readonly s3Client;
     private readonly bucketName;
     constructor(configService: ConfigService);
-    uploadFile(file: Express.Multer.File, companyId: string, folder?: string, employeeId?: string): Promise<FileUploadResponseDto>;
+    uploadFile(file: Express.Multer.File, companyId: string, folder?: string, employeeId?: string, customFilename?: string): Promise<FileUploadResponseDto>;
     getSignedUrl(key: string, expiresInSeconds?: number): Promise<string>;
     deleteFile(key: string): Promise<void>;
 }

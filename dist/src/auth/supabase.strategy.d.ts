@@ -26,17 +26,21 @@ export declare class SupabaseStrategy extends SupabaseStrategy_base {
             userId: string;
             companyId: string;
         })[];
+        employees: {
+            id: string;
+            companyId: string;
+        }[];
     } & {
         role: import("@prisma/client").$Enums.Role;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         email: string;
+        active: boolean;
         nameWithInitials: string | null;
         fullName: string | null;
         address: string | null;
         phone: string | null;
-        active: boolean;
     }) | {
         isGuest: boolean;
         email: any;

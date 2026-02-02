@@ -11,6 +11,9 @@ export class Employee implements PrismaEmployee {
     @ApiProperty({ example: 'Jane Doe', description: 'Full Name' })
     name: string;
 
+    @ApiProperty({ example: 'jane@company.com', description: 'Employee Email', nullable: true })
+    email: string | null;
+
     @ApiProperty({ example: 50000.0, description: 'Basic Salary' })
     basicSalary: number;
 
@@ -22,6 +25,9 @@ export class Employee implements PrismaEmployee {
 
     @ApiProperty({ example: 'manager-uuid', description: 'Manager ID', nullable: true })
     managerId: string | null;
+
+    @ApiProperty({ example: 'user-uuid', description: 'Linked User ID', nullable: true })
+    userId: string | null;
 
     @ApiProperty()
     createdAt: Date;
