@@ -15,6 +15,11 @@ const class_validator_1 = require("class-validator");
 class CreateCompanyDto {
     name;
     active;
+    employerNumber;
+    address;
+    startedDate;
+    logo;
+    files;
 }
 exports.CreateCompanyDto = CreateCompanyDto;
 __decorate([
@@ -29,4 +34,34 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], CreateCompanyDto.prototype, "active", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'EMP-001', description: 'Employer Number' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateCompanyDto.prototype, "employerNumber", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '123 Main St, City', description: 'Address' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateCompanyDto.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '2023-01-01T00:00:00Z', description: 'Date started' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], CreateCompanyDto.prototype, "startedDate", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'https://example.com/logo.png', description: 'Logo URL' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateCompanyDto.prototype, "logo", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: [{ key: 'doc1', name: 'Document 1', url: '...' }], description: 'Uploaded files' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    __metadata("design:type", Object)
+], CreateCompanyDto.prototype, "files", void 0);
 //# sourceMappingURL=create-company.dto.js.map

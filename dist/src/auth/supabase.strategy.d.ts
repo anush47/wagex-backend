@@ -16,6 +16,11 @@ export declare class SupabaseStrategy extends SupabaseStrategy_base {
                 updatedAt: Date;
                 name: string;
                 active: boolean;
+                employerNumber: string | null;
+                address: string | null;
+                startedDate: Date | null;
+                logo: string | null;
+                files: import("@prisma/client/runtime/client").JsonValue | null;
             };
         } & {
             role: import("@prisma/client").$Enums.Role;
@@ -35,12 +40,12 @@ export declare class SupabaseStrategy extends SupabaseStrategy_base {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        active: boolean;
+        address: string | null;
         email: string;
         nameWithInitials: string | null;
         fullName: string | null;
-        address: string | null;
         phone: string | null;
-        active: boolean;
     }) | {
         isGuest: boolean;
         email: any;

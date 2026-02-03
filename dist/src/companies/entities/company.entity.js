@@ -16,6 +16,11 @@ class Company {
     id;
     name;
     active;
+    employerNumber;
+    address;
+    startedDate;
+    logo;
+    files;
     memberships;
     createdAt;
     updatedAt;
@@ -33,6 +38,26 @@ __decorate([
     (0, swagger_1.ApiProperty)({ example: true, description: 'Is company active' }),
     __metadata("design:type", Boolean)
 ], Company.prototype, "active", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'EMP-001', description: 'Employer Number' }),
+    __metadata("design:type", Object)
+], Company.prototype, "employerNumber", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '123 Main St, City', description: 'Company Address' }),
+    __metadata("design:type", Object)
+], Company.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '2023-01-01T00:00:00Z', description: 'Date started' }),
+    __metadata("design:type", Object)
+], Company.prototype, "startedDate", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'https://example.com/logo.png', description: 'Logo URL' }),
+    __metadata("design:type", Object)
+], Company.prototype, "logo", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: [], description: 'Uploaded files' }),
+    __metadata("design:type", Object)
+], Company.prototype, "files", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ type: () => [user_company_entity_1.UserCompany], description: 'Company memberships/users' }),
     __metadata("design:type", Array)

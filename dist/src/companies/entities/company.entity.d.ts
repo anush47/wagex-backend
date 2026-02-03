@@ -4,6 +4,11 @@ export declare class Company implements PrismaCompany {
     id: string;
     name: string;
     active: boolean;
+    employerNumber: string | null;
+    address: string | null;
+    startedDate: Date | null;
+    logo: string | null;
+    files: any | null;
     memberships?: UserCompany[];
     createdAt: Date;
     updatedAt: Date;
