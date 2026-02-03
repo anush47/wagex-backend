@@ -34,7 +34,7 @@ export class PermissionsGuard implements CanActivate {
         const query = request.query || {};
         const params = request.params || {};
         const body = request.body || {};
-        const companyId = query.companyId || params.companyId || body.companyId;
+        const companyId = query.companyId || params.companyId || body.companyId || params.id;
 
         // If no companyId, we only allow GET requests (which will be filtered by the service/controller)
         if (!companyId) {

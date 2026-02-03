@@ -71,8 +71,16 @@ let CompaniesController = CompaniesController_1 = class CompaniesController {
         }
         return this.companiesService.update(id, updateCompanyDto);
     }
-    async remove(id) {
-        this.logger.log(`Admin deleting company: ${id}`);
+    async remove(id, req) {
+        const user = req.user;
+        if (user.role === client_1.Role.EMPLOYER) {
+            const hasAccess = user.memberships?.some(m => m.companyId === id);
+            if (!hasAccess) {
+                this.logger.warn(`Unauthorized company delete attempt by user ${user.id} for company ${id}`);
+                throw new common_1.ForbiddenException('You do not have access to this company.');
+            }
+        }
+        this.logger.log(`${user.role} deleting company: ${id}`);
         return this.companiesService.remove(id);
     }
 };
@@ -126,12 +134,14 @@ __decorate([
 ], CompaniesController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
-    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER),
+    (0, permissions_decorator_1.Permissions)(permissions_1.Permission.MANAGE_COMPANY),
     (0, swagger_1.ApiOperation)({ summary: 'Delete company' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Company deleted.' }),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], CompaniesController.prototype, "remove", null);
 exports.CompaniesController = CompaniesController = CompaniesController_1 = __decorate([

@@ -96,11 +96,23 @@ export class CompaniesController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @Permissions(Permission.MANAGE_COMPANY)
   @ApiOperation({ summary: 'Delete company' })
   @ApiResponse({ status: 200, description: 'Company deleted.' })
-  async remove(@Param('id') id: string) {
-    this.logger.log(`Admin deleting company: ${id}`);
+  async remove(@Param('id') id: string, @Request() req) {
+    const user = req.user;
+
+    // Tenancy Check for Employer
+    if (user.role === Role.EMPLOYER) {
+      const hasAccess = user.memberships?.some(m => m.companyId === id);
+      if (!hasAccess) {
+        this.logger.warn(`Unauthorized company delete attempt by user ${user.id} for company ${id}`);
+        throw new ForbiddenException('You do not have access to this company.');
+      }
+    }
+
+    this.logger.log(`${user.role} deleting company: ${id}`);
     return this.companiesService.remove(id);
   }
 }
