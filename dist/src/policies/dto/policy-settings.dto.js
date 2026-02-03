@@ -17,8 +17,8 @@ var ShiftSelectionPolicy;
 (function (ShiftSelectionPolicy) {
     ShiftSelectionPolicy["FIXED"] = "FIXED";
     ShiftSelectionPolicy["CLOSEST_START_TIME"] = "CLOSEST_START_TIME";
-    ShiftSelectionPolicy["ROSTER"] = "ROSTER";
     ShiftSelectionPolicy["MANUAL"] = "MANUAL";
+    ShiftSelectionPolicy["EMPLOYEE_ROSTER"] = "EMPLOYEE_ROSTER";
 })(ShiftSelectionPolicy || (exports.ShiftSelectionPolicy = ShiftSelectionPolicy = {}));
 class ShiftDto {
     id;

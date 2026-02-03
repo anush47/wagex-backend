@@ -1,8 +1,8 @@
 export declare enum ShiftSelectionPolicy {
     FIXED = "FIXED",
     CLOSEST_START_TIME = "CLOSEST_START_TIME",
-    ROSTER = "ROSTER",
-    MANUAL = "MANUAL"
+    MANUAL = "MANUAL",
+    EMPLOYEE_ROSTER = "EMPLOYEE_ROSTER"
 }
 export declare class ShiftDto {
     id: string;

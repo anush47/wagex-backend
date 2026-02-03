@@ -5,8 +5,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export enum ShiftSelectionPolicy {
     FIXED = 'FIXED',
     CLOSEST_START_TIME = 'CLOSEST_START_TIME',
-    ROSTER = 'ROSTER',
     MANUAL = 'MANUAL',
+    EMPLOYEE_ROSTER = 'EMPLOYEE_ROSTER',
 }
 
 export class ShiftDto {
