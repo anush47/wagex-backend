@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PolicySettingsDto = exports.ShiftsConfigDto = exports.ShiftDto = exports.ShiftSelectionPolicy = void 0;
+exports.PolicySettingsDto = exports.PayrollConfigDto = exports.PayrollComponentDto = exports.ShiftsConfigDto = exports.ShiftDto = exports.PayrollComponentCategory = exports.PayrollComponentType = exports.ShiftSelectionPolicy = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
@@ -20,6 +20,17 @@ var ShiftSelectionPolicy;
     ShiftSelectionPolicy["MANUAL"] = "MANUAL";
     ShiftSelectionPolicy["EMPLOYEE_ROSTER"] = "EMPLOYEE_ROSTER";
 })(ShiftSelectionPolicy || (exports.ShiftSelectionPolicy = ShiftSelectionPolicy = {}));
+var PayrollComponentType;
+(function (PayrollComponentType) {
+    PayrollComponentType["FLAT_AMOUNT"] = "FLAT_AMOUNT";
+    PayrollComponentType["PERCENTAGE_BASIC"] = "PERCENTAGE_BASIC";
+    PayrollComponentType["PERCENTAGE_GROSS"] = "PERCENTAGE_GROSS";
+})(PayrollComponentType || (exports.PayrollComponentType = PayrollComponentType = {}));
+var PayrollComponentCategory;
+(function (PayrollComponentCategory) {
+    PayrollComponentCategory["ADDITION"] = "ADDITION";
+    PayrollComponentCategory["DEDUCTION"] = "DEDUCTION";
+})(PayrollComponentCategory || (exports.PayrollComponentCategory = PayrollComponentCategory = {}));
 class ShiftDto {
     id;
     name;
@@ -122,6 +133,79 @@ __decorate([
     (0, class_validator_1.IsEnum)(ShiftSelectionPolicy),
     __metadata("design:type", String)
 ], ShiftsConfigDto.prototype, "selectionPolicy", void 0);
+class PayrollComponentDto {
+    id;
+    name;
+    category;
+    type;
+    value;
+    isStatutory;
+    affectsTotalEarnings;
+    minCap;
+    maxCap;
+}
+exports.PayrollComponentDto = PayrollComponentDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'comp-1' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PayrollComponentDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Performance Bonus' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PayrollComponentDto.prototype, "name", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: PayrollComponentCategory }),
+    (0, class_validator_1.IsEnum)(PayrollComponentCategory),
+    __metadata("design:type", String)
+], PayrollComponentDto.prototype, "category", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: PayrollComponentType }),
+    (0, class_validator_1.IsEnum)(PayrollComponentType),
+    __metadata("design:type", String)
+], PayrollComponentDto.prototype, "type", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 5000 }),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], PayrollComponentDto.prototype, "value", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], PayrollComponentDto.prototype, "isStatutory", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Does this component affect the total reportable earnings?' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], PayrollComponentDto.prototype, "affectsTotalEarnings", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Minimum limit amount if percentage based' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], PayrollComponentDto.prototype, "minCap", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Maximum limit amount if percentage based' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], PayrollComponentDto.prototype, "maxCap", void 0);
+class PayrollConfigDto {
+    components;
+}
+exports.PayrollConfigDto = PayrollConfigDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ type: [PayrollComponentDto] }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => PayrollComponentDto),
+    __metadata("design:type", Array)
+], PayrollConfigDto.prototype, "components", void 0);
 class PolicySettingsDto {
     shifts;
     attendance;
@@ -141,8 +225,10 @@ __decorate([
     __metadata("design:type", Object)
 ], PolicySettingsDto.prototype, "attendance", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'Payroll configuration' }),
+    (0, swagger_1.ApiPropertyOptional)({ type: PayrollConfigDto, description: 'Payroll configuration' }),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Object)
+    (0, class_validator_1.ValidateNested)(),
+    (0, class_transformer_1.Type)(() => PayrollConfigDto),
+    __metadata("design:type", PayrollConfigDto)
 ], PolicySettingsDto.prototype, "payroll", void 0);
 //# sourceMappingURL=policy-settings.dto.js.map

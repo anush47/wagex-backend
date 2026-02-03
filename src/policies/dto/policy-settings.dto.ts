@@ -9,6 +9,17 @@ export enum ShiftSelectionPolicy {
     EMPLOYEE_ROSTER = 'EMPLOYEE_ROSTER',
 }
 
+export enum PayrollComponentType {
+    FLAT_AMOUNT = 'FLAT_AMOUNT',
+    PERCENTAGE_BASIC = 'PERCENTAGE_BASIC',
+    PERCENTAGE_GROSS = 'PERCENTAGE_GROSS',
+}
+
+export enum PayrollComponentCategory {
+    ADDITION = 'ADDITION',
+    DEDUCTION = 'DEDUCTION'
+}
+
 export class ShiftDto {
     @ApiProperty({ example: 'shift-1', description: 'Unique ID for the shift' })
     @IsString()
@@ -81,6 +92,57 @@ export class ShiftsConfigDto {
     selectionPolicy?: ShiftSelectionPolicy;
 }
 
+export class PayrollComponentDto {
+    @ApiProperty({ example: 'comp-1' })
+    @IsString()
+    id: string;
+
+    @ApiProperty({ example: 'Performance Bonus' })
+    @IsString()
+    name: string;
+
+    @ApiProperty({ enum: PayrollComponentCategory })
+    @IsEnum(PayrollComponentCategory)
+    category: PayrollComponentCategory;
+
+    @ApiProperty({ enum: PayrollComponentType })
+    @IsEnum(PayrollComponentType)
+    type: PayrollComponentType;
+
+    @ApiProperty({ example: 5000 })
+    @IsNumber()
+    value: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    isStatutory?: boolean;
+
+    @ApiPropertyOptional({ description: 'Does this component affect the total reportable earnings?' })
+    @IsOptional()
+    @IsBoolean()
+    affectsTotalEarnings?: boolean;
+
+    @ApiPropertyOptional({ description: 'Minimum limit amount if percentage based' })
+    @IsOptional()
+    @IsNumber()
+    minCap?: number;
+
+    @ApiPropertyOptional({ description: 'Maximum limit amount if percentage based' })
+    @IsOptional()
+    @IsNumber()
+    maxCap?: number;
+}
+
+export class PayrollConfigDto {
+    @ApiPropertyOptional({ type: [PayrollComponentDto] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => PayrollComponentDto)
+    components?: PayrollComponentDto[];
+}
+
 export class PolicySettingsDto {
     @ApiPropertyOptional({ type: ShiftsConfigDto, description: 'Shifts configuration' })
     @IsOptional()
@@ -93,7 +155,9 @@ export class PolicySettingsDto {
     @IsOptional()
     attendance?: any; // Placeholder for now
 
-    @ApiPropertyOptional({ description: 'Payroll configuration' })
+    @ApiPropertyOptional({ type: PayrollConfigDto, description: 'Payroll configuration' })
     @IsOptional()
-    payroll?: any; // Placeholder for now
+    @ValidateNested()
+    @Type(() => PayrollConfigDto)
+    payroll?: PayrollConfigDto;
 }
