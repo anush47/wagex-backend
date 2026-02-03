@@ -134,7 +134,7 @@ export class PayrollComponentDto {
     maxCap?: number;
 }
 
-export class PayrollConfigDto {
+export class SalaryComponentsConfigDto {
     @ApiPropertyOptional({ type: [PayrollComponentDto] })
     @IsOptional()
     @IsArray()
@@ -150,14 +150,19 @@ export class PolicySettingsDto {
     @Type(() => ShiftsConfigDto)
     shifts?: ShiftsConfigDto;
 
-    // Future sections (Attendance, Payroll) can be added here
+    // Future sections (Attendance)
     @ApiPropertyOptional({ description: 'Attendance configuration' })
     @IsOptional()
-    attendance?: any; // Placeholder for now
+    attendance?: any;
 
-    @ApiPropertyOptional({ type: PayrollConfigDto, description: 'Payroll configuration' })
+    @ApiPropertyOptional({ type: SalaryComponentsConfigDto, description: 'Salary components (additions/deductions) configuration' })
     @IsOptional()
     @ValidateNested()
-    @Type(() => PayrollConfigDto)
-    payroll?: PayrollConfigDto;
+    @Type(() => SalaryComponentsConfigDto)
+    salaryComponents?: SalaryComponentsConfigDto;
+
+    // Placeholder for future Payroll Settings (Cycles, etc)
+    @ApiPropertyOptional({ description: 'Global payroll settings (cycles, dates)' })
+    @IsOptional()
+    payrollSettings?: any;
 }

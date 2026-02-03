@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PolicySettingsDto = exports.PayrollConfigDto = exports.PayrollComponentDto = exports.ShiftsConfigDto = exports.ShiftDto = exports.PayrollComponentCategory = exports.PayrollComponentType = exports.ShiftSelectionPolicy = void 0;
+exports.PolicySettingsDto = exports.SalaryComponentsConfigDto = exports.PayrollComponentDto = exports.ShiftsConfigDto = exports.ShiftDto = exports.PayrollComponentCategory = exports.PayrollComponentType = exports.ShiftSelectionPolicy = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
@@ -194,10 +194,10 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], PayrollComponentDto.prototype, "maxCap", void 0);
-class PayrollConfigDto {
+class SalaryComponentsConfigDto {
     components;
 }
-exports.PayrollConfigDto = PayrollConfigDto;
+exports.SalaryComponentsConfigDto = SalaryComponentsConfigDto;
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ type: [PayrollComponentDto] }),
     (0, class_validator_1.IsOptional)(),
@@ -205,11 +205,12 @@ __decorate([
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => PayrollComponentDto),
     __metadata("design:type", Array)
-], PayrollConfigDto.prototype, "components", void 0);
+], SalaryComponentsConfigDto.prototype, "components", void 0);
 class PolicySettingsDto {
     shifts;
     attendance;
-    payroll;
+    salaryComponents;
+    payrollSettings;
 }
 exports.PolicySettingsDto = PolicySettingsDto;
 __decorate([
@@ -225,10 +226,15 @@ __decorate([
     __metadata("design:type", Object)
 ], PolicySettingsDto.prototype, "attendance", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ type: PayrollConfigDto, description: 'Payroll configuration' }),
+    (0, swagger_1.ApiPropertyOptional)({ type: SalaryComponentsConfigDto, description: 'Salary components (additions/deductions) configuration' }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.ValidateNested)(),
-    (0, class_transformer_1.Type)(() => PayrollConfigDto),
-    __metadata("design:type", PayrollConfigDto)
-], PolicySettingsDto.prototype, "payroll", void 0);
+    (0, class_transformer_1.Type)(() => SalaryComponentsConfigDto),
+    __metadata("design:type", SalaryComponentsConfigDto)
+], PolicySettingsDto.prototype, "salaryComponents", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Global payroll settings (cycles, dates)' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], PolicySettingsDto.prototype, "payrollSettings", void 0);
 //# sourceMappingURL=policy-settings.dto.js.map

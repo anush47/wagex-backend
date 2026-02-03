@@ -118,8 +118,8 @@ let PoliciesService = PoliciesService_1 = class PoliciesService {
             overriddenFields.push('shifts');
         if (employeeOverride.attendance)
             overriddenFields.push('attendance');
-        if (employeeOverride.payroll)
-            overriddenFields.push('payroll');
+        if (employeeOverride.salaryComponents)
+            overriddenFields.push('salaryComponents');
         return {
             effective: effectivePolicy,
             source: {

@@ -159,7 +159,7 @@ export class PoliciesService {
         const overriddenFields: string[] = [];
         if (employeeOverride.shifts) overriddenFields.push('shifts');
         if (employeeOverride.attendance) overriddenFields.push('attendance');
-        if (employeeOverride.payroll) overriddenFields.push('payroll');
+        if (employeeOverride.salaryComponents) overriddenFields.push('salaryComponents');
 
         return {
             effective: effectivePolicy,

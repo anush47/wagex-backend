@@ -42,11 +42,12 @@ export declare class PayrollComponentDto {
     minCap?: number;
     maxCap?: number;
 }
-export declare class PayrollConfigDto {
+export declare class SalaryComponentsConfigDto {
     components?: PayrollComponentDto[];
 }
 export declare class PolicySettingsDto {
     shifts?: ShiftsConfigDto;
     attendance?: any;
-    payroll?: PayrollConfigDto;
+    salaryComponents?: SalaryComponentsConfigDto;
+    payrollSettings?: any;
 }
