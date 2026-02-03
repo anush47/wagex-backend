@@ -47,7 +47,11 @@ let CompaniesService = CompaniesService_1 = class CompaniesService {
         const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto;
         const skip = (page - 1) * limit;
         const where = search ? {
-            name: { contains: search, mode: 'insensitive' }
+            OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { address: { contains: search, mode: 'insensitive' } },
+                { employerNumber: { contains: search, mode: 'insensitive' } }
+            ]
         } : {};
         const orderBy = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
         const [data, total] = await Promise.all([
@@ -72,7 +76,11 @@ let CompaniesService = CompaniesService_1 = class CompaniesService {
         const skip = (page - 1) * limit;
         const where = { id: { in: ids } };
         if (search) {
-            where.name = { contains: search, mode: 'insensitive' };
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { address: { contains: search, mode: 'insensitive' } },
+                { employerNumber: { contains: search, mode: 'insensitive' } }
+            ];
         }
         const orderBy = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
         const [data, total] = await Promise.all([

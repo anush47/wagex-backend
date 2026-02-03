@@ -49,7 +49,11 @@ export class CompaniesService {
 
     // Build where clause for search
     const where = search ? {
-      name: { contains: search, mode: 'insensitive' as const }
+      OR: [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { address: { contains: search, mode: 'insensitive' as const } },
+        { employerNumber: { contains: search, mode: 'insensitive' as const } }
+      ]
     } : {};
 
     // Build orderBy clause
@@ -82,7 +86,11 @@ export class CompaniesService {
     // Build where clause
     const where: any = { id: { in: ids } };
     if (search) {
-      where.name = { contains: search, mode: 'insensitive' as const };
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { address: { contains: search, mode: 'insensitive' as const } },
+        { employerNumber: { contains: search, mode: 'insensitive' as const } }
+      ];
     }
 
     // Build orderBy clause
