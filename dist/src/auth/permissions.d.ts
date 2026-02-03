@@ -29,4 +29,5 @@ export declare const DEFAULT_EMPLOYER_PERMISSIONS: {
 export declare const DEFAULT_EMPLOYEE_PERMISSIONS: {
     view_employees: boolean;
     view_company: boolean;
+    can_upload_files: boolean;
 };

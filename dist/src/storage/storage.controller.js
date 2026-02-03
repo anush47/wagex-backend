@@ -117,7 +117,7 @@ exports.StorageController = StorageController;
 __decorate([
     (0, common_1.Post)('upload'),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER, client_1.Role.EMPLOYEE),
-    (0, permissions_decorator_1.Permissions)(permissions_1.Permission.MANAGE_COMPANY, permissions_1.Permission.CAN_UPLOAD_FILES),
+    (0, permissions_decorator_1.Permissions)(permissions_1.Permission.CAN_UPLOAD_FILES),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
     (0, swagger_1.ApiBody)({ type: upload_file_dto_1.UploadFileDto }),
@@ -145,7 +145,7 @@ __decorate([
 __decorate([
     (0, common_1.Delete)(),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER, client_1.Role.EMPLOYEE),
-    (0, permissions_decorator_1.Permissions)(permissions_1.Permission.MANAGE_COMPANY, permissions_1.Permission.CAN_DELETE_FILES),
+    (0, permissions_decorator_1.Permissions)(permissions_1.Permission.CAN_DELETE_FILES),
     (0, swagger_1.ApiOperation)({ summary: 'Delete file (Admin/Employer: Any, Employee: Own only)' }),
     __param(0, (0, common_1.Query)('key')),
     __param(1, (0, common_1.Request)()),

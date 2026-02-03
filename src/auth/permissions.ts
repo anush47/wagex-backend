@@ -40,4 +40,5 @@ export const DEFAULT_EMPLOYER_PERMISSIONS = {
 export const DEFAULT_EMPLOYEE_PERMISSIONS = {
     [Permission.VIEW_EMPLOYEES]: true, // Can see colleagues?
     [Permission.VIEW_COMPANY]: true,
+    [Permission.CAN_UPLOAD_FILES]: true,
 };

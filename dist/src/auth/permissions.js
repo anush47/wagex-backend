@@ -33,5 +33,6 @@ exports.DEFAULT_EMPLOYER_PERMISSIONS = {
 exports.DEFAULT_EMPLOYEE_PERMISSIONS = {
     [Permission.VIEW_EMPLOYEES]: true,
     [Permission.VIEW_COMPANY]: true,
+    [Permission.CAN_UPLOAD_FILES]: true,
 };
 //# sourceMappingURL=permissions.js.map

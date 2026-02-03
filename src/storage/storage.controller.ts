@@ -21,7 +21,7 @@ export class StorageController {
 
     @Post('upload')
     @Roles(Role.ADMIN, Role.EMPLOYER, Role.EMPLOYEE)
-    @Permissions(Permission.MANAGE_COMPANY, Permission.CAN_UPLOAD_FILES)
+    @Permissions(Permission.CAN_UPLOAD_FILES)
     @UseInterceptors(FileInterceptor('file'))
     @ApiConsumes('multipart/form-data')
     @ApiBody({ type: UploadFileDto })
@@ -111,7 +111,7 @@ export class StorageController {
 
     @Delete()
     @Roles(Role.ADMIN, Role.EMPLOYER, Role.EMPLOYEE)
-    @Permissions(Permission.MANAGE_COMPANY, Permission.CAN_DELETE_FILES)
+    @Permissions(Permission.CAN_DELETE_FILES)
     @ApiOperation({ summary: 'Delete file (Admin/Employer: Any, Employee: Own only)' })
     async deleteFile(@Query('key') key: string, @Request() req) {
         if (!key) throw new BadRequestException('Key is required');
