@@ -11,10 +11,10 @@ export declare class NotificationsService {
         updatedAt: Date;
         userId: string;
         type: import("@prisma/client").$Enums.NotificationType;
-        message: string;
         title: string;
-        isRead: boolean;
+        message: string;
         metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        isRead: boolean;
     }>;
     broadcast(sender: User, targetRole: Role | null, title: string, message: string, specificUserIds?: string[], type?: NotificationType, metadata?: any): Promise<void>;
     getUserNotifications(userId: string, query: NotificationQueryDto): Promise<{
@@ -24,10 +24,10 @@ export declare class NotificationsService {
             updatedAt: Date;
             userId: string;
             type: import("@prisma/client").$Enums.NotificationType;
-            message: string;
             title: string;
-            isRead: boolean;
+            message: string;
             metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            isRead: boolean;
         }[];
         meta: {
             total: number;
@@ -42,10 +42,10 @@ export declare class NotificationsService {
         updatedAt: Date;
         userId: string;
         type: import("@prisma/client").$Enums.NotificationType;
-        message: string;
         title: string;
-        isRead: boolean;
+        message: string;
         metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        isRead: boolean;
     }>;
     markAllAsRead(userId: string): Promise<import("@prisma/client").Prisma.BatchPayload>;
 }

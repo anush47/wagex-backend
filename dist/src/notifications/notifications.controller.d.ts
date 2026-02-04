@@ -12,10 +12,10 @@ export declare class NotificationsController {
             updatedAt: Date;
             userId: string;
             type: import("@prisma/client").$Enums.NotificationType;
-            message: string;
             title: string;
-            isRead: boolean;
+            message: string;
             metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            isRead: boolean;
         }[];
         meta: {
             total: number;
@@ -30,10 +30,10 @@ export declare class NotificationsController {
         updatedAt: Date;
         userId: string;
         type: import("@prisma/client").$Enums.NotificationType;
-        message: string;
         title: string;
-        isRead: boolean;
+        message: string;
         metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        isRead: boolean;
     }>;
     markAllAsRead(req: any): Promise<import("@prisma/client").Prisma.BatchPayload>;
 }
