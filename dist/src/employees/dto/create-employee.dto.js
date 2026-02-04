@@ -12,12 +12,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateEmployeeDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
+const employee_enum_1 = require("../../common/enums/employee.enum");
 class CreateEmployeeDto {
     employeeNo;
     name;
     basicSalary;
     companyId;
     managerId;
+    gender;
+    employmentType;
 }
 exports.CreateEmployeeDto = CreateEmployeeDto;
 __decorate([
@@ -49,4 +52,16 @@ __decorate([
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "managerId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: employee_enum_1.Gender, example: employee_enum_1.Gender.MALE }),
+    (0, class_validator_1.IsEnum)(employee_enum_1.Gender),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "gender", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: employee_enum_1.EmploymentType, example: employee_enum_1.EmploymentType.PERMANENT }),
+    (0, class_validator_1.IsEnum)(employee_enum_1.EmploymentType),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "employmentType", void 0);
 //# sourceMappingURL=create-employee.dto.js.map

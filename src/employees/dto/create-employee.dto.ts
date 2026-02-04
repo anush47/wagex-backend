@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { EmploymentType, Gender } from '../../common/enums/employee.enum';
 
 export class CreateEmployeeDto {
     @ApiProperty({ example: 'EMP-001', description: 'Employee Number' })
@@ -25,4 +26,14 @@ export class CreateEmployeeDto {
     @IsOptional()
     @IsUUID()
     managerId?: string;
+
+    @ApiProperty({ enum: Gender, example: Gender.MALE })
+    @IsEnum(Gender)
+    @IsOptional()
+    gender?: Gender;
+
+    @ApiProperty({ enum: EmploymentType, example: EmploymentType.PERMANENT })
+    @IsEnum(EmploymentType)
+    @IsOptional()
+    employmentType?: EmploymentType;
 }

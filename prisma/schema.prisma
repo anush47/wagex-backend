@@ -89,6 +89,19 @@ model UserCompany {
   @@map("user_companies")
 }
 
+enum EmploymentType {
+  PROBATION
+  CONTRACT
+  INTERN
+  PERMANENT
+  TEMPORARY
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
 model Employee {
   id         String   @id @default(uuid())
   employeeNo String
@@ -96,6 +109,8 @@ model Employee {
   email      String?  @unique // For user linking
   basicSalary Float   @default(0.0)
   status     String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  gender     Gender   @default(MALE)
+  employmentType EmploymentType @default(PERMANENT)
 
   // Foreign Keys
   companyId  String

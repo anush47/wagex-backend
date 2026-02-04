@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Employee = void 0;
 const swagger_1 = require("@nestjs/swagger");
+const employee_enum_1 = require("../../common/enums/employee.enum");
 class Employee {
     id;
     employeeNo;
@@ -21,6 +22,8 @@ class Employee {
     companyId;
     managerId;
     userId;
+    gender;
+    employmentType;
     createdAt;
     updatedAt;
 }
@@ -61,6 +64,14 @@ __decorate([
     (0, swagger_1.ApiProperty)({ example: 'user-uuid', description: 'Linked User ID', nullable: true }),
     __metadata("design:type", Object)
 ], Employee.prototype, "userId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: employee_enum_1.Gender, example: employee_enum_1.Gender.MALE }),
+    __metadata("design:type", String)
+], Employee.prototype, "gender", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: employee_enum_1.EmploymentType, example: employee_enum_1.EmploymentType.PERMANENT }),
+    __metadata("design:type", String)
+], Employee.prototype, "employmentType", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

@@ -74,9 +74,10 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
     }
     async create(createEmployeeDto) {
         this.logger.log(`Creating new employee for company: ${createEmployeeDto.companyId}`);
-        return this.prisma.employee.create({
+        const employee = await this.prisma.employee.create({
             data: createEmployeeDto,
         });
+        return employee;
     }
     async findAll(companyId, queryDto, user) {
         const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto || {};
@@ -130,7 +131,7 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             this.prisma.employee.count({ where })
         ]);
         return {
-            data,
+            data: data,
             meta: {
                 page,
                 limit,
@@ -152,17 +153,19 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
     async update(id, updateEmployeeDto) {
         await this.findOne(id);
         this.logger.log(`Updating employee ID: ${id}`);
-        return this.prisma.employee.update({
+        const updated = await this.prisma.employee.update({
             where: { id },
             data: updateEmployeeDto,
         });
+        return updated;
     }
     async remove(id) {
         await this.findOne(id);
         this.logger.log(`Deleting employee ID: ${id}`);
-        return this.prisma.employee.delete({
+        const deleted = await this.prisma.employee.delete({
             where: { id },
         });
+        return deleted;
     }
     generatePassword(length = 12) {
         return crypto.randomBytes(length).toString('hex').slice(0, length);

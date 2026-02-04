@@ -36,9 +36,10 @@ export class EmployeesService {
 
   async create(createEmployeeDto: CreateEmployeeDto): Promise<Employee> {
     this.logger.log(`Creating new employee for company: ${createEmployeeDto.companyId}`);
-    return this.prisma.employee.create({
-      data: createEmployeeDto,
+    const employee = await this.prisma.employee.create({
+      data: createEmployeeDto as any,
     });
+    return employee as unknown as Employee;
   }
 
   async findAll(companyId?: string, queryDto?: QueryDto, user?: any): Promise<PaginatedResponse<Employee>> {
@@ -106,7 +107,7 @@ export class EmployeesService {
     ]);
 
     return {
-      data,
+      data: data as unknown as Employee[],
       meta: {
         page,
         limit,
@@ -126,7 +127,7 @@ export class EmployeesService {
       throw new NotFoundException(`Employee with ID "${id}" not found`);
     }
 
-    return employee;
+    return employee as unknown as Employee;
   }
 
   async update(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee> {
@@ -134,10 +135,11 @@ export class EmployeesService {
     await this.findOne(id);
 
     this.logger.log(`Updating employee ID: ${id}`);
-    return this.prisma.employee.update({
+    const updated = await this.prisma.employee.update({
       where: { id },
-      data: updateEmployeeDto,
+      data: updateEmployeeDto as any,
     });
+    return updated as unknown as Employee;
   }
 
   async remove(id: string): Promise<Employee> {
@@ -145,9 +147,10 @@ export class EmployeesService {
     await this.findOne(id);
 
     this.logger.log(`Deleting employee ID: ${id}`);
-    return this.prisma.employee.delete({
+    const deleted = await this.prisma.employee.delete({
       where: { id },
     });
+    return deleted as unknown as Employee;
   }
 
   /**

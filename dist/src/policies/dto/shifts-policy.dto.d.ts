@@ -1,0 +1,24 @@
+export declare enum ShiftSelectionPolicy {
+    FIXED = "FIXED",
+    CLOSEST_START_TIME = "CLOSEST_START_TIME",
+    MANUAL = "MANUAL",
+    EMPLOYEE_ROSTER = "EMPLOYEE_ROSTER"
+}
+export declare class ShiftDto {
+    id: string;
+    name: string;
+    startTime: string;
+    endTime: string;
+    minStartTime?: string;
+    maxOutTime?: string;
+    breakTime?: number;
+    gracePeriodLate?: number;
+    gracePeriodEarly?: number;
+    useShiftStartAsClockIn?: boolean;
+    autoClockOut?: boolean;
+}
+export declare class ShiftsConfigDto {
+    list?: ShiftDto[];
+    defaultShiftId?: string;
+    selectionPolicy?: ShiftSelectionPolicy;
+}
