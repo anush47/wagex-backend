@@ -91,9 +91,13 @@ export class EmployeesService {
     }
 
     if (search) {
+      const isNumericSearch = !isNaN(Number(search));
       where.OR = [
-        { employeeNo: { contains: search, mode: 'insensitive' as const } },
-        { name: { contains: search, mode: 'insensitive' as const } },
+        ...(isNumericSearch ? [{ employeeNo: Number(search) }] : []),
+        { nameWithInitials: { contains: search, mode: 'insensitive' as const } },
+        { fullName: { contains: search, mode: 'insensitive' as const } },
+        { nic: { contains: search, mode: 'insensitive' as const } },
+        { designation: { contains: search, mode: 'insensitive' as const } },
       ];
     }
 
@@ -210,7 +214,8 @@ export class EmployeesService {
       password: tempPassword,
       email_confirm: true,
       user_metadata: {
-        full_name: employee.name
+        full_name: employee.fullName,
+        name_with_initials: employee.nameWithInitials
       }
     });
 
@@ -237,8 +242,8 @@ export class EmployeesService {
       data: {
         id: supabaseUid,
         email: email,
-        nameWithInitials: employee.name,
-        fullName: employee.name,
+        nameWithInitials: employee.nameWithInitials,
+        fullName: employee.fullName,
         role: Role.EMPLOYEE,
         active: true
       }

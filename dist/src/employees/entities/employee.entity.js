@@ -15,7 +15,15 @@ const employee_enum_1 = require("../../common/enums/employee.enum");
 class Employee {
     id;
     employeeNo;
-    name;
+    nic;
+    nameWithInitials;
+    fullName;
+    designation;
+    joinedDate;
+    resignedDate;
+    remark;
+    phone;
+    address;
     email;
     basicSalary;
     status;
@@ -33,13 +41,45 @@ __decorate([
     __metadata("design:type", String)
 ], Employee.prototype, "id", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'EMP-001', description: 'Employee Number' }),
-    __metadata("design:type", String)
+    (0, swagger_1.ApiProperty)({ example: 1001, description: 'Employee Number' }),
+    __metadata("design:type", Number)
 ], Employee.prototype, "employeeNo", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Jane Doe', description: 'Full Name' }),
+    (0, swagger_1.ApiProperty)({ example: '199512345678', description: 'NIC' }),
+    __metadata("design:type", Object)
+], Employee.prototype, "nic", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'J. Doe', description: 'Name with Initials' }),
     __metadata("design:type", String)
-], Employee.prototype, "name", void 0);
+], Employee.prototype, "nameWithInitials", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Johnathan Doe', description: 'Full Name' }),
+    __metadata("design:type", String)
+], Employee.prototype, "fullName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Software Engineer', description: 'Designation', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "designation", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '2024-01-01', description: 'Joined Date' }),
+    __metadata("design:type", Date)
+], Employee.prototype, "joinedDate", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '2025-01-01', description: 'Resigned Date', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "resignedDate", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Good standing.', description: 'Remarks', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "remark", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '+94771234567', description: 'Phone Number', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "phone", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '123 Main St, Colombo', description: 'Address', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "address", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'jane@company.com', description: 'Employee Email', nullable: true }),
     __metadata("design:type", Object)

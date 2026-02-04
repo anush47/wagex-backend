@@ -15,7 +15,15 @@ const class_validator_1 = require("class-validator");
 const employee_enum_1 = require("../../common/enums/employee.enum");
 class CreateEmployeeDto {
     employeeNo;
-    name;
+    nic;
+    nameWithInitials;
+    fullName;
+    designation;
+    joinedDate;
+    resignedDate;
+    remark;
+    address;
+    phone;
     basicSalary;
     companyId;
     managerId;
@@ -24,17 +32,65 @@ class CreateEmployeeDto {
 }
 exports.CreateEmployeeDto = CreateEmployeeDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'EMP-001', description: 'Employee Number' }),
+    (0, swagger_1.ApiProperty)({ example: 1001, description: 'Employee Number' }),
     (0, class_validator_1.IsNotEmpty)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
 ], CreateEmployeeDto.prototype, "employeeNo", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Jane Doe', description: 'Full Name' }),
+    (0, swagger_1.ApiProperty)({ example: '199512345678', description: 'NIC' }),
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], CreateEmployeeDto.prototype, "name", void 0);
+], CreateEmployeeDto.prototype, "nic", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'J. Doe', description: 'Name with Initials' }),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "nameWithInitials", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Johnathan Samuel Doe', description: 'Full Name' }),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "fullName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Software Engineer', description: 'Designation', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "designation", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '2024-01-01', description: 'Joined Date', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "joinedDate", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '2025-01-01', description: 'Resigned Date', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "resignedDate", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Excellent performance.', description: 'Remarks', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "remark", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'No. 123, Main Street, Colombo', description: 'Address', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '+94771234567', description: 'Phone Number', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 50000.0, description: 'Basic Salary' }),
     (0, class_validator_1.IsNumber)(),

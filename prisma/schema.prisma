@@ -104,13 +104,22 @@ enum Gender {
 
 model Employee {
   id         String   @id @default(uuid())
-  employeeNo String
-  name       String
+  employeeNo Int
+  nic        String?
+  nameWithInitials String
+  fullName   String
+  designation String?
+  address    String?
+  phone      String?
   email      String?  @unique // For user linking
   basicSalary Float   @default(0.0)
   status     String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
   gender     Gender   @default(MALE)
   employmentType EmploymentType @default(PERMANENT)
+
+  joinedDate   DateTime @default(now())
+  resignedDate DateTime?
+  remark       String?   @db.Text
 
   // Foreign Keys
   companyId  String

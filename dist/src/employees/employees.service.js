@@ -110,9 +110,13 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
         }
         if (search) {
+            const isNumericSearch = !isNaN(Number(search));
             where.OR = [
-                { employeeNo: { contains: search, mode: 'insensitive' } },
-                { name: { contains: search, mode: 'insensitive' } },
+                ...(isNumericSearch ? [{ employeeNo: Number(search) }] : []),
+                { nameWithInitials: { contains: search, mode: 'insensitive' } },
+                { fullName: { contains: search, mode: 'insensitive' } },
+                { nic: { contains: search, mode: 'insensitive' } },
+                { designation: { contains: search, mode: 'insensitive' } },
             ];
         }
         const orderBy = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
@@ -202,7 +206,8 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             password: tempPassword,
             email_confirm: true,
             user_metadata: {
-                full_name: employee.name
+                full_name: employee.fullName,
+                name_with_initials: employee.nameWithInitials
             }
         });
         if (createError) {
@@ -227,8 +232,8 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             data: {
                 id: supabaseUid,
                 email: email,
-                nameWithInitials: employee.name,
-                fullName: employee.name,
+                nameWithInitials: employee.nameWithInitials,
+                fullName: employee.fullName,
                 role: client_1.Role.EMPLOYEE,
                 active: true
             }

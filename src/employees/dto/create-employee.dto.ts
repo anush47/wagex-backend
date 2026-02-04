@@ -3,15 +3,55 @@ import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'clas
 import { EmploymentType, Gender } from '../../common/enums/employee.enum';
 
 export class CreateEmployeeDto {
-    @ApiProperty({ example: 'EMP-001', description: 'Employee Number' })
+    @ApiProperty({ example: 1001, description: 'Employee Number' })
     @IsNotEmpty()
-    @IsString()
-    employeeNo: string;
+    @IsNumber()
+    employeeNo: number;
 
-    @ApiProperty({ example: 'Jane Doe', description: 'Full Name' })
+    @ApiProperty({ example: '199512345678', description: 'NIC' })
     @IsNotEmpty()
     @IsString()
-    name: string;
+    nic: string;
+
+    @ApiProperty({ example: 'J. Doe', description: 'Name with Initials' })
+    @IsNotEmpty()
+    @IsString()
+    nameWithInitials: string;
+
+    @ApiProperty({ example: 'Johnathan Samuel Doe', description: 'Full Name' })
+    @IsNotEmpty()
+    @IsString()
+    fullName: string;
+
+    @ApiProperty({ example: 'Software Engineer', description: 'Designation', required: false })
+    @IsOptional()
+    @IsString()
+    designation?: string;
+
+    @ApiProperty({ example: '2024-01-01', description: 'Joined Date', required: false })
+    @IsOptional()
+    @IsString()
+    joinedDate?: string;
+
+    @ApiProperty({ example: '2025-01-01', description: 'Resigned Date', required: false })
+    @IsOptional()
+    @IsString()
+    resignedDate?: string;
+
+    @ApiProperty({ example: 'Excellent performance.', description: 'Remarks', required: false })
+    @IsOptional()
+    @IsString()
+    remark?: string;
+
+    @ApiProperty({ example: 'No. 123, Main Street, Colombo', description: 'Address', required: false })
+    @IsOptional()
+    @IsString()
+    address?: string;
+
+    @ApiProperty({ example: '+94771234567', description: 'Phone Number', required: false })
+    @IsOptional()
+    @IsString()
+    phone?: string;
 
     @ApiProperty({ example: 50000.0, description: 'Basic Salary' })
     @IsNumber()
