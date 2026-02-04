@@ -105,4 +105,9 @@ export class CreateEmployeeDto {
     @IsOptional()
     @IsBoolean()
     active?: boolean;
+
+    @ApiProperty({ example: 'dept-uuid', description: 'Department ID', required: false })
+    @IsOptional()
+    @IsUUID()
+    departmentId?: string;
 }

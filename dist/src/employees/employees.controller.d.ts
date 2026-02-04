@@ -57,6 +57,7 @@ export declare class EmployeesController {
         managerId: string | null;
         canSelfEdit: boolean;
         photo: string | null;
+        departmentId: string | null;
     }>;
     findAll(queryDto: QueryDto, req: any): Promise<import("../common/interfaces/paginated-response.interface").PaginatedResponse<import("./entities/employee.entity").Employee>>;
     findOne(id: string, req: any): Promise<import("./entities/employee.entity").Employee>;

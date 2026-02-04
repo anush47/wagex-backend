@@ -63,6 +63,7 @@ export declare class EmployeesService {
         managerId: string | null;
         canSelfEdit: boolean;
         photo: string | null;
+        departmentId: string | null;
     }>;
     findOne(id: string): Promise<Employee>;
     update(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee>;

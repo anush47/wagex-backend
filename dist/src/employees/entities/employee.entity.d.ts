@@ -23,6 +23,7 @@ export declare class Employee implements PrismaEmployee {
     canSelfEdit: boolean;
     photo: string | null;
     files: any;
+    departmentId: string | null;
     createdAt: Date;
     updatedAt: Date;
 }

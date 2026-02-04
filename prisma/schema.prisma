@@ -39,6 +39,7 @@ model Company {
   // Relationships
   memberships UserCompany[]
   employees   Employee[]
+  departments Department[]
   policy      Policy?       // Optional: Company-wide default policy
 
   @@map("companies")
@@ -143,6 +144,13 @@ model Employee {
   photo       String?
   files       Json?     @default("[]") // [{ key: string, name: string, url: string }]
 
+  // Department Relations
+  departmentId String?
+  department   Department? @relation("DepartmentMembers", fields: [departmentId], references: [id])
+  
+  // Departments this employee heads
+  headOfDepartments Department[] @relation("DepartmentHead")
+
   // Future relations for Payroll, Attendance, etc.
   // payrolls Payroll[]
   // attendance Attendance[]
@@ -154,6 +162,33 @@ model Employee {
 
   @@unique([companyId, employeeNo]) // Employee No unique per company
   @@map("employees")
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String
+  description String?
+  
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Hierarchy
+  parentId  String?
+  parent    Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children  Department[] @relation("DepartmentHierarchy")
+
+  // Leadership
+  headId    String?
+  head      Employee?   @relation("DepartmentHead", fields: [headId], references: [id])
+  
+  // Members
+  employees Employee[]  @relation("DepartmentMembers")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, name])
+  @@map("departments")
 }
 
 model AuditLog {

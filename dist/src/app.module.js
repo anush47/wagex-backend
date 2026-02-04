@@ -27,6 +27,7 @@ const jwt_auth_guard_1 = require("./auth/jwt-auth.guard");
 const policies_module_1 = require("./policies/policies.module");
 const storage_module_1 = require("./storage/storage.module");
 const notifications_module_1 = require("./notifications/notifications.module");
+const departments_module_1 = require("./departments/departments.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -47,6 +48,7 @@ exports.AppModule = AppModule = __decorate([
             policies_module_1.PoliciesModule,
             storage_module_1.StorageModule,
             notifications_module_1.NotificationsModule,
+            departments_module_1.DepartmentsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

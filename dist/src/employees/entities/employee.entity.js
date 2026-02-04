@@ -35,6 +35,7 @@ class Employee {
     canSelfEdit;
     photo;
     files;
+    departmentId;
     createdAt;
     updatedAt;
 }
@@ -127,6 +128,10 @@ __decorate([
     (0, swagger_1.ApiProperty)({ example: [], description: 'Employee files' }),
     __metadata("design:type", Object)
 ], Employee.prototype, "files", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'dept-uuid', description: 'Department ID', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "departmentId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

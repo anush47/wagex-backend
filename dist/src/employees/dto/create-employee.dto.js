@@ -35,6 +35,7 @@ class CreateEmployeeDto {
     photo;
     files;
     active;
+    departmentId;
 }
 exports.CreateEmployeeDto = CreateEmployeeDto;
 __decorate([
@@ -161,4 +162,10 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], CreateEmployeeDto.prototype, "active", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'dept-uuid', description: 'Department ID', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "departmentId", void 0);
 //# sourceMappingURL=create-employee.dto.js.map

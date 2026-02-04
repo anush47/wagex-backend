@@ -21,4 +21,5 @@ export declare class CreateEmployeeDto {
     photo?: string;
     files?: any;
     active?: boolean;
+    departmentId?: string;
 }

@@ -18,6 +18,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PoliciesModule } from './policies/policies.module';
 import { StorageModule } from './storage/storage.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { DepartmentsModule } from './departments/departments.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     PoliciesModule,
     StorageModule,
     NotificationsModule,
+    DepartmentsModule,
   ],
   controllers: [AppController],
   providers: [

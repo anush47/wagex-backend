@@ -69,6 +69,9 @@ export class Employee implements PrismaEmployee {
     @ApiProperty({ example: [], description: 'Employee files' })
     files: any;
 
+    @ApiProperty({ example: 'dept-uuid', description: 'Department ID', nullable: true })
+    departmentId: string | null;
+
     @ApiProperty()
     createdAt: Date;
 
