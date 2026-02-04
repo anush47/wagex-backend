@@ -74,9 +74,17 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
     }
     async create(createEmployeeDto) {
         this.logger.log(`Creating new employee for company: ${createEmployeeDto.companyId}`);
-        const employee = await this.prisma.employee.create({
-            data: createEmployeeDto,
-        });
+        const data = {
+            ...createEmployeeDto,
+            joinedDate: createEmployeeDto.joinedDate
+                ? new Date(createEmployeeDto.joinedDate)
+                : new Date(),
+            resignedDate: createEmployeeDto.resignedDate
+                ? new Date(createEmployeeDto.resignedDate)
+                : undefined,
+            remark: createEmployeeDto.remark || undefined,
+        };
+        const employee = await this.prisma.employee.create({ data });
         return employee;
     }
     async findAll(companyId, queryDto, user) {

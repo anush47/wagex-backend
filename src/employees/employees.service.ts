@@ -36,9 +36,23 @@ export class EmployeesService {
 
   async create(createEmployeeDto: CreateEmployeeDto): Promise<Employee> {
     this.logger.log(`Creating new employee for company: ${createEmployeeDto.companyId}`);
-    const employee = await this.prisma.employee.create({
-      data: createEmployeeDto as any,
-    });
+
+    // Prepare data with proper date handling
+    const data: any = {
+      ...createEmployeeDto,
+      // Convert joinedDate string to DateTime if provided
+      joinedDate: createEmployeeDto.joinedDate
+        ? new Date(createEmployeeDto.joinedDate)
+        : new Date(),
+      // Only include resignedDate if it's not empty
+      resignedDate: createEmployeeDto.resignedDate
+        ? new Date(createEmployeeDto.resignedDate)
+        : undefined,
+      // Only include remark if it's not empty
+      remark: createEmployeeDto.remark || undefined,
+    };
+
+    const employee = await this.prisma.employee.create({ data });
     return employee as unknown as Employee;
   }
 
