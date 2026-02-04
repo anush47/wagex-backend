@@ -52,6 +52,10 @@ export class PermissionsGuard implements CanActivate {
             throw new ForbiddenException('No membership found for this company.');
         }
 
+        if (membership.active === false) {
+            throw new ForbiddenException('Your access to this company has been suspended.');
+        }
+
         const userPermissions = membership.permissions || {};
 
         // Check if user has all required permissions for this specific company

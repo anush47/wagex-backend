@@ -167,11 +167,21 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
     }
     async update(id, updateEmployeeDto) {
         await this.findOne(id);
+        const { companyId, ...updateData } = updateEmployeeDto;
         this.logger.log(`Updating employee ID: ${id}`);
         const updated = await this.prisma.employee.update({
             where: { id },
-            data: updateEmployeeDto,
+            data: updateData,
         });
+        if (updateEmployeeDto.allowLogin !== undefined && updated.userId && updated.companyId) {
+            await this.prisma.userCompany.updateMany({
+                where: {
+                    userId: updated.userId,
+                    companyId: updated.companyId
+                },
+                data: { active: updateEmployeeDto.allowLogin }
+            });
+        }
         return updated;
     }
     async remove(id) {
@@ -185,59 +195,60 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
     generatePassword(length = 12) {
         return crypto.randomBytes(length).toString('hex').slice(0, length);
     }
-    async provisionUser(employeeId) {
-        const employee = await this.prisma.employee.findUnique({ where: { id: employeeId } });
+    async provisionUser(id) {
+        const employee = await this.prisma.employee.findUnique({
+            where: { id },
+        });
         if (!employee)
             throw new common_1.NotFoundException('Employee not found');
-        if (!employee.email)
-            throw new common_1.BadRequestException('Employee must have an email address to create a user account.');
-        if (employee.userId) {
+        if (!employee.companyId)
+            throw new common_1.BadRequestException('Employee not assigned to a company');
+        if (employee.userId)
             throw new common_1.BadRequestException('Employee is already linked to a user account.');
-        }
         const email = employee.email;
+        if (!email)
+            throw new common_1.BadRequestException('Employee does not have an email address.');
         let supabaseUid;
         let tempPassword;
         const localUser = await this.prisma.user.findUnique({ where: { email } });
         if (localUser) {
             supabaseUid = localUser.id;
-            await this.prisma.employee.update({
-                where: { id: employeeId },
-                data: { userId: supabaseUid }
-            });
-            return { email, message: 'Existing user linked successfully.' };
-        }
-        if (!this.supabaseAdmin)
-            throw new Error('Supabase Admin not configured');
-        tempPassword = this.generatePassword();
-        const { data: userData, error: createError } = await this.supabaseAdmin.auth.admin.createUser({
-            email: email,
-            password: tempPassword,
-            email_confirm: true,
-            user_metadata: {
-                full_name: employee.fullName,
-                name_with_initials: employee.nameWithInitials
-            }
-        });
-        if (createError) {
-            if (createError.message.includes('already registered')) {
-                const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
-                const existing = listData?.users.find((u) => u.email === email);
-                if (!existing) {
-                    throw new Error('User exists in Supabase but could not be retrieved.');
-                }
-                supabaseUid = existing.id;
-                tempPassword = undefined;
-            }
-            else {
-                this.logger.error(`Supabase Create Failed: ${createError.message}`);
-                throw new common_1.BadRequestException(`Failed to create user: ${createError.message}`);
-            }
         }
         else {
-            supabaseUid = userData.user.id;
+            if (!this.supabaseAdmin)
+                throw new Error('Supabase Admin not configured');
+            tempPassword = this.generatePassword();
+            const { data: userData, error: createError } = await this.supabaseAdmin.auth.admin.createUser({
+                email: email,
+                password: tempPassword,
+                email_confirm: true,
+                user_metadata: {
+                    full_name: employee.fullName,
+                    name_with_initials: employee.nameWithInitials
+                }
+            });
+            if (createError) {
+                if (createError.message.includes('already registered')) {
+                    const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
+                    const existing = listData?.users.find((u) => u.email === email);
+                    if (!existing)
+                        throw new Error('User exists in Supabase but could not be retrieved.');
+                    supabaseUid = existing.id;
+                    tempPassword = undefined;
+                }
+                else {
+                    this.logger.error(`Supabase Create Failed: ${createError.message}`);
+                    throw new common_1.BadRequestException(`Failed to create user: ${createError.message}`);
+                }
+            }
+            else {
+                supabaseUid = userData.user.id;
+            }
         }
-        await this.prisma.user.create({
-            data: {
+        await this.prisma.user.upsert({
+            where: { id: supabaseUid },
+            update: {},
+            create: {
                 id: supabaseUid,
                 email: email,
                 nameWithInitials: employee.nameWithInitials,
@@ -245,27 +256,63 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
                 role: client_1.Role.EMPLOYEE,
                 active: true
             }
-        }).catch(e => {
-            this.logger.warn('User creation race condition or duplicate ignored.');
         });
         await this.prisma.employee.update({
-            where: { id: employeeId },
+            where: { id },
             data: { userId: supabaseUid }
         });
-        await this.prisma.userCompany.create({
-            data: {
+        await this.prisma.userCompany.upsert({
+            where: {
+                userId_companyId: {
+                    userId: supabaseUid,
+                    companyId: employee.companyId
+                }
+            },
+            update: {},
+            create: {
                 userId: supabaseUid,
                 companyId: employee.companyId,
                 role: client_1.Role.EMPLOYEE,
                 permissions: {}
             }
-        }).catch(e => {
         });
         return {
             email,
+            userId: supabaseUid,
             password: tempPassword,
             message: tempPassword ? 'User created and linked.' : 'Existing user linked.'
         };
+    }
+    async deprovisionUser(employeeId) {
+        const employee = await this.prisma.employee.findUnique({
+            where: { id: employeeId },
+        });
+        if (!employee)
+            throw new common_1.NotFoundException('Employee not found');
+        if (!employee.userId)
+            return { message: 'Employee was not linked to a user account.' };
+        const userId = employee.userId;
+        await this.prisma.employee.update({
+            where: { id: employeeId },
+            data: { userId: null },
+        });
+        await this.prisma.userCompany.deleteMany({ where: { userId: userId } });
+        await this.prisma.notification.deleteMany({ where: { userId: userId } });
+        if (this.supabaseAdmin) {
+            const { error } = await this.supabaseAdmin.auth.admin.deleteUser(userId);
+            if (error) {
+                this.logger.error(`Failed to delete Supabase user ${userId}: ${error.message}`);
+            }
+        }
+        try {
+            await this.prisma.user.delete({
+                where: { id: userId }
+            });
+        }
+        catch (e) {
+            this.logger.error(`Failed to delete local user ${userId}: ${e.message}`);
+        }
+        return { message: 'User account permanently deleted.' };
     }
 };
 exports.EmployeesService = EmployeesService;

@@ -5,6 +5,7 @@ export declare class UserCompany implements PrismaUserCompany {
     companyId: string;
     role: Role;
     permissions: any;
+    active: boolean;
     createdAt: Date;
     updatedAt: Date;
 }

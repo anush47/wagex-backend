@@ -18,6 +18,7 @@ class UserCompany {
     companyId;
     role;
     permissions;
+    active;
     createdAt;
     updatedAt;
 }
@@ -46,6 +47,10 @@ __decorate([
     }),
     __metadata("design:type", Object)
 ], UserCompany.prototype, "permissions", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true, description: 'Is access active' }),
+    __metadata("design:type", Boolean)
+], UserCompany.prototype, "active", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

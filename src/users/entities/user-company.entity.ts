@@ -21,6 +21,9 @@ export class UserCompany implements PrismaUserCompany {
     })
     permissions: any; // Type-safe as Json in Prisma
 
+    @ApiProperty({ example: true, description: 'Is access active' })
+    active: boolean;
+
     @ApiProperty()
     createdAt: Date;
 

@@ -13,7 +13,11 @@ export declare class EmployeesController {
     remove(id: string, req: any): Promise<import("./entities/employee.entity").Employee>;
     provisionUser(id: string, req: any): Promise<{
         email: string;
+        userId: string;
         password?: string;
+        message: string;
+    }>;
+    deprovisionUser(id: string, req: any): Promise<{
         message: string;
     }>;
 }

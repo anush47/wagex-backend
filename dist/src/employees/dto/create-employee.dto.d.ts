@@ -16,4 +16,5 @@ export declare class CreateEmployeeDto {
     managerId?: string;
     gender?: Gender;
     employmentType?: EmploymentType;
+    allowLogin?: boolean;
 }

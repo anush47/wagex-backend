@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, IsBoolean } from 'class-validator';
 import { EmploymentType, Gender } from '../../common/enums/employee.enum';
 
 export class CreateEmployeeDto {
@@ -81,4 +81,9 @@ export class CreateEmployeeDto {
     @IsEnum(EmploymentType)
     @IsOptional()
     employmentType?: EmploymentType;
+
+    @ApiProperty({ example: true, description: 'Allow Login', required: false })
+    @IsOptional()
+    @IsBoolean()
+    allowLogin?: boolean;
 }

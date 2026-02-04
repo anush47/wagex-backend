@@ -60,6 +60,9 @@ export class Employee implements PrismaEmployee {
     @ApiProperty({ enum: EmploymentType, example: EmploymentType.PERMANENT })
     employmentType: EmploymentType;
 
+    @ApiProperty({ example: true })
+    allowLogin: boolean;
+
     @ApiProperty()
     createdAt: Date;
 

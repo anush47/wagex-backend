@@ -94,6 +94,17 @@ let EmployeesController = EmployeesController_1 = class EmployeesController {
         }
         return this.employeesService.provisionUser(id);
     }
+    async deprovisionUser(id, req) {
+        const user = req.user;
+        const employee = await this.employeesService.findOne(id);
+        if (user.role === client_1.Role.EMPLOYER) {
+            const hasAccess = user.memberships?.some(m => m.companyId === employee.companyId);
+            if (!hasAccess) {
+                throw new common_1.ForbiddenException('You do not have access to this employee.');
+            }
+        }
+        return this.employeesService.deprovisionUser(id);
+    }
 };
 exports.EmployeesController = EmployeesController;
 __decorate([
@@ -168,6 +179,18 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], EmployeesController.prototype, "provisionUser", null);
+__decorate([
+    (0, common_1.Delete)(':id/provision-user'),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER),
+    (0, permissions_decorator_1.Permissions)(permissions_1.Permission.MANAGE_EMPLOYEES),
+    (0, swagger_1.ApiOperation)({ summary: 'Unlink user account from employee' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'User unlinked.' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], EmployeesController.prototype, "deprovisionUser", null);
 exports.EmployeesController = EmployeesController = EmployeesController_1 = __decorate([
     (0, swagger_1.ApiTags)('Employees'),
     (0, swagger_1.ApiBearerAuth)(),

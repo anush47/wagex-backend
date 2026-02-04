@@ -17,9 +17,13 @@ export declare class EmployeesService {
     update(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee>;
     remove(id: string): Promise<Employee>;
     private generatePassword;
-    provisionUser(employeeId: string): Promise<{
+    provisionUser(id: string): Promise<{
         email: string;
+        userId: string;
         password?: string;
+        message: string;
+    }>;
+    deprovisionUser(employeeId: string): Promise<{
         message: string;
     }>;
 }

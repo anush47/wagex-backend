@@ -51,6 +51,9 @@ let PermissionsGuard = PermissionsGuard_1 = class PermissionsGuard {
             this.logger.warn(`Permission check failed: No membership found for user ${user.id} in company ${companyId}`);
             throw new common_1.ForbiddenException('No membership found for this company.');
         }
+        if (membership.active === false) {
+            throw new common_1.ForbiddenException('Your access to this company has been suspended.');
+        }
         const userPermissions = membership.permissions || {};
         const hasPermissions = requiredPermissions.every(permission => userPermissions[permission] === true);
         if (!hasPermissions) {

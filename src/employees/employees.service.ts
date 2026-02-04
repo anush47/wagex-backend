@@ -164,11 +164,26 @@ export class EmployeesService {
     // Ensure it exists first
     await this.findOne(id);
 
+    // Filter out fields that shouldn't be updated or cause issues
+    const { companyId, ...updateData } = updateEmployeeDto;
+
     this.logger.log(`Updating employee ID: ${id}`);
     const updated = await this.prisma.employee.update({
       where: { id },
-      data: updateEmployeeDto as any,
+      data: updateData as any,
     });
+
+    // If allowLogin is toggled, sync to UserCompany membership active state
+    if (updateEmployeeDto.allowLogin !== undefined && updated.userId && updated.companyId) {
+      await this.prisma.userCompany.updateMany({
+        where: {
+          userId: updated.userId,
+          companyId: updated.companyId
+        },
+        data: { active: updateEmployeeDto.allowLogin }
+      });
+    }
+
     return updated as unknown as Employee;
   }
 
@@ -193,67 +208,65 @@ export class EmployeesService {
   /**
    * Provisions a user account for an existing employee.
    */
-  async provisionUser(employeeId: string): Promise<{ email: string; password?: string; message: string }> {
-    const employee = await this.prisma.employee.findUnique({ where: { id: employeeId } });
-    if (!employee) throw new NotFoundException('Employee not found');
-    if (!employee.email) throw new BadRequestException('Employee must have an email address to create a user account.');
+  async provisionUser(id: string): Promise<{ email: string; userId: string; password?: string; message: string }> {
+    const employee = await this.prisma.employee.findUnique({
+      where: { id },
+    });
 
-    if (employee.userId) {
-      throw new BadRequestException('Employee is already linked to a user account.');
-    }
+    if (!employee) throw new NotFoundException('Employee not found');
+    if (!employee.companyId) throw new BadRequestException('Employee not assigned to a company');
+    if (employee.userId) throw new BadRequestException('Employee is already linked to a user account.');
 
     const email = employee.email;
+    if (!email) throw new BadRequestException('Employee does not have an email address.');
+
     let supabaseUid: string;
     let tempPassword: string | undefined;
 
-    // 1. Check if user already exists (Local Hint)
+    // 1. Resolve User ID (Local or Remote)
     const localUser = await this.prisma.user.findUnique({ where: { email } });
 
     if (localUser) {
       supabaseUid = localUser.id;
-      // Link and return
-      await this.prisma.employee.update({
-        where: { id: employeeId },
-        data: { userId: supabaseUid }
-      });
-      return { email, message: 'Existing user linked successfully.' };
-    }
-
-    // 2. Create in Supabase (if not local)
-    if (!this.supabaseAdmin) throw new Error('Supabase Admin not configured');
-
-    tempPassword = this.generatePassword();
-    const { data: userData, error: createError } = await this.supabaseAdmin.auth.admin.createUser({
-      email: email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: {
-        full_name: employee.fullName,
-        name_with_initials: employee.nameWithInitials
-      }
-    });
-
-    if (createError) {
-      if (createError.message.includes('already registered')) {
-        // Fetch ID via list
-        const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
-        const existing = listData?.users.find((u: any) => u.email === email);
-        if (!existing) {
-          throw new Error('User exists in Supabase but could not be retrieved.');
-        }
-        supabaseUid = existing.id;
-        tempPassword = undefined; // We didn't create it
-      } else {
-        this.logger.error(`Supabase Create Failed: ${createError.message}`);
-        throw new BadRequestException(`Failed to create user: ${createError.message}`);
-      }
     } else {
-      supabaseUid = userData.user.id;
+      // Create/Fetch from Supabase
+      if (!this.supabaseAdmin) throw new Error('Supabase Admin not configured');
+
+      tempPassword = this.generatePassword();
+      const { data: userData, error: createError } = await this.supabaseAdmin.auth.admin.createUser({
+        email: email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: employee.fullName,
+          name_with_initials: employee.nameWithInitials
+        }
+      });
+
+      if (createError) {
+        if (createError.message.includes('already registered')) {
+          // User exists in Supabase but not locally
+          const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
+          const existing = listData?.users.find((u: any) => u.email === email);
+          if (!existing) throw new Error('User exists in Supabase but could not be retrieved.');
+
+          supabaseUid = existing.id;
+          tempPassword = undefined; // Do not show password for existing user
+        } else {
+          this.logger.error(`Supabase Create Failed: ${createError.message}`);
+          throw new BadRequestException(`Failed to create user: ${createError.message}`);
+        }
+      } else {
+        supabaseUid = userData.user.id;
+      }
     }
 
-    // 3. Create Local User
-    await this.prisma.user.create({
-      data: {
+    // 2. Ensure Local User Record
+    // We use upsert to handle race conditions or missing local records
+    await this.prisma.user.upsert({
+      where: { id: supabaseUid },
+      update: {},
+      create: {
         id: supabaseUid,
         email: email,
         nameWithInitials: employee.nameWithInitials,
@@ -261,32 +274,78 @@ export class EmployeesService {
         role: Role.EMPLOYEE,
         active: true
       }
-    }).catch(e => {
-      this.logger.warn('User creation race condition or duplicate ignored.');
     });
 
-    // 4. Link Employee
+    // 3. Link Employee
     await this.prisma.employee.update({
-      where: { id: employeeId },
+      where: { id },
       data: { userId: supabaseUid }
     });
 
-    // 5. Add to UserCompany (Membership)
-    await this.prisma.userCompany.create({
-      data: {
+    // 4. Ensure Company Membership
+    await this.prisma.userCompany.upsert({
+      where: {
+        userId_companyId: {
+          userId: supabaseUid,
+          companyId: employee.companyId
+        }
+      },
+      update: {}, // Already exists, do nothing
+      create: {
         userId: supabaseUid,
         companyId: employee.companyId,
         role: Role.EMPLOYEE,
         permissions: {}
       }
-    }).catch(e => {
-      // Ignore
     });
 
     return {
       email,
+      userId: supabaseUid,
       password: tempPassword,
       message: tempPassword ? 'User created and linked.' : 'Existing user linked.'
     };
+  }
+
+  async deprovisionUser(employeeId: string) {
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+    });
+
+    if (!employee) throw new NotFoundException('Employee not found');
+    if (!employee.userId) return { message: 'Employee was not linked to a user account.' };
+
+    const userId = employee.userId;
+
+    // 1. Unlink Employee
+    await this.prisma.employee.update({
+      where: { id: employeeId },
+      data: { userId: null },
+    });
+
+    // 2. Delete Dependencies (Memberships, Notifications)
+    await this.prisma.userCompany.deleteMany({ where: { userId: userId } });
+    await this.prisma.notification.deleteMany({ where: { userId: userId } });
+
+    // 3. Delete from Supabase
+    if (this.supabaseAdmin) {
+      const { error } = await this.supabaseAdmin.auth.admin.deleteUser(userId);
+      if (error) {
+        this.logger.error(`Failed to delete Supabase user ${userId}: ${error.message}`);
+        // Continue to clean up local DB regardless of Supabase error (e.g. if user already gone)
+      }
+    }
+
+    // 4. Delete Local User
+    try {
+      await this.prisma.user.delete({
+        where: { id: userId }
+      });
+    } catch (e) {
+      this.logger.error(`Failed to delete local user ${userId}: ${e.message}`);
+      // If delete fails, it might be due to other constraints. But we tried.
+    }
+
+    return { message: 'User account permanently deleted.' };
   }
 }

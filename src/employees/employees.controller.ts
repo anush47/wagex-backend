@@ -151,4 +151,23 @@ export class EmployeesController {
     // 2. Provision
     return this.employeesService.provisionUser(id);
   }
+
+  @Delete(':id/provision-user')
+  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @Permissions(Permission.MANAGE_EMPLOYEES)
+  @ApiOperation({ summary: 'Unlink user account from employee' })
+  @ApiResponse({ status: 200, description: 'User unlinked.' })
+  async deprovisionUser(@Param('id') id: string, @Request() req) {
+    const user = req.user;
+    const employee = await this.employeesService.findOne(id);
+
+    if (user.role === Role.EMPLOYER) {
+      const hasAccess = user.memberships?.some(m => m.companyId === employee.companyId);
+      if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this employee.');
+      }
+    }
+
+    return this.employeesService.deprovisionUser(id);
+  }
 }

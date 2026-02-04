@@ -20,6 +20,7 @@ export declare class Employee implements PrismaEmployee {
     userId: string | null;
     gender: Gender;
     employmentType: EmploymentType;
+    allowLogin: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
