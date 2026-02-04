@@ -32,7 +32,7 @@ export class AuthService {
                 address: dto.address,
                 phone: dto.phone,
                 role: Role.EMPLOYER,
-                active: false, // Defaulting to false as requested (requires approval/activation)
+                active: false, // Inactive upon registration, requires admin activation
             },
         });
 

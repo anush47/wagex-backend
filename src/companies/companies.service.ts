@@ -35,7 +35,8 @@ export class CompaniesService {
           userId,
           companyId: company.id,
           role: 'EMPLOYER',
-          permissions: DEFAULT_EMPLOYER_PERMISSIONS
+          permissions: DEFAULT_EMPLOYER_PERMISSIONS,
+          active: true // The creator should have immediate access
         }
       });
 

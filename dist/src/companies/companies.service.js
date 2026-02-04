@@ -37,7 +37,8 @@ let CompaniesService = CompaniesService_1 = class CompaniesService {
                     userId,
                     companyId: company.id,
                     role: 'EMPLOYER',
-                    permissions: permissions_1.DEFAULT_EMPLOYER_PERMISSIONS
+                    permissions: permissions_1.DEFAULT_EMPLOYER_PERMISSIONS,
+                    active: true
                 }
             });
             return company;
