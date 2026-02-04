@@ -9,6 +9,7 @@ export declare class UsersController {
     constructor(usersService: UsersService);
     create(createUserDto: CreateUserDto): Promise<User>;
     findAll(queryDto: QueryDto): Promise<import("../common/interfaces/paginated-response.interface").PaginatedResponse<User>>;
+    getMe(req: any): Promise<User>;
     findOne(id: string, req: any): Promise<User>;
     update(id: string, updateUserDto: UpdateUserDto): Promise<User>;
     remove(id: string): Promise<User>;

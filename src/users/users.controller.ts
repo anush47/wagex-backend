@@ -34,6 +34,17 @@ export class UsersController {
     return this.usersService.findAll(queryDto);
   }
 
+  @Get('me')
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, type: User })
+  async getMe(@Request() req): Promise<User> {
+    const user = req.user;
+    // req.user is populated by Jwt/Supabase strategy and contains the full user object
+    // But we might want to fetch fresh data or just return the token payload user
+    // Usually best to fetch to get latest
+    return this.usersService.findOne(user.id);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.EMPLOYER)
   @ApiOperation({ summary: 'Get user by ID' })

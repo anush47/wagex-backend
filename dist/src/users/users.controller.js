@@ -36,6 +36,10 @@ let UsersController = UsersController_1 = class UsersController {
     async findAll(queryDto) {
         return this.usersService.findAll(queryDto);
     }
+    async getMe(req) {
+        const user = req.user;
+        return this.usersService.findOne(user.id);
+    }
     async findOne(id, req) {
         const user = req.user;
         if (user.role !== client_1.Role.ADMIN && user.id !== id) {
@@ -74,6 +78,15 @@ __decorate([
     __metadata("design:paramtypes", [query_dto_1.QueryDto]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('me'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get current user profile' }),
+    (0, swagger_1.ApiResponse)({ status: 200, type: user_entity_1.User }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getMe", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER),
