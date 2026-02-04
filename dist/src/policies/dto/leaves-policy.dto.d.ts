@@ -23,11 +23,17 @@ export declare class LeaveTypeDto {
     applicableGender: PolicyGenderTarget;
     applicableEmploymentTypes: EmploymentType[];
     requiresApproval: boolean;
+    approvalRequiredIfConsecutiveMoreThan?: number;
     isShortLeave: boolean;
     maxDurationMinutes?: number;
     baseAmount: number;
     accrualFrequency: AccrualFrequency;
     customFrequencyDays?: number;
+    minDelayBetweenRequestsDays?: number;
+    canApplyBackdated?: boolean;
+    maxConsecutiveDays?: number;
+    requireDocuments?: boolean;
+    requireDocumentsIfConsecutiveMoreThan?: number;
     canCarryOver: boolean;
     maxCarryOverDays?: number;
     isEncashable: boolean;

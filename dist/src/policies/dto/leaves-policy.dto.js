@@ -41,11 +41,17 @@ class LeaveTypeDto {
     applicableGender;
     applicableEmploymentTypes;
     requiresApproval;
+    approvalRequiredIfConsecutiveMoreThan;
     isShortLeave;
     maxDurationMinutes;
     baseAmount;
     accrualFrequency;
     customFrequencyDays;
+    minDelayBetweenRequestsDays;
+    canApplyBackdated;
+    maxConsecutiveDays;
+    requireDocuments;
+    requireDocumentsIfConsecutiveMoreThan;
     canCarryOver;
     maxCarryOverDays;
     isEncashable;
@@ -86,6 +92,12 @@ __decorate([
     __metadata("design:type", Boolean)
 ], LeaveTypeDto.prototype, "requiresApproval", void 0);
 __decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 3, description: 'Approval required if consecutive days exceed this' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], LeaveTypeDto.prototype, "approvalRequiredIfConsecutiveMoreThan", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ default: false }),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
@@ -112,6 +124,36 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], LeaveTypeDto.prototype, "customFrequencyDays", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 30, description: 'Minimum days between two requests of this type' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], LeaveTypeDto.prototype, "minDelayBetweenRequestsDays", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ default: false, description: 'Allow applying for past dates' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], LeaveTypeDto.prototype, "canApplyBackdated", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 5, description: 'Max consecutive days allowed for this leave' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], LeaveTypeDto.prototype, "maxConsecutiveDays", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ default: false, description: 'Require supporting documents (medical, etc)' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], LeaveTypeDto.prototype, "requireDocuments", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 2, description: 'Require documents if consecutive days exceed this' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], LeaveTypeDto.prototype, "requireDocumentsIfConsecutiveMoreThan", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ default: false }),
     (0, class_validator_1.IsBoolean)(),

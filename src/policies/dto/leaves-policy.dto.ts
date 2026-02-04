@@ -49,6 +49,11 @@ export class LeaveTypeDto {
     @IsBoolean()
     requiresApproval: boolean;
 
+    @ApiPropertyOptional({ example: 3, description: 'Approval required if consecutive days exceed this' })
+    @IsOptional()
+    @IsNumber()
+    approvalRequiredIfConsecutiveMoreThan?: number;
+
     // Short Leave
     @ApiProperty({ default: false })
     @IsBoolean()
@@ -72,6 +77,32 @@ export class LeaveTypeDto {
     @IsOptional()
     @IsNumber()
     customFrequencyDays?: number;
+
+    // Rules
+    @ApiPropertyOptional({ example: 30, description: 'Minimum days between two requests of this type' })
+    @IsOptional()
+    @IsNumber()
+    minDelayBetweenRequestsDays?: number;
+
+    @ApiPropertyOptional({ default: false, description: 'Allow applying for past dates' })
+    @IsOptional()
+    @IsBoolean()
+    canApplyBackdated?: boolean;
+
+    @ApiPropertyOptional({ example: 5, description: 'Max consecutive days allowed for this leave' })
+    @IsOptional()
+    @IsNumber()
+    maxConsecutiveDays?: number;
+
+    @ApiPropertyOptional({ default: false, description: 'Require supporting documents (medical, etc)' })
+    @IsOptional()
+    @IsBoolean()
+    requireDocuments?: boolean;
+
+    @ApiPropertyOptional({ example: 2, description: 'Require documents if consecutive days exceed this' })
+    @IsOptional()
+    @IsNumber()
+    requireDocumentsIfConsecutiveMoreThan?: number;
 
     // Carry Over
     @ApiProperty({ default: false })
