@@ -28,6 +28,11 @@ export class CreateEmployeeDto {
     @IsString()
     designation?: string;
 
+    @ApiProperty({ example: true, required: false })
+    @IsOptional()
+    @IsBoolean()
+    canSelfEdit?: boolean;
+
     @ApiProperty({ example: '2024-01-01', description: 'Joined Date', required: false })
     @IsOptional()
     @IsString()
@@ -71,6 +76,11 @@ export class CreateEmployeeDto {
     @IsOptional()
     @IsUUID()
     managerId?: string;
+
+    @ApiProperty({ example: 'ACTIVE', description: 'Employment Status', required: false })
+    @IsOptional()
+    @IsString()
+    status?: string;
 
     @ApiProperty({ enum: Gender, example: Gender.MALE })
     @IsEnum(Gender)

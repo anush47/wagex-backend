@@ -14,13 +14,13 @@ const swagger_1 = require("@nestjs/swagger");
 const create_employee_dto_1 = require("./create-employee.dto");
 const class_validator_1 = require("class-validator");
 class UpdateEmployeeDto extends (0, swagger_1.PartialType)(create_employee_dto_1.CreateEmployeeDto) {
-    status;
+    canSelfEdit;
 }
 exports.UpdateEmployeeDto = UpdateEmployeeDto;
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: 'ACTIVE', description: 'Employment Status' }),
+    (0, swagger_1.ApiProperty)({ example: true, required: false }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], UpdateEmployeeDto.prototype, "status", void 0);
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateEmployeeDto.prototype, "canSelfEdit", void 0);
 //# sourceMappingURL=update-employee.dto.js.map

@@ -32,6 +32,7 @@ class Employee {
     userId;
     gender;
     employmentType;
+    canSelfEdit;
     createdAt;
     updatedAt;
 }
@@ -112,6 +113,10 @@ __decorate([
     (0, swagger_1.ApiProperty)({ enum: employee_enum_1.EmploymentType, example: employee_enum_1.EmploymentType.PERMANENT }),
     __metadata("design:type", String)
 ], Employee.prototype, "employmentType", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true, description: 'Whether the employee can edit their own details' }),
+    __metadata("design:type", Boolean)
+], Employee.prototype, "canSelfEdit", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

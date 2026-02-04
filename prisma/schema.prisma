@@ -138,6 +138,8 @@ model Employee {
   managerId  String?
   manager    Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
   reports    Employee[] @relation("EmployeeManager")
+  
+  canSelfEdit Boolean   @default(true)
 
   // Future relations for Payroll, Attendance, etc.
   // payrolls Payroll[]

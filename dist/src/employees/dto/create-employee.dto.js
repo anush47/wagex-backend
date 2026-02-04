@@ -19,6 +19,7 @@ class CreateEmployeeDto {
     nameWithInitials;
     fullName;
     designation;
+    canSelfEdit;
     joinedDate;
     resignedDate;
     remark;
@@ -28,6 +29,7 @@ class CreateEmployeeDto {
     basicSalary;
     companyId;
     managerId;
+    status;
     gender;
     employmentType;
     active;
@@ -63,6 +65,12 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "designation", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true, required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], CreateEmployeeDto.prototype, "canSelfEdit", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: '2024-01-01', description: 'Joined Date', required: false }),
     (0, class_validator_1.IsOptional)(),
@@ -116,6 +124,12 @@ __decorate([
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "managerId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'ACTIVE', description: 'Employment Status', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "status", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ enum: employee_enum_1.Gender, example: employee_enum_1.Gender.MALE }),
     (0, class_validator_1.IsEnum)(employee_enum_1.Gender),

@@ -1,10 +1,10 @@
-import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
+import { PartialType, ApiProperty } from '@nestjs/swagger';
 import { CreateEmployeeDto } from './create-employee.dto';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsBoolean } from 'class-validator';
 
 export class UpdateEmployeeDto extends PartialType(CreateEmployeeDto) {
-    @ApiPropertyOptional({ example: 'ACTIVE', description: 'Employment Status' })
+    @ApiProperty({ example: true, required: false })
     @IsOptional()
-    @IsString()
-    status?: string;
+    @IsBoolean()
+    canSelfEdit?: boolean;
 }

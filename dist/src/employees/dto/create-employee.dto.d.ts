@@ -5,6 +5,7 @@ export declare class CreateEmployeeDto {
     nameWithInitials: string;
     fullName: string;
     designation?: string;
+    canSelfEdit?: boolean;
     joinedDate?: string;
     resignedDate?: string;
     remark?: string;
@@ -14,6 +15,7 @@ export declare class CreateEmployeeDto {
     basicSalary: number;
     companyId: string;
     managerId?: string;
+    status?: string;
     gender?: Gender;
     employmentType?: EmploymentType;
     active?: boolean;
