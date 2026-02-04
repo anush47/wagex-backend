@@ -224,10 +224,11 @@ export class EmployeesService {
     let tempPassword: string | undefined;
 
     // 1. Resolve User ID (Local or Remote)
+    // 1. Resolve User ID (Local or Remote)
     const localUser = await this.prisma.user.findUnique({ where: { email } });
 
     if (localUser) {
-      supabaseUid = localUser.id;
+      throw new BadRequestException('A user account with this email already exists.');
     } else {
       // Create/Fetch from Supabase
       if (!this.supabaseAdmin) throw new Error('Supabase Admin not configured');
@@ -246,12 +247,7 @@ export class EmployeesService {
       if (createError) {
         if (createError.message.includes('already registered')) {
           // User exists in Supabase but not locally
-          const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
-          const existing = listData?.users.find((u: any) => u.email === email);
-          if (!existing) throw new Error('User exists in Supabase but could not be retrieved.');
-
-          supabaseUid = existing.id;
-          tempPassword = undefined; // Do not show password for existing user
+          throw new BadRequestException('A user account with this email already exists in the identity provider.');
         } else {
           this.logger.error(`Supabase Create Failed: ${createError.message}`);
           throw new BadRequestException(`Failed to create user: ${createError.message}`);

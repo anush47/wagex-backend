@@ -212,7 +212,7 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
         let tempPassword;
         const localUser = await this.prisma.user.findUnique({ where: { email } });
         if (localUser) {
-            supabaseUid = localUser.id;
+            throw new common_1.BadRequestException('A user account with this email already exists.');
         }
         else {
             if (!this.supabaseAdmin)
@@ -229,12 +229,7 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             });
             if (createError) {
                 if (createError.message.includes('already registered')) {
-                    const { data: listData } = await this.supabaseAdmin.auth.admin.listUsers();
-                    const existing = listData?.users.find((u) => u.email === email);
-                    if (!existing)
-                        throw new Error('User exists in Supabase but could not be retrieved.');
-                    supabaseUid = existing.id;
-                    tempPassword = undefined;
+                    throw new common_1.BadRequestException('A user account with this email already exists in the identity provider.');
                 }
                 else {
                     this.logger.error(`Supabase Create Failed: ${createError.message}`);
