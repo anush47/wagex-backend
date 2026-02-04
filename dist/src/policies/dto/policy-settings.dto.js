@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PolicySettingsDto = exports.PayrollSettingsConfigDto = exports.LateDeductionType = exports.UnpaidLeaveAction = exports.PayrollCalculationMethod = exports.PayCycleFrequency = exports.SalaryComponentsConfigDto = exports.PayrollComponentDto = exports.ShiftsConfigDto = exports.ShiftDto = exports.PayrollComponentCategory = exports.PayrollComponentType = exports.ShiftSelectionPolicy = void 0;
+exports.PolicySettingsDto = exports.WorkingDaysConfigDto = exports.DailyWorkConfigDto = exports.HalfDayShift = exports.WorkDayType = exports.PayrollSettingsConfigDto = exports.LateDeductionType = exports.UnpaidLeaveAction = exports.PayrollCalculationMethod = exports.PayCycleFrequency = exports.SalaryComponentsConfigDto = exports.PayrollComponentDto = exports.ShiftsConfigDto = exports.ShiftDto = exports.PayrollComponentCategory = exports.PayrollComponentType = exports.ShiftSelectionPolicy = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
@@ -296,11 +296,55 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], PayrollSettingsConfigDto.prototype, "lateDeductionValue", void 0);
+var WorkDayType;
+(function (WorkDayType) {
+    WorkDayType["FULL"] = "FULL";
+    WorkDayType["HALF"] = "HALF";
+    WorkDayType["OFF"] = "OFF";
+})(WorkDayType || (exports.WorkDayType = WorkDayType = {}));
+var HalfDayShift;
+(function (HalfDayShift) {
+    HalfDayShift["FIRST"] = "FIRST";
+    HalfDayShift["LAST"] = "LAST";
+})(HalfDayShift || (exports.HalfDayShift = HalfDayShift = {}));
+class DailyWorkConfigDto {
+    type;
+    halfDayShift;
+}
+exports.DailyWorkConfigDto = DailyWorkConfigDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: WorkDayType }),
+    (0, class_validator_1.IsEnum)(WorkDayType),
+    __metadata("design:type", String)
+], DailyWorkConfigDto.prototype, "type", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: HalfDayShift }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(HalfDayShift),
+    __metadata("design:type", String)
+], DailyWorkConfigDto.prototype, "halfDayShift", void 0);
+class WorkingDaysConfigDto {
+    defaultPattern;
+    isDynamic;
+}
+exports.WorkingDaysConfigDto = WorkingDaysConfigDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Default generic pattern for standard week (MON-SUN)' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], WorkingDaysConfigDto.prototype, "defaultPattern", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Enable week-specific override patterns' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], WorkingDaysConfigDto.prototype, "isDynamic", void 0);
 class PolicySettingsDto {
     shifts;
     attendance;
     salaryComponents;
     payrollConfiguration;
+    workingDays;
 }
 exports.PolicySettingsDto = PolicySettingsDto;
 __decorate([
@@ -329,4 +373,11 @@ __decorate([
     (0, class_transformer_1.Type)(() => PayrollSettingsConfigDto),
     __metadata("design:type", PayrollSettingsConfigDto)
 ], PolicySettingsDto.prototype, "payrollConfiguration", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ type: WorkingDaysConfigDto, description: 'Working days configuration' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateNested)(),
+    (0, class_transformer_1.Type)(() => WorkingDaysConfigDto),
+    __metadata("design:type", WorkingDaysConfigDto)
+], PolicySettingsDto.prototype, "workingDays", void 0);
 //# sourceMappingURL=policy-settings.dto.js.map

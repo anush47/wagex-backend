@@ -213,6 +213,39 @@ export class PayrollSettingsConfigDto {
     lateDeductionValue: number;
 }
 
+export enum WorkDayType {
+    FULL = 'FULL',
+    HALF = 'HALF',
+    OFF = 'OFF'
+}
+
+export enum HalfDayShift {
+    FIRST = 'FIRST',
+    LAST = 'LAST'
+}
+
+export class DailyWorkConfigDto {
+    @ApiProperty({ enum: WorkDayType })
+    @IsEnum(WorkDayType)
+    type: WorkDayType;
+
+    @ApiPropertyOptional({ enum: HalfDayShift })
+    @IsOptional()
+    @IsEnum(HalfDayShift)
+    halfDayShift?: HalfDayShift;
+}
+
+export class WorkingDaysConfigDto {
+    @ApiProperty({ description: 'Default generic pattern for standard week (MON-SUN)' })
+    @IsOptional()
+    defaultPattern?: Record<string, DailyWorkConfigDto>;
+
+    @ApiProperty({ description: 'Enable week-specific override patterns' })
+    @IsOptional()
+    @IsBoolean()
+    isDynamic?: boolean;
+}
+
 export class PolicySettingsDto {
     @ApiPropertyOptional({ type: ShiftsConfigDto, description: 'Shifts configuration' })
     @IsOptional()
@@ -236,4 +269,10 @@ export class PolicySettingsDto {
     @ValidateNested()
     @Type(() => PayrollSettingsConfigDto)
     payrollConfiguration?: PayrollSettingsConfigDto;
+
+    @ApiPropertyOptional({ type: WorkingDaysConfigDto, description: 'Working days configuration' })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => WorkingDaysConfigDto)
+    workingDays?: WorkingDaysConfigDto;
 }
