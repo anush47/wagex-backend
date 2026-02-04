@@ -155,6 +155,19 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             }
         };
     }
+    async findMe(userId) {
+        const employee = await this.prisma.employee.findFirst({
+            where: { userId },
+            include: {
+                company: true,
+                user: true,
+            },
+        });
+        if (!employee) {
+            throw new common_1.ForbiddenException('Employee record not found for this user.');
+        }
+        return employee;
+    }
     async findOne(id) {
         const employee = await this.prisma.employee.findUnique({
             where: { id },

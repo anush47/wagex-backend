@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -145,6 +145,22 @@ export class EmployeesService {
         totalPages: Math.ceil(total / limit)
       }
     };
+  }
+
+  async findMe(userId: string) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { userId },
+      include: {
+        company: true,
+        user: true,
+      },
+    });
+
+    if (!employee) {
+      throw new ForbiddenException('Employee record not found for this user.');
+    }
+
+    return employee;
   }
 
   async findOne(id: string): Promise<Employee> {

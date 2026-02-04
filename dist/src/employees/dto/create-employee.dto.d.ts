@@ -18,5 +18,7 @@ export declare class CreateEmployeeDto {
     status?: string;
     gender?: Gender;
     employmentType?: EmploymentType;
+    photo?: string;
+    files?: any;
     active?: boolean;
 }

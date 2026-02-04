@@ -21,6 +21,8 @@ export declare class Employee implements PrismaEmployee {
     gender: Gender;
     employmentType: EmploymentType;
     canSelfEdit: boolean;
+    photo: string | null;
+    files: any;
     createdAt: Date;
     updatedAt: Date;
 }

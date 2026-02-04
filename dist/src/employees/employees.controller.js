@@ -40,6 +40,9 @@ let EmployeesController = EmployeesController_1 = class EmployeesController {
         }
         return this.employeesService.create(createEmployeeDto);
     }
+    async getMe(req) {
+        return this.employeesService.findMe(req.user.id);
+    }
     findAll(queryDto, req) {
         return this.employeesService.findAll(queryDto.companyId, queryDto, req.user);
     }
@@ -62,11 +65,18 @@ let EmployeesController = EmployeesController_1 = class EmployeesController {
             if (!hasAccess) {
                 throw new common_1.ForbiddenException('You do not have access to this employee.');
             }
-            if (updateEmployeeDto.companyId &&
-                updateEmployeeDto.companyId !== employee.companyId) {
-                const hasNewAccess = user.memberships?.some((m) => m.companyId === updateEmployeeDto.companyId);
-                if (!hasNewAccess) {
-                    throw new common_1.ForbiddenException('You do not have access to the target company.');
+        }
+        else if (user.role === client_1.Role.EMPLOYEE) {
+            if (employee.userId !== user.id) {
+                throw new common_1.ForbiddenException('You can only update your own profile.');
+            }
+            if (!employee.canSelfEdit) {
+                throw new common_1.ForbiddenException('Self-editing is disabled for your account.');
+            }
+            const restrictedFields = ['basicSalary', 'status', 'employeeNo', 'companyId', 'userId', 'canSelfEdit'];
+            for (const field of restrictedFields) {
+                if (updateEmployeeDto[field] !== undefined) {
+                    throw new common_1.ForbiddenException(`You are not allowed to modify the field: ${field}`);
                 }
             }
         }
@@ -120,6 +130,16 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], EmployeesController.prototype, "create", null);
 __decorate([
+    (0, common_1.Get)('me'),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER, client_1.Role.EMPLOYEE),
+    (0, swagger_1.ApiOperation)({ summary: 'Get current employee profile' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Return current employee.' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], EmployeesController.prototype, "getMe", null);
+__decorate([
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER),
     (0, permissions_decorator_1.Permissions)(permissions_1.Permission.MANAGE_EMPLOYEES),
@@ -145,7 +165,7 @@ __decorate([
 ], EmployeesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Put)(':id'),
-    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN, client_1.Role.EMPLOYER, client_1.Role.EMPLOYEE),
     (0, swagger_1.ApiOperation)({ summary: 'Update employee' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Employee updated.' }),
     __param(0, (0, common_1.Param)('id')),

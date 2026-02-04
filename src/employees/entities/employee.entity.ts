@@ -63,6 +63,12 @@ export class Employee implements PrismaEmployee {
     @ApiProperty({ example: true, description: 'Whether the employee can edit their own details' })
     canSelfEdit: boolean;
 
+    @ApiProperty({ example: 'path/to/photo.jpg', nullable: true })
+    photo: string | null;
+
+    @ApiProperty({ example: [], description: 'Employee files' })
+    files: any;
+
     @ApiProperty()
     createdAt: Date;
 

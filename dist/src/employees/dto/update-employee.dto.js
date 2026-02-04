@@ -15,6 +15,8 @@ const create_employee_dto_1 = require("./create-employee.dto");
 const class_validator_1 = require("class-validator");
 class UpdateEmployeeDto extends (0, swagger_1.PartialType)(create_employee_dto_1.CreateEmployeeDto) {
     canSelfEdit;
+    photo;
+    files;
 }
 exports.UpdateEmployeeDto = UpdateEmployeeDto;
 __decorate([
@@ -23,4 +25,15 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], UpdateEmployeeDto.prototype, "canSelfEdit", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'path/to/photo.jpg', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateEmployeeDto.prototype, "photo", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: [], required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], UpdateEmployeeDto.prototype, "files", void 0);
 //# sourceMappingURL=update-employee.dto.js.map

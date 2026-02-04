@@ -32,6 +32,8 @@ class CreateEmployeeDto {
     status;
     gender;
     employmentType;
+    photo;
+    files;
     active;
 }
 exports.CreateEmployeeDto = CreateEmployeeDto;
@@ -142,6 +144,17 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "employmentType", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'path/to/photo.jpg', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "photo", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: [], required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], CreateEmployeeDto.prototype, "files", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: true, description: 'Portal Access (User Active Status)', required: false }),
     (0, class_validator_1.IsOptional)(),

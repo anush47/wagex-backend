@@ -140,6 +140,8 @@ model Employee {
   reports    Employee[] @relation("EmployeeManager")
   
   canSelfEdit Boolean   @default(true)
+  photo       String?
+  files       Json?     @default("[]") // [{ key: string, name: string, url: string }]
 
   // Future relations for Payroll, Attendance, etc.
   // payrolls Payroll[]

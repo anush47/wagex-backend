@@ -38,6 +38,14 @@ export class EmployeesController {
     return this.employeesService.create(createEmployeeDto);
   }
 
+  @Get('me')
+  @Roles(Role.ADMIN, Role.EMPLOYER, Role.EMPLOYEE)
+  @ApiOperation({ summary: 'Get current employee profile' })
+  @ApiResponse({ status: 200, description: 'Return current employee.' })
+  async getMe(@Request() req) {
+    return this.employeesService.findMe(req.user.id);
+  }
+
   @Get()
   @Roles(Role.ADMIN, Role.EMPLOYER)
   @Permissions(Permission.MANAGE_EMPLOYEES)
@@ -70,7 +78,7 @@ export class EmployeesController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @Roles(Role.ADMIN, Role.EMPLOYER, Role.EMPLOYEE)
   @ApiOperation({ summary: 'Update employee' })
   @ApiResponse({ status: 200, description: 'Employee updated.' })
   async update(
@@ -81,7 +89,7 @@ export class EmployeesController {
     const user = req.user;
     const employee = await this.employeesService.findOne(id);
 
-    // Tenancy Check
+    // Tenancy & Permission Checks
     if (user.role === Role.EMPLOYER) {
       const hasAccess = user.memberships?.some(
         (m) => m.companyId === employee.companyId,
@@ -89,19 +97,20 @@ export class EmployeesController {
       if (!hasAccess) {
         throw new ForbiddenException('You do not have access to this employee.');
       }
+    } else if (user.role === Role.EMPLOYEE) {
+      // Employee self-update check
+      if (employee.userId !== user.id) {
+        throw new ForbiddenException('You can only update your own profile.');
+      }
+      if (!employee.canSelfEdit) {
+        throw new ForbiddenException('Self-editing is disabled for your account.');
+      }
 
-      // If they are trying to change the companyId, verify access to the NEW company too
-      if (
-        updateEmployeeDto.companyId &&
-        updateEmployeeDto.companyId !== employee.companyId
-      ) {
-        const hasNewAccess = user.memberships?.some(
-          (m) => m.companyId === updateEmployeeDto.companyId,
-        );
-        if (!hasNewAccess) {
-          throw new ForbiddenException(
-            'You do not have access to the target company.',
-          );
+      // Restrict fields for employees (prevent them from changing salary, status, etc.)
+      const restrictedFields = ['basicSalary', 'status', 'employeeNo', 'companyId', 'userId', 'canSelfEdit'];
+      for (const field of restrictedFields) {
+        if (updateEmployeeDto[field] !== undefined) {
+          throw new ForbiddenException(`You are not allowed to modify the field: ${field}`);
         }
       }
     }

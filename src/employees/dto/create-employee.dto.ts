@@ -92,6 +92,15 @@ export class CreateEmployeeDto {
     @IsOptional()
     employmentType?: EmploymentType;
 
+    @ApiProperty({ example: 'path/to/photo.jpg', required: false })
+    @IsOptional()
+    @IsString()
+    photo?: string;
+
+    @ApiProperty({ example: [], required: false })
+    @IsOptional()
+    files?: any;
+
     @ApiProperty({ example: true, description: 'Portal Access (User Active Status)', required: false })
     @IsOptional()
     @IsBoolean()
