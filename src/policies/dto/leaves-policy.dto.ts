@@ -1,7 +1,7 @@
 import { IsArray, IsBoolean, IsEnum, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EmploymentType } from '../../common/enums/employee.enum';
+import { EmploymentType, Gender } from '../../common/enums/employee.enum';
 
 export enum AccrualFrequency {
     WEEKLY = 'WEEKLY',
@@ -17,11 +17,6 @@ export enum EncashmentType {
     FIXED_AMOUNT = 'FIXED_AMOUNT'
 }
 
-export enum PolicyGenderTarget {
-    MALE = 'MALE',
-    FEMALE = 'FEMALE',
-    ALL = 'ALL'
-}
 
 export class LeaveTypeDto {
     @ApiProperty({ example: 'leave-1' })
@@ -36,9 +31,15 @@ export class LeaveTypeDto {
     @IsString()
     code: string;
 
-    @ApiProperty({ enum: PolicyGenderTarget, default: PolicyGenderTarget.ALL })
-    @IsEnum(PolicyGenderTarget)
-    applicableGender: PolicyGenderTarget;
+    @ApiPropertyOptional({ example: '#3b82f6' })
+    @IsOptional()
+    @IsString()
+    color?: string;
+
+    @ApiProperty({ enum: Gender, isArray: true, example: [Gender.MALE, Gender.FEMALE] })
+    @IsArray()
+    @IsEnum(Gender, { each: true })
+    applicableGenders: Gender[];
 
     @ApiProperty({ enum: EmploymentType, isArray: true, example: [EmploymentType.PERMANENT] })
     @IsArray()
@@ -83,6 +84,11 @@ export class LeaveTypeDto {
     @IsOptional()
     @IsNumber()
     minDelayBetweenRequestsDays?: number;
+
+    @ApiPropertyOptional({ example: 7, description: 'Minimum notice days required for this leave' })
+    @IsOptional()
+    @IsNumber()
+    minNoticeDays?: number;
 
     @ApiPropertyOptional({ default: false, description: 'Allow applying for past dates' })
     @IsOptional()

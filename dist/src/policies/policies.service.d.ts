@@ -9,50 +9,50 @@ export declare class PoliciesService {
     constructor(prisma: PrismaService);
     create(createPolicyDto: CreatePolicyDto): Promise<Policy>;
     findAll(): Promise<{
-        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
     }[]>;
     findOne(id: string): Promise<{
-        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
     }>;
     findByCompany(companyId: string): Promise<{
-        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
     } | null>;
     findByEmployee(employeeId: string): Promise<{
-        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
     } | null>;
     update(id: string, updatePolicyDto: UpdatePolicyDto): Promise<{
-        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
     }>;
     remove(id: string): Promise<{
-        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -69,10 +69,10 @@ export declare class PoliciesService {
         employeeOverride: PolicySettingsDto;
     }>;
     removeByEmployee(employeeId: string): Promise<{
-        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
     }>;

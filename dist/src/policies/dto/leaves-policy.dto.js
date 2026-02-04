@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LeavesConfigDto = exports.LeaveTypeDto = exports.PolicyGenderTarget = exports.EncashmentType = exports.AccrualFrequency = void 0;
+exports.LeavesConfigDto = exports.LeaveTypeDto = exports.EncashmentType = exports.AccrualFrequency = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
@@ -28,17 +28,12 @@ var EncashmentType;
     EncashmentType["MULTIPLIER_BASED"] = "MULTIPLIER_BASED";
     EncashmentType["FIXED_AMOUNT"] = "FIXED_AMOUNT";
 })(EncashmentType || (exports.EncashmentType = EncashmentType = {}));
-var PolicyGenderTarget;
-(function (PolicyGenderTarget) {
-    PolicyGenderTarget["MALE"] = "MALE";
-    PolicyGenderTarget["FEMALE"] = "FEMALE";
-    PolicyGenderTarget["ALL"] = "ALL";
-})(PolicyGenderTarget || (exports.PolicyGenderTarget = PolicyGenderTarget = {}));
 class LeaveTypeDto {
     id;
     name;
     code;
-    applicableGender;
+    color;
+    applicableGenders;
     applicableEmploymentTypes;
     requiresApproval;
     approvalRequiredIfConsecutiveMoreThan;
@@ -48,6 +43,7 @@ class LeaveTypeDto {
     accrualFrequency;
     customFrequencyDays;
     minDelayBetweenRequestsDays;
+    minNoticeDays;
     canApplyBackdated;
     maxConsecutiveDays;
     requireDocuments;
@@ -76,10 +72,17 @@ __decorate([
     __metadata("design:type", String)
 ], LeaveTypeDto.prototype, "code", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ enum: PolicyGenderTarget, default: PolicyGenderTarget.ALL }),
-    (0, class_validator_1.IsEnum)(PolicyGenderTarget),
+    (0, swagger_1.ApiPropertyOptional)({ example: '#3b82f6' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], LeaveTypeDto.prototype, "applicableGender", void 0);
+], LeaveTypeDto.prototype, "color", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: employee_enum_1.Gender, isArray: true, example: [employee_enum_1.Gender.MALE, employee_enum_1.Gender.FEMALE] }),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsEnum)(employee_enum_1.Gender, { each: true }),
+    __metadata("design:type", Array)
+], LeaveTypeDto.prototype, "applicableGenders", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ enum: employee_enum_1.EmploymentType, isArray: true, example: [employee_enum_1.EmploymentType.PERMANENT] }),
     (0, class_validator_1.IsArray)(),
@@ -130,6 +133,12 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], LeaveTypeDto.prototype, "minDelayBetweenRequestsDays", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 7, description: 'Minimum notice days required for this leave' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], LeaveTypeDto.prototype, "minNoticeDays", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ default: false, description: 'Allow applying for past dates' }),
     (0, class_validator_1.IsOptional)(),

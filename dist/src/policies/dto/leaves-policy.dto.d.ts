@@ -1,4 +1,4 @@
-import { EmploymentType } from '../../common/enums/employee.enum';
+import { EmploymentType, Gender } from '../../common/enums/employee.enum';
 export declare enum AccrualFrequency {
     WEEKLY = "WEEKLY",
     MONTHLY = "MONTHLY",
@@ -11,16 +11,12 @@ export declare enum EncashmentType {
     MULTIPLIER_BASED = "MULTIPLIER_BASED",
     FIXED_AMOUNT = "FIXED_AMOUNT"
 }
-export declare enum PolicyGenderTarget {
-    MALE = "MALE",
-    FEMALE = "FEMALE",
-    ALL = "ALL"
-}
 export declare class LeaveTypeDto {
     id: string;
     name: string;
     code: string;
-    applicableGender: PolicyGenderTarget;
+    color?: string;
+    applicableGenders: Gender[];
     applicableEmploymentTypes: EmploymentType[];
     requiresApproval: boolean;
     approvalRequiredIfConsecutiveMoreThan?: number;
@@ -30,6 +26,7 @@ export declare class LeaveTypeDto {
     accrualFrequency: AccrualFrequency;
     customFrequencyDays?: number;
     minDelayBetweenRequestsDays?: number;
+    minNoticeDays?: number;
     canApplyBackdated?: boolean;
     maxConsecutiveDays?: number;
     requireDocuments?: boolean;
