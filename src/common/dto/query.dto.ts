@@ -42,4 +42,9 @@ export class QueryDto {
     @IsOptional()
     @IsString()
     companyId?: string;
+
+    @ApiPropertyOptional({ example: 'ACTIVE', description: 'Filter by status (e.g. ACTIVE, INACTIVE, ALL)' })
+    @IsOptional()
+    @IsString()
+    status?: string;
 }

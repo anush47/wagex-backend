@@ -9,4 +9,5 @@ export declare class QueryDto {
     sortBy?: string;
     sortOrder?: SortOrder;
     companyId?: string;
+    status?: string;
 }

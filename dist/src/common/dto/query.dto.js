@@ -25,6 +25,7 @@ class QueryDto {
     sortBy;
     sortOrder = SortOrder.ASC;
     companyId;
+    status;
 }
 exports.QueryDto = QueryDto;
 __decorate([
@@ -68,4 +69,10 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], QueryDto.prototype, "companyId", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'ACTIVE', description: 'Filter by status (e.g. ACTIVE, INACTIVE, ALL)' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], QueryDto.prototype, "status", void 0);
 //# sourceMappingURL=query.dto.js.map

@@ -43,11 +43,23 @@ export class EmployeesService {
   }
 
   async findAll(companyId?: string, queryDto?: QueryDto, user?: any): Promise<PaginatedResponse<Employee>> {
-    const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto || {};
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      sortBy = 'employeeNo',
+      sortOrder = 'asc',
+      status = 'ACTIVE'
+    } = queryDto || {};
     const skip = (page - 1) * limit;
 
     // Build where clause
     const where: any = {};
+
+    // Status filtering logic
+    if (status && status.toUpperCase() !== 'ALL') {
+      where.status = status.toUpperCase();
+    }
 
     if (companyId) {
       // If specific company requested, filter by it
