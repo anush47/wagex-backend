@@ -26,6 +26,15 @@ let PoliciesService = PoliciesService_1 = class PoliciesService {
             throw new Error('Policy must be attached to either a Company or an Employee');
         }
         if (employeeId) {
+            const isEmpty = !settings || Object.keys(settings).length === 0;
+            if (isEmpty) {
+                try {
+                    await this.prisma.policy.delete({ where: { employeeId } });
+                }
+                catch (e) {
+                }
+                return null;
+            }
             return this.prisma.policy.upsert({
                 where: { employeeId },
                 update: { settings: settings },
@@ -113,17 +122,11 @@ let PoliciesService = PoliciesService_1 = class PoliciesService {
         const companyPolicy = employee.company?.policy?.settings || {};
         const employeeOverride = employee.policy?.settings || {};
         const effectivePolicy = await this.getEffectivePolicy(employeeId);
-        const overriddenFields = [];
-        if (employeeOverride.shifts)
-            overriddenFields.push('shifts');
-        if (employeeOverride.attendance)
-            overriddenFields.push('attendance');
-        if (employeeOverride.salaryComponents)
-            overriddenFields.push('salaryComponents');
+        const overriddenFields = Object.keys(employeeOverride);
         return {
             effective: effectivePolicy,
             source: {
-                isOverridden: !!employee.policy,
+                isOverridden: overriddenFields.length > 0,
                 overriddenFields,
                 companyPolicyId: employee.company?.policy?.id,
                 employeePolicyId: employee.policy?.id

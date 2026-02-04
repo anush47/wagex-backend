@@ -28,6 +28,19 @@ export class PoliciesService {
          * The 'companyId' passed in the DTO is purely for Permission Guard validation.
          */
         if (employeeId) {
+            // If settings are empty, we should remove the override record entirely
+            const isEmpty = !settings || Object.keys(settings).length === 0;
+
+            if (isEmpty) {
+                // Return null or success if record deleted/not found
+                try {
+                    await this.prisma.policy.delete({ where: { employeeId } });
+                } catch (e) {
+                    // Ignore if already doesn't exist
+                }
+                return null as any;
+            }
+
             // Check if override already exists, if so, update it (Upsert logic)
             return this.prisma.policy.upsert({
                 where: { employeeId },
@@ -156,15 +169,12 @@ export class PoliciesService {
 
         // Calculate "Diff" / Metadata
         // We check which keys exist in the employeeOverride object.
-        const overriddenFields: string[] = [];
-        if (employeeOverride.shifts) overriddenFields.push('shifts');
-        if (employeeOverride.attendance) overriddenFields.push('attendance');
-        if (employeeOverride.salaryComponents) overriddenFields.push('salaryComponents');
+        const overriddenFields = Object.keys(employeeOverride);
 
         return {
             effective: effectivePolicy,
             source: {
-                isOverridden: !!employee.policy,
+                isOverridden: overriddenFields.length > 0,
                 overriddenFields,
                 companyPolicyId: employee.company?.policy?.id,
                 employeePolicyId: employee.policy?.id
