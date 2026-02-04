@@ -30,7 +30,7 @@ class CreateEmployeeDto {
     managerId;
     gender;
     employmentType;
-    allowLogin;
+    active;
 }
 exports.CreateEmployeeDto = CreateEmployeeDto;
 __decorate([
@@ -129,9 +129,9 @@ __decorate([
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "employmentType", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: true, description: 'Allow Login', required: false }),
+    (0, swagger_1.ApiProperty)({ example: true, description: 'Portal Access (User Active Status)', required: false }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
-], CreateEmployeeDto.prototype, "allowLogin", void 0);
+], CreateEmployeeDto.prototype, "active", void 0);
 //# sourceMappingURL=create-employee.dto.js.map

@@ -2,7 +2,6 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '@prisma/client';
-import { DEFAULT_EMPLOYER_PERMISSIONS } from './permissions';
 
 @Injectable()
 export class AuthService {
@@ -11,7 +10,7 @@ export class AuthService {
     constructor(private readonly prisma: PrismaService) { }
 
     async registerUser(supabaseUid: string, email: string, dto: RegisterDto): Promise<{ user: any; company?: any }> {
-        this.logger.log(`Registering user: ${email} with role: ${dto.role}`);
+        this.logger.log(`Registering user: ${email} with role: ${Role.EMPLOYER}`);
 
         // Check for duplicate registration
         const existingUser = await this.prisma.user.findUnique({ where: { id: supabaseUid } });
@@ -23,7 +22,7 @@ export class AuthService {
             throw new BadRequestException('Cannot register as ADMIN directly.');
         }
 
-        // Create user (company creation is now optional and can be done separately)
+        // Create user
         const user = await this.prisma.user.create({
             data: {
                 id: supabaseUid,
@@ -32,7 +31,8 @@ export class AuthService {
                 fullName: dto.fullName,
                 address: dto.address,
                 phone: dto.phone,
-                role: dto.role,
+                role: Role.EMPLOYER,
+                active: false, // Defaulting to false as requested (requires approval/activation)
             },
         });
 

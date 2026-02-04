@@ -158,6 +158,10 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
     async findOne(id) {
         const employee = await this.prisma.employee.findUnique({
             where: { id },
+            include: {
+                user: true,
+                company: true
+            }
         });
         if (!employee) {
             this.logger.error(`Employee not found with ID: ${id}`);
@@ -167,20 +171,23 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
     }
     async update(id, updateEmployeeDto) {
         await this.findOne(id);
-        const { companyId, ...updateData } = updateEmployeeDto;
+        const { companyId, active, ...updateData } = updateEmployeeDto;
         this.logger.log(`Updating employee ID: ${id}`);
         const updated = await this.prisma.employee.update({
             where: { id },
             data: updateData,
         });
-        if (updateEmployeeDto.allowLogin !== undefined && updated.userId && updated.companyId) {
-            await this.prisma.userCompany.updateMany({
-                where: {
-                    userId: updated.userId,
-                    companyId: updated.companyId
-                },
-                data: { active: updateEmployeeDto.allowLogin }
+        if (active !== undefined && updated.userId) {
+            await this.prisma.user.update({
+                where: { id: updated.userId },
+                data: { active: active }
             });
+            if (updated.companyId) {
+                await this.prisma.userCompany.updateMany({
+                    where: { userId: updated.userId, companyId: updated.companyId },
+                    data: { active: active }
+                });
+            }
         }
         return updated;
     }

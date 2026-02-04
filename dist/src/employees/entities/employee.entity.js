@@ -32,7 +32,6 @@ class Employee {
     userId;
     gender;
     employmentType;
-    allowLogin;
     createdAt;
     updatedAt;
 }
@@ -113,10 +112,6 @@ __decorate([
     (0, swagger_1.ApiProperty)({ enum: employee_enum_1.EmploymentType, example: employee_enum_1.EmploymentType.PERMANENT }),
     __metadata("design:type", String)
 ], Employee.prototype, "employmentType", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: true }),
-    __metadata("design:type", Boolean)
-], Employee.prototype, "allowLogin", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

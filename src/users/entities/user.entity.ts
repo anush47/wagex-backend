@@ -25,7 +25,7 @@ export class User implements PrismaUser {
     @ApiProperty({ enum: Role, example: Role.EMPLOYEE, description: 'User role' })
     role: Role;
 
-    @ApiProperty({ example: true, description: 'Is account active' })
+    @ApiProperty({ example: true, description: 'Is account active and allowed to login' })
     active: boolean;
 
     @ApiProperty({ type: () => [UserCompany], description: 'Company memberships' })

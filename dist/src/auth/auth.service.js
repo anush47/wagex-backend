@@ -21,7 +21,7 @@ let AuthService = AuthService_1 = class AuthService {
         this.prisma = prisma;
     }
     async registerUser(supabaseUid, email, dto) {
-        this.logger.log(`Registering user: ${email} with role: ${dto.role}`);
+        this.logger.log(`Registering user: ${email} with role: ${client_1.Role.EMPLOYER}`);
         const existingUser = await this.prisma.user.findUnique({ where: { id: supabaseUid } });
         if (existingUser) {
             throw new common_1.BadRequestException('User already registered.');
@@ -37,7 +37,8 @@ let AuthService = AuthService_1 = class AuthService {
                 fullName: dto.fullName,
                 address: dto.address,
                 phone: dto.phone,
-                role: dto.role,
+                role: client_1.Role.EMPLOYER,
+                active: false,
             },
         });
         return { user };

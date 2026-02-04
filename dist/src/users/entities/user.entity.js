@@ -56,7 +56,7 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "role", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: true, description: 'Is account active' }),
+    (0, swagger_1.ApiProperty)({ example: true, description: 'Is account active and allowed to login' }),
     __metadata("design:type", Boolean)
 ], User.prototype, "active", void 0);
 __decorate([

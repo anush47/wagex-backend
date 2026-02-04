@@ -20,7 +20,8 @@ class RegisterDto extends base_user_profile_dto_1.BaseUserProfileDto {
 }
 exports.RegisterDto = RegisterDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: client_1.Role.EMPLOYER, enum: client_1.Role, description: 'Role to register as (EMPLOYER/EMPLOYEE)' }),
+    (0, swagger_1.ApiProperty)({ example: client_1.Role.EMPLOYER, enum: client_1.Role, description: 'Role to register as (EMPLOYER/EMPLOYEE)', required: false }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(client_1.Role),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "role", void 0);

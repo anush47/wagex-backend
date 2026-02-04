@@ -150,6 +150,10 @@ export class EmployeesService {
   async findOne(id: string): Promise<Employee> {
     const employee = await this.prisma.employee.findUnique({
       where: { id },
+      include: {
+        user: true, // Include linked user to access active status
+        company: true
+      }
     });
 
     if (!employee) {
@@ -165,7 +169,8 @@ export class EmployeesService {
     await this.findOne(id);
 
     // Filter out fields that shouldn't be updated or cause issues
-    const { companyId, ...updateData } = updateEmployeeDto;
+    // active is now handled via the User relation
+    const { companyId, active, ...updateData } = updateEmployeeDto;
 
     this.logger.log(`Updating employee ID: ${id}`);
     const updated = await this.prisma.employee.update({
@@ -173,15 +178,20 @@ export class EmployeesService {
       data: updateData as any,
     });
 
-    // If allowLogin is toggled, sync to UserCompany membership active state
-    if (updateEmployeeDto.allowLogin !== undefined && updated.userId && updated.companyId) {
-      await this.prisma.userCompany.updateMany({
-        where: {
-          userId: updated.userId,
-          companyId: updated.companyId
-        },
-        data: { active: updateEmployeeDto.allowLogin }
+    // If active status is toggled, update User record
+    if (active !== undefined && updated.userId) {
+      await this.prisma.user.update({
+        where: { id: updated.userId },
+        data: { active: active as boolean }
       });
+
+      // Also sync to UserCompany active state
+      if (updated.companyId) {
+        await this.prisma.userCompany.updateMany({
+          where: { userId: updated.userId, companyId: updated.companyId },
+          data: { active: active as boolean }
+        });
+      }
     }
 
     return updated as unknown as Employee;

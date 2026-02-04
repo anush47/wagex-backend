@@ -82,8 +82,8 @@ export class CreateEmployeeDto {
     @IsOptional()
     employmentType?: EmploymentType;
 
-    @ApiProperty({ example: true, description: 'Allow Login', required: false })
+    @ApiProperty({ example: true, description: 'Portal Access (User Active Status)', required: false })
     @IsOptional()
     @IsBoolean()
-    allowLogin?: boolean;
+    active?: boolean;
 }
