@@ -235,6 +235,10 @@ export class DailyWorkConfigDto {
     halfDayShift?: HalfDayShift;
 }
 
+export enum CalendarType {
+    SL_DEFAULT = 'sl_default'
+}
+
 export class WorkingDaysConfigDto {
     @ApiProperty({ description: 'Default generic pattern for standard week (MON-SUN)' })
     @IsOptional()
@@ -244,6 +248,16 @@ export class WorkingDaysConfigDto {
     @IsOptional()
     @IsBoolean()
     isDynamic?: boolean;
+
+    @ApiPropertyOptional({ description: 'ID of the selected working calendar', default: CalendarType.SL_DEFAULT, enum: CalendarType })
+    @IsOptional()
+    @IsEnum(CalendarType)
+    workingCalendar?: CalendarType;
+
+    @ApiPropertyOptional({ description: 'ID of the selected payroll calendar', default: CalendarType.SL_DEFAULT, enum: CalendarType })
+    @IsOptional()
+    @IsEnum(CalendarType)
+    payrollCalendar?: CalendarType;
 }
 
 export class PolicySettingsDto {

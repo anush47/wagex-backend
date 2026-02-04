@@ -92,9 +92,14 @@ export declare class DailyWorkConfigDto {
     type: WorkDayType;
     halfDayShift?: HalfDayShift;
 }
+export declare enum CalendarType {
+    SL_DEFAULT = "sl_default"
+}
 export declare class WorkingDaysConfigDto {
     defaultPattern?: Record<string, DailyWorkConfigDto>;
     isDynamic?: boolean;
+    workingCalendar?: CalendarType;
+    payrollCalendar?: CalendarType;
 }
 export declare class PolicySettingsDto {
     shifts?: ShiftsConfigDto;

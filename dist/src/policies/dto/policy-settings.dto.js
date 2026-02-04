@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PolicySettingsDto = exports.WorkingDaysConfigDto = exports.DailyWorkConfigDto = exports.HalfDayShift = exports.WorkDayType = exports.PayrollSettingsConfigDto = exports.LateDeductionType = exports.UnpaidLeaveAction = exports.PayrollCalculationMethod = exports.PayCycleFrequency = exports.SalaryComponentsConfigDto = exports.PayrollComponentDto = exports.ShiftsConfigDto = exports.ShiftDto = exports.PayrollComponentCategory = exports.PayrollComponentType = exports.ShiftSelectionPolicy = void 0;
+exports.PolicySettingsDto = exports.WorkingDaysConfigDto = exports.CalendarType = exports.DailyWorkConfigDto = exports.HalfDayShift = exports.WorkDayType = exports.PayrollSettingsConfigDto = exports.LateDeductionType = exports.UnpaidLeaveAction = exports.PayrollCalculationMethod = exports.PayCycleFrequency = exports.SalaryComponentsConfigDto = exports.PayrollComponentDto = exports.ShiftsConfigDto = exports.ShiftDto = exports.PayrollComponentCategory = exports.PayrollComponentType = exports.ShiftSelectionPolicy = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
@@ -323,9 +323,15 @@ __decorate([
     (0, class_validator_1.IsEnum)(HalfDayShift),
     __metadata("design:type", String)
 ], DailyWorkConfigDto.prototype, "halfDayShift", void 0);
+var CalendarType;
+(function (CalendarType) {
+    CalendarType["SL_DEFAULT"] = "sl_default";
+})(CalendarType || (exports.CalendarType = CalendarType = {}));
 class WorkingDaysConfigDto {
     defaultPattern;
     isDynamic;
+    workingCalendar;
+    payrollCalendar;
 }
 exports.WorkingDaysConfigDto = WorkingDaysConfigDto;
 __decorate([
@@ -339,6 +345,18 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], WorkingDaysConfigDto.prototype, "isDynamic", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'ID of the selected working calendar', default: CalendarType.SL_DEFAULT, enum: CalendarType }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(CalendarType),
+    __metadata("design:type", String)
+], WorkingDaysConfigDto.prototype, "workingCalendar", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'ID of the selected payroll calendar', default: CalendarType.SL_DEFAULT, enum: CalendarType }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(CalendarType),
+    __metadata("design:type", String)
+], WorkingDaysConfigDto.prototype, "payrollCalendar", void 0);
 class PolicySettingsDto {
     shifts;
     attendance;
