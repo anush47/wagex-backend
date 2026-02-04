@@ -10,6 +10,7 @@ export declare class CreateEmployeeDto {
     remark?: string;
     address?: string;
     phone?: string;
+    email?: string;
     basicSalary: number;
     companyId: string;
     managerId?: string;

@@ -24,6 +24,7 @@ class CreateEmployeeDto {
     remark;
     address;
     phone;
+    email;
     basicSalary;
     companyId;
     managerId;
@@ -91,6 +92,12 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "phone", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'john@example.com', description: 'Email Address', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "email", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 50000.0, description: 'Basic Salary' }),
     (0, class_validator_1.IsNumber)(),

@@ -53,6 +53,11 @@ export class CreateEmployeeDto {
     @IsString()
     phone?: string;
 
+    @ApiProperty({ example: 'john@example.com', description: 'Email Address', required: false })
+    @IsOptional()
+    @IsString()
+    email?: string;
+
     @ApiProperty({ example: 50000.0, description: 'Basic Salary' })
     @IsNumber()
     basicSalary: number;
