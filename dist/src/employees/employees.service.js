@@ -177,12 +177,28 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             where: { id },
             data: updateData,
         });
-        if (active !== undefined && updated.userId) {
-            await this.prisma.user.update({
-                where: { id: updated.userId },
-                data: { active: active }
-            });
-            if (updated.companyId) {
+        if (updated.userId) {
+            const userUpdate = {};
+            if (active !== undefined)
+                userUpdate.active = active;
+            if (updateData.status && updateData.status !== 'ACTIVE') {
+                userUpdate.active = false;
+            }
+            if (updateData.address !== undefined)
+                userUpdate.address = updateData.address;
+            if (updateData.phone !== undefined)
+                userUpdate.phone = updateData.phone;
+            if (updateData.fullName !== undefined)
+                userUpdate.fullName = updateData.fullName;
+            if (updateData.nameWithInitials !== undefined)
+                userUpdate.nameWithInitials = updateData.nameWithInitials;
+            if (Object.keys(userUpdate).length > 0) {
+                await this.prisma.user.update({
+                    where: { id: updated.userId },
+                    data: userUpdate
+                });
+            }
+            if (active !== undefined && updated.companyId) {
                 await this.prisma.userCompany.updateMany({
                     where: { userId: updated.userId, companyId: updated.companyId },
                     data: { active: active }
@@ -231,7 +247,9 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
                 email_confirm: true,
                 user_metadata: {
                     full_name: employee.fullName,
-                    name_with_initials: employee.nameWithInitials
+                    name_with_initials: employee.nameWithInitials,
+                    phone: employee.phone,
+                    address: employee.address
                 }
             });
             if (createError) {
@@ -249,12 +267,20 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
         }
         await this.prisma.user.upsert({
             where: { id: supabaseUid },
-            update: {},
+            update: {
+                nameWithInitials: employee.nameWithInitials,
+                fullName: employee.fullName,
+                address: employee.address,
+                phone: employee.phone,
+                role: client_1.Role.EMPLOYEE,
+            },
             create: {
                 id: supabaseUid,
                 email: email,
                 nameWithInitials: employee.nameWithInitials,
                 fullName: employee.fullName,
+                address: employee.address,
+                phone: employee.phone,
                 role: client_1.Role.EMPLOYEE,
                 active: true
             }
@@ -270,12 +296,16 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
                     companyId: employee.companyId
                 }
             },
-            update: {},
+            update: {
+                active: true,
+                role: client_1.Role.EMPLOYEE
+            },
             create: {
                 userId: supabaseUid,
                 companyId: employee.companyId,
                 role: client_1.Role.EMPLOYEE,
-                permissions: {}
+                permissions: {},
+                active: true
             }
         });
         return {

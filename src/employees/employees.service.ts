@@ -178,15 +178,30 @@ export class EmployeesService {
       data: updateData as any,
     });
 
-    // If active status is toggled, update User record
-    if (active !== undefined && updated.userId) {
-      await this.prisma.user.update({
-        where: { id: updated.userId },
-        data: { active: active as boolean }
-      });
+    // If active status or other profile fields are toggled, update User record
+    if (updated.userId) {
+      const userUpdate: any = {};
+      if (active !== undefined) userUpdate.active = active as boolean;
 
-      // Also sync to UserCompany active state
-      if (updated.companyId) {
+      // Auto-deactivate portal access if employee status is not ACTIVE
+      if (updateData.status && updateData.status !== 'ACTIVE') {
+        userUpdate.active = false;
+      }
+
+      if (updateData.address !== undefined) userUpdate.address = updateData.address;
+      if (updateData.phone !== undefined) userUpdate.phone = updateData.phone;
+      if (updateData.fullName !== undefined) userUpdate.fullName = updateData.fullName;
+      if (updateData.nameWithInitials !== undefined) userUpdate.nameWithInitials = updateData.nameWithInitials;
+
+      if (Object.keys(userUpdate).length > 0) {
+        await this.prisma.user.update({
+          where: { id: updated.userId },
+          data: userUpdate
+        });
+      }
+
+      // Also sync to UserCompany active state if active changed
+      if (active !== undefined && updated.companyId) {
         await this.prisma.userCompany.updateMany({
           where: { userId: updated.userId, companyId: updated.companyId },
           data: { active: active as boolean }
@@ -250,7 +265,9 @@ export class EmployeesService {
         email_confirm: true,
         user_metadata: {
           full_name: employee.fullName,
-          name_with_initials: employee.nameWithInitials
+          name_with_initials: employee.nameWithInitials,
+          phone: employee.phone,
+          address: employee.address
         }
       });
 
@@ -271,12 +288,21 @@ export class EmployeesService {
     // We use upsert to handle race conditions or missing local records
     await this.prisma.user.upsert({
       where: { id: supabaseUid },
-      update: {},
+      update: {
+        nameWithInitials: employee.nameWithInitials,
+        fullName: employee.fullName,
+        address: employee.address,
+        phone: employee.phone,
+        role: Role.EMPLOYEE,
+        // We don't overwrite 'active' status on update to avoid accidentally re-enabling blocked users
+      },
       create: {
         id: supabaseUid,
         email: email,
         nameWithInitials: employee.nameWithInitials,
         fullName: employee.fullName,
+        address: employee.address,
+        phone: employee.phone,
         role: Role.EMPLOYEE,
         active: true
       }
@@ -296,12 +322,16 @@ export class EmployeesService {
           companyId: employee.companyId
         }
       },
-      update: {}, // Already exists, do nothing
+      update: {
+        active: true, // Activate membership during provisioning
+        role: Role.EMPLOYEE
+      },
       create: {
         userId: supabaseUid,
         companyId: employee.companyId,
         role: Role.EMPLOYEE,
-        permissions: {}
+        permissions: {},
+        active: true // Active immediately
       }
     });
 
