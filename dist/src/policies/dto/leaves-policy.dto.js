@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LeavesConfigDto = exports.LeaveTypeDto = exports.EncashmentType = exports.AccrualFrequency = void 0;
+exports.LeavesConfigDto = exports.LeaveTypeDto = exports.AccrualMethod = exports.EncashmentType = exports.AccrualFrequency = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
@@ -28,6 +28,11 @@ var EncashmentType;
     EncashmentType["MULTIPLIER_BASED"] = "MULTIPLIER_BASED";
     EncashmentType["FIXED_AMOUNT"] = "FIXED_AMOUNT";
 })(EncashmentType || (exports.EncashmentType = EncashmentType = {}));
+var AccrualMethod;
+(function (AccrualMethod) {
+    AccrualMethod["PRO_RATA"] = "PRO_RATA";
+    AccrualMethod["FULL_UPFRONT"] = "FULL_UPFRONT";
+})(AccrualMethod || (exports.AccrualMethod = AccrualMethod = {}));
 class LeaveTypeDto {
     id;
     name;
@@ -41,6 +46,7 @@ class LeaveTypeDto {
     maxDurationMinutes;
     baseAmount;
     accrualFrequency;
+    accrualMethod;
     customFrequencyDays;
     minDelayBetweenRequestsDays;
     minNoticeDays;
@@ -121,6 +127,15 @@ __decorate([
     (0, class_validator_1.IsEnum)(AccrualFrequency),
     __metadata("design:type", String)
 ], LeaveTypeDto.prototype, "accrualFrequency", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        enum: AccrualMethod,
+        default: AccrualMethod.PRO_RATA,
+        description: 'How to calculate entitlement for mid-period joiners'
+    }),
+    (0, class_validator_1.IsEnum)(AccrualMethod),
+    __metadata("design:type", String)
+], LeaveTypeDto.prototype, "accrualMethod", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: 15, description: 'Interval in days if frequency is CUSTOM' }),
     (0, class_validator_1.IsOptional)(),

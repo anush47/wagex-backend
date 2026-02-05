@@ -11,6 +11,10 @@ export declare enum EncashmentType {
     MULTIPLIER_BASED = "MULTIPLIER_BASED",
     FIXED_AMOUNT = "FIXED_AMOUNT"
 }
+export declare enum AccrualMethod {
+    PRO_RATA = "PRO_RATA",
+    FULL_UPFRONT = "FULL_UPFRONT"
+}
 export declare class LeaveTypeDto {
     id: string;
     name: string;
@@ -24,6 +28,7 @@ export declare class LeaveTypeDto {
     maxDurationMinutes?: number;
     baseAmount: number;
     accrualFrequency: AccrualFrequency;
+    accrualMethod: AccrualMethod;
     customFrequencyDays?: number;
     minDelayBetweenRequestsDays?: number;
     minNoticeDays?: number;

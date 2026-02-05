@@ -169,7 +169,7 @@ let LeavesService = LeavesService_1 = class LeavesService {
     }
     calculateEntitlement(leaveType, joinedDate, period) {
         let entitlement = leaveType.baseAmount;
-        if (joinedDate > period.start) {
+        if (leaveType.accrualMethod === 'PRO_RATA' && joinedDate > period.start) {
             const totalDays = (period.end.getTime() - period.start.getTime()) / (1000 * 60 * 60 * 24);
             const remainingDays = (period.end.getTime() - joinedDate.getTime()) / (1000 * 60 * 60 * 24);
             entitlement = (leaveType.baseAmount * remainingDays) / totalDays;

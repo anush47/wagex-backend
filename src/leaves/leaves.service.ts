@@ -236,12 +236,13 @@ export class LeavesService {
     private calculateEntitlement(leaveType: any, joinedDate: Date, period: { start: Date; end: Date }): number {
         let entitlement = leaveType.baseAmount;
 
-        // Pro-rata calculation if joined mid-period
-        if (joinedDate > period.start) {
+        // Only apply pro-rata if configured AND joined mid-period
+        if (leaveType.accrualMethod === 'PRO_RATA' && joinedDate > period.start) {
             const totalDays = (period.end.getTime() - period.start.getTime()) / (1000 * 60 * 60 * 24);
             const remainingDays = (period.end.getTime() - joinedDate.getTime()) / (1000 * 60 * 60 * 24);
             entitlement = (leaveType.baseAmount * remainingDays) / totalDays;
         }
+        // If FULL_UPFRONT or accrualMethod not set (backwards compatibility), use baseAmount as-is
 
         return Math.round(entitlement * 10) / 10; // Round to 1 decimal
     }

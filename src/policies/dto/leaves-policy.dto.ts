@@ -17,6 +17,11 @@ export enum EncashmentType {
     FIXED_AMOUNT = 'FIXED_AMOUNT'
 }
 
+export enum AccrualMethod {
+    PRO_RATA = 'PRO_RATA',           // Calculate based on remaining days in period
+    FULL_UPFRONT = 'FULL_UPFRONT'    // Grant full amount at period start
+}
+
 
 export class LeaveTypeDto {
     @ApiProperty({ example: 'leave-1' })
@@ -73,6 +78,14 @@ export class LeaveTypeDto {
     @ApiProperty({ enum: AccrualFrequency, default: AccrualFrequency.YEARLY })
     @IsEnum(AccrualFrequency)
     accrualFrequency: AccrualFrequency;
+
+    @ApiProperty({
+        enum: AccrualMethod,
+        default: AccrualMethod.PRO_RATA,
+        description: 'How to calculate entitlement for mid-period joiners'
+    })
+    @IsEnum(AccrualMethod)
+    accrualMethod: AccrualMethod;
 
     @ApiPropertyOptional({ example: 15, description: 'Interval in days if frequency is CUSTOM' })
     @IsOptional()
