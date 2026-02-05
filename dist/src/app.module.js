@@ -28,6 +28,7 @@ const policies_module_1 = require("./policies/policies.module");
 const storage_module_1 = require("./storage/storage.module");
 const notifications_module_1 = require("./notifications/notifications.module");
 const departments_module_1 = require("./departments/departments.module");
+const leaves_module_1 = require("./leaves/leaves.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -49,6 +50,7 @@ exports.AppModule = AppModule = __decorate([
             storage_module_1.StorageModule,
             notifications_module_1.NotificationsModule,
             departments_module_1.DepartmentsModule,
+            leaves_module_1.LeavesModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

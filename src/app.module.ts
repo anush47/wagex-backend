@@ -19,6 +19,7 @@ import { PoliciesModule } from './policies/policies.module';
 import { StorageModule } from './storage/storage.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DepartmentsModule } from './departments/departments.module';
+import { LeavesModule } from './leaves/leaves.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { DepartmentsModule } from './departments/departments.module';
     StorageModule,
     NotificationsModule,
     DepartmentsModule,
+    LeavesModule,
   ],
   controllers: [AppController],
   providers: [

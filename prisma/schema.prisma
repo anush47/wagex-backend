@@ -41,6 +41,7 @@ model Company {
   employees   Employee[]
   departments Department[]
   policy      Policy?       // Optional: Company-wide default policy
+  leaveRequests LeaveRequest[]
 
   @@map("companies")
 }
@@ -156,6 +157,7 @@ model Employee {
   // attendance Attendance[]
 
   policy    Policy?     // Optional: Employee-specific override policy
+  leaveRequests LeaveRequest[]
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -241,4 +243,64 @@ model Notification {
   updatedAt DateTime         @updatedAt
 
   @@map("notifications")
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveRequestType {
+  FULL_DAY
+  HALF_DAY_FIRST
+  HALF_DAY_LAST
+  SHORT_LEAVE
+}
+
+model LeaveRequest {
+  id        String      @id @default(uuid())
+  
+  employeeId String
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  companyId  String
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Leave Type (from Policy JSON)
+  leaveTypeId   String    
+  leaveTypeName String?
+
+  // Request Type
+  type LeaveRequestType @default(FULL_DAY)
+
+  // Date Range (for Full/Half: date only, for Short Leave: date + time)
+  startDate DateTime 
+  endDate   DateTime 
+
+  // Calculation Fields (for easy summing and validation)
+  days    Float  // Deduction amount (e.g., 0.5 for half day, 1.0 for full day)
+  minutes Int?   // Duration in minutes for short leaves
+
+  // Frequency Tracking
+  leaveNumber Int? // Tracks which number leave this is in the current period (1st, 2nd, 3rd, etc.)
+  
+  // Status & Response
+  status         LeaveStatus @default(PENDING)
+  reason         String?     @db.Text
+  managerId      String?     
+  responseReason String?     @db.Text // For approval/rejection notes
+
+  // Attachments
+  documents Json? @default("[]") // [{ key: string, name: string, url: string }]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([leaveTypeId])
+  @@map("leave_requests")
 }
