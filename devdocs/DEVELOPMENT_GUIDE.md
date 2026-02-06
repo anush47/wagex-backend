@@ -6,6 +6,7 @@ Welcome to the WageX Backend Development Guide. This document outlines the archi
 - **Framework**: [NestJS](https://nestjs.com/) (Enterprise-grade Node.js framework)
 - **Runtime**: [Bun](https://bun.sh/) (Fast all-in-one JavaScript runtime)
 - **Database**: PostgreSQL (Managed via **Prisma ORM**)
+- **Storage**: Cloudflare R2 (S3-Compatible)
 - **Authentication**: Supabase Auth (JWT + JWKS validation)
 - **Documentation**: Swagger/OpenAPI (`/api/docs`)
 
@@ -52,6 +53,12 @@ Every service method must follow these principles:
 ### 3. Code Organization
 - **Entities**: Mirror Prisma models but include Swagger decorators for API documentation.
 - **Separation of Concerns**: Controllers handle HTTP context; Services handle business logic; Guards handle security.
+
+### 4. Data Normalization
+To maintain a clean and searchable database, follow these formatting rules:
+- **Employee Names**: Both `nameWithInitials` and `fullName` **MUST** be stored in **UPPERCASE**. This is enforced on the frontend before submission and should be validated/normalized in the service layer if necessary.
+- **Member IDs**: `employeeNo` should be treated as a unique numerical identifier within a company context.
+- **Dates**: Always store and transmit dates in ISO 8601 format.
 
 ---
 
