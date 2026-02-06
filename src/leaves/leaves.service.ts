@@ -121,6 +121,37 @@ export class LeavesService {
             }
         }
 
+        // Check for overlapping requests
+        const overlappingRequest = await this.prisma.leaveRequest.findFirst({
+            where: {
+                employeeId: dto.employeeId,
+                status: {
+                    in: [LeaveStatus.PENDING, LeaveStatus.APPROVED]
+                },
+                OR: [
+                    {
+                        // New start date falls within existing range
+                        startDate: { lte: new Date(dto.startDate) },
+                        endDate: { gte: new Date(dto.startDate) }
+                    },
+                    {
+                        // New end date falls within existing range
+                        startDate: { lte: new Date(dto.endDate) },
+                        endDate: { gte: new Date(dto.endDate) }
+                    },
+                    {
+                        // Existing range falls within new range
+                        startDate: { gte: new Date(dto.startDate) },
+                        endDate: { lte: new Date(dto.endDate) }
+                    }
+                ]
+            }
+        });
+
+        if (overlappingRequest) {
+            throw new BadRequestException(`Leave request overlaps with an existing request (${overlappingRequest.startDate.toLocaleDateString()} - ${overlappingRequest.endDate.toLocaleDateString()})`);
+        }
+
         // Create request
         return this.prisma.leaveRequest.create({
             data: {

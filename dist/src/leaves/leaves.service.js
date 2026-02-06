@@ -79,6 +79,31 @@ let LeavesService = LeavesService_1 = class LeavesService {
                 throw new common_1.BadRequestException(`Short leave duration exceeds maximum of ${leaveType.maxDurationMinutes} minutes`);
             }
         }
+        const overlappingRequest = await this.prisma.leaveRequest.findFirst({
+            where: {
+                employeeId: dto.employeeId,
+                status: {
+                    in: [leave_enum_1.LeaveStatus.PENDING, leave_enum_1.LeaveStatus.APPROVED]
+                },
+                OR: [
+                    {
+                        startDate: { lte: new Date(dto.startDate) },
+                        endDate: { gte: new Date(dto.startDate) }
+                    },
+                    {
+                        startDate: { lte: new Date(dto.endDate) },
+                        endDate: { gte: new Date(dto.endDate) }
+                    },
+                    {
+                        startDate: { gte: new Date(dto.startDate) },
+                        endDate: { lte: new Date(dto.endDate) }
+                    }
+                ]
+            }
+        });
+        if (overlappingRequest) {
+            throw new common_1.BadRequestException(`Leave request overlaps with an existing request (${overlappingRequest.startDate.toLocaleDateString()} - ${overlappingRequest.endDate.toLocaleDateString()})`);
+        }
         return this.prisma.leaveRequest.create({
             data: {
                 employeeId: dto.employeeId,
