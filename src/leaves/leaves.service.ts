@@ -111,7 +111,8 @@ export class LeavesService {
         const balance = balances.find(b => b.leaveTypeId === dto.leaveTypeId);
 
         if (!balance || balance.available < days) {
-            throw new BadRequestException(`Insufficient leave balance. Available: ${balance?.available || 0}, Requested: ${days}`);
+            const formatted = balance ? Number(balance.available).toFixed(1).replace(/\.0$/, '') : '0';
+            throw new BadRequestException(`Insufficient leave balance. Available: ${formatted}, Requested: ${days}`);
         }
 
         // Validate short leave duration
@@ -122,34 +123,53 @@ export class LeavesService {
         }
 
         // Check for overlapping requests
-        const overlappingRequest = await this.prisma.leaveRequest.findFirst({
+        // Fetch potential overlaps by date range (inclusive of day)
+        // Then perform strict check in memory handling Short vs Full day logic
+        const potentialOverlaps = await this.prisma.leaveRequest.findMany({
             where: {
                 employeeId: dto.employeeId,
                 status: {
                     in: [LeaveStatus.PENDING, LeaveStatus.APPROVED]
                 },
                 OR: [
-                    {
-                        // New start date falls within existing range
-                        startDate: { lte: new Date(dto.startDate) },
-                        endDate: { gte: new Date(dto.startDate) }
-                    },
-                    {
-                        // New end date falls within existing range
-                        startDate: { lte: new Date(dto.endDate) },
-                        endDate: { gte: new Date(dto.endDate) }
-                    },
-                    {
-                        // Existing range falls within new range
-                        startDate: { gte: new Date(dto.startDate) },
-                        endDate: { lte: new Date(dto.endDate) }
-                    }
+                    { startDate: { lte: new Date(dto.endDate) } },
+                    { endDate: { gte: new Date(dto.startDate) } }
                 ]
             }
         });
 
-        if (overlappingRequest) {
-            throw new BadRequestException(`Leave request overlaps with an existing request (${overlappingRequest.startDate.toLocaleDateString()} - ${overlappingRequest.endDate.toLocaleDateString()})`);
+        // Current Request Range
+        const reqStart = new Date(dto.startDate);
+        const reqEnd = new Date(dto.endDate);
+        const isReqFullDay = dto.type !== LeaveRequestType.SHORT_LEAVE;
+
+        // If Full Day, normalize to end of day to catch Short Leaves inside
+        const normReqStart = new Date(reqStart);
+        const normReqEnd = new Date(reqEnd);
+        if (isReqFullDay || dto.type === LeaveRequestType.FULL_DAY) {
+            normReqStart.setHours(0, 0, 0, 0);
+            normReqEnd.setHours(23, 59, 59, 999);
+        }
+
+        for (const existing of potentialOverlaps) {
+            // Existing Request Range
+            const exStart = new Date(existing.startDate);
+            const exEnd = new Date(existing.endDate);
+            const isExFullDay = existing.type !== LeaveRequestType.SHORT_LEAVE;
+
+            const normExStart = new Date(exStart);
+            const normExEnd = new Date(exEnd);
+
+            // Normalize existing if Full Day
+            if (isExFullDay) {
+                normExStart.setHours(0, 0, 0, 0);
+                normExEnd.setHours(23, 59, 59, 999);
+            }
+
+            // Strict Overlap Check: StartA < EndB && EndA > StartB
+            if (normReqStart < normExEnd && normReqEnd > normExStart) {
+                throw new BadRequestException(`Leave request overlaps with an existing request (${existing.startDate.toLocaleDateString()} - ${existing.endDate.toLocaleDateString()})`);
+            }
         }
 
         // Validate Document Requirements
