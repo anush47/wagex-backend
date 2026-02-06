@@ -152,6 +152,17 @@ export class LeavesService {
             throw new BadRequestException(`Leave request overlaps with an existing request (${overlappingRequest.startDate.toLocaleDateString()} - ${overlappingRequest.endDate.toLocaleDateString()})`);
         }
 
+        // Validate Document Requirements
+        let documentsRequired = leaveType.requireDocuments;
+
+        if (leaveType.requireDocumentsIfConsecutiveMoreThan && days > leaveType.requireDocumentsIfConsecutiveMoreThan) {
+            documentsRequired = true;
+        }
+
+        if (documentsRequired && (!dto.documents || dto.documents.length === 0)) {
+            throw new BadRequestException("Supporting documents are required for this leave request.");
+        }
+
         // Create request
         return this.prisma.leaveRequest.create({
             data: {

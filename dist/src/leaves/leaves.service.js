@@ -104,6 +104,13 @@ let LeavesService = LeavesService_1 = class LeavesService {
         if (overlappingRequest) {
             throw new common_1.BadRequestException(`Leave request overlaps with an existing request (${overlappingRequest.startDate.toLocaleDateString()} - ${overlappingRequest.endDate.toLocaleDateString()})`);
         }
+        let documentsRequired = leaveType.requireDocuments;
+        if (leaveType.requireDocumentsIfConsecutiveMoreThan && days > leaveType.requireDocumentsIfConsecutiveMoreThan) {
+            documentsRequired = true;
+        }
+        if (documentsRequired && (!dto.documents || dto.documents.length === 0)) {
+            throw new common_1.BadRequestException("Supporting documents are required for this leave request.");
+        }
         return this.prisma.leaveRequest.create({
             data: {
                 employeeId: dto.employeeId,
