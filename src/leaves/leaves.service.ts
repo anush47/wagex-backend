@@ -164,6 +164,27 @@ export class LeavesService {
     }
 
     /**
+     * Delete a leave request (only pending requests can be deleted)
+     */
+    async deleteRequest(id: string): Promise<{ message: string }> {
+        this.logger.log(`Deleting leave request ${id}`);
+
+        const request = await this.prisma.leaveRequest.findUnique({ where: { id } });
+
+        if (!request) {
+            throw new NotFoundException(`Leave request ${id} not found`);
+        }
+
+        if (request.status !== LeaveStatus.PENDING) {
+            throw new BadRequestException(`Cannot delete leave request with status ${request.status}. Only pending requests can be deleted.`);
+        }
+
+        await this.prisma.leaveRequest.delete({ where: { id } });
+
+        return { message: 'Leave request deleted successfully' };
+    }
+
+    /**
      * Get all leave requests for a company
      */
     async findAll(companyId: string, filters?: { status?: LeaveStatus; employeeId?: string }) {
@@ -177,6 +198,7 @@ export class LeavesService {
                 employee: {
                     select: {
                         id: true,
+                        employeeNo: true,
                         nameWithInitials: true,
                         fullName: true,
                         photo: true

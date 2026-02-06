@@ -112,6 +112,18 @@ let LeavesService = LeavesService_1 = class LeavesService {
             }
         });
     }
+    async deleteRequest(id) {
+        this.logger.log(`Deleting leave request ${id}`);
+        const request = await this.prisma.leaveRequest.findUnique({ where: { id } });
+        if (!request) {
+            throw new common_1.NotFoundException(`Leave request ${id} not found`);
+        }
+        if (request.status !== leave_enum_1.LeaveStatus.PENDING) {
+            throw new common_1.BadRequestException(`Cannot delete leave request with status ${request.status}. Only pending requests can be deleted.`);
+        }
+        await this.prisma.leaveRequest.delete({ where: { id } });
+        return { message: 'Leave request deleted successfully' };
+    }
     async findAll(companyId, filters) {
         return this.prisma.leaveRequest.findMany({
             where: {
@@ -123,6 +135,7 @@ let LeavesService = LeavesService_1 = class LeavesService {
                 employee: {
                     select: {
                         id: true,
+                        employeeNo: true,
                         nameWithInitials: true,
                         fullName: true,
                         photo: true

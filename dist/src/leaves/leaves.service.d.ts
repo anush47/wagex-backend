@@ -24,12 +24,16 @@ export declare class LeavesService {
     }[]>;
     createRequest(dto: CreateLeaveRequestDto): Promise<LeaveRequest>;
     updateRequest(id: string, dto: UpdateLeaveRequestDto): Promise<LeaveRequest>;
+    deleteRequest(id: string): Promise<{
+        message: string;
+    }>;
     findAll(companyId: string, filters?: {
         status?: LeaveStatus;
         employeeId?: string;
     }): Promise<({
         employee: {
             id: string;
+            employeeNo: number;
             nameWithInitials: string;
             fullName: string;
             photo: string | null;

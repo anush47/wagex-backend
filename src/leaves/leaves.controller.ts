@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Query, Delete, UseGuards, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { LeavesService } from './leaves.service';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
@@ -65,5 +65,16 @@ export class LeavesController {
     update(@Param('id') id: string, @Body() updateLeaveRequestDto: UpdateLeaveRequestDto) {
         this.logger.log(`Updating leave request ${id}`);
         return this.leavesService.updateRequest(id, updateLeaveRequestDto);
+    }
+
+    @Delete(':id')
+    @Roles(Role.EMPLOYER, Role.EMPLOYEE, Role.ADMIN)
+    @ApiOperation({ summary: 'Delete a pending leave request' })
+    @ApiResponse({ status: 200, description: 'Leave request deleted successfully' })
+    @ApiResponse({ status: 400, description: 'Cannot delete non-pending leave request' })
+    @ApiResponse({ status: 403, description: 'Not authorized to delete this request' })
+    delete(@Param('id') id: string) {
+        this.logger.log(`Deleting leave request ${id}`);
+        return this.leavesService.deleteRequest(id);
     }
 }

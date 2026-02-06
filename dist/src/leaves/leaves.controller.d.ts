@@ -42,6 +42,7 @@ export declare class LeavesController {
     findAll(companyId: string, status?: LeaveStatus, employeeId?: string): Promise<({
         employee: {
             id: string;
+            employeeNo: number;
             nameWithInitials: string;
             fullName: string;
             photo: string | null;
@@ -105,5 +106,8 @@ export declare class LeavesController {
         documents: import("@prisma/client/runtime/client").JsonValue | null;
         createdAt: Date;
         updatedAt: Date;
+    }>;
+    delete(id: string): Promise<{
+        message: string;
     }>;
 }

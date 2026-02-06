@@ -50,6 +50,10 @@ let LeavesController = LeavesController_1 = class LeavesController {
         this.logger.log(`Updating leave request ${id}`);
         return this.leavesService.updateRequest(id, updateLeaveRequestDto);
     }
+    delete(id) {
+        this.logger.log(`Deleting leave request ${id}`);
+        return this.leavesService.deleteRequest(id);
+    }
 };
 exports.LeavesController = LeavesController;
 __decorate([
@@ -105,6 +109,18 @@ __decorate([
     __metadata("design:paramtypes", [String, update_leave_request_dto_1.UpdateLeaveRequestDto]),
     __metadata("design:returntype", void 0)
 ], LeavesController.prototype, "update", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.EMPLOYEE, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete a pending leave request' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Leave request deleted successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Cannot delete non-pending leave request' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Not authorized to delete this request' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], LeavesController.prototype, "delete", null);
 exports.LeavesController = LeavesController = LeavesController_1 = __decorate([
     (0, swagger_1.ApiTags)('Leaves'),
     (0, swagger_1.ApiBearerAuth)(),
