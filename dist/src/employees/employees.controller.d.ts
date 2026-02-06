@@ -9,46 +9,46 @@ export declare class EmployeesController {
     create(createEmployeeDto: CreateEmployeeDto, req: any): Promise<import("./entities/employee.entity").Employee>;
     getMe(req: any): Promise<{
         company: {
+            name: string;
             id: string;
             active: boolean;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
-            address: string | null;
             employerNumber: string | null;
+            address: string | null;
             startedDate: Date | null;
             logo: string | null;
             files: import("@prisma/client/runtime/client").JsonValue | null;
         };
         user: {
-            role: import("@prisma/client").$Enums.Role;
             id: string;
             active: boolean;
             createdAt: Date;
             updatedAt: Date;
-            email: string;
+            address: string | null;
+            role: import("@prisma/client").$Enums.Role;
             nameWithInitials: string | null;
             fullName: string | null;
-            address: string | null;
             phone: string | null;
+            email: string;
         } | null;
     } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        address: string | null;
+        files: import("@prisma/client/runtime/client").JsonValue | null;
         userId: string | null;
         companyId: string;
-        email: string | null;
-        nameWithInitials: string;
-        fullName: string;
-        address: string | null;
-        phone: string | null;
-        files: import("@prisma/client/runtime/client").JsonValue | null;
-        status: string;
         employeeNo: number;
         nic: string | null;
+        nameWithInitials: string;
+        fullName: string;
         designation: string | null;
+        phone: string | null;
+        email: string | null;
         basicSalary: number;
+        status: string;
         gender: import("@prisma/client").$Enums.Gender;
         employmentType: import("@prisma/client").$Enums.EmploymentType;
         joinedDate: Date;
