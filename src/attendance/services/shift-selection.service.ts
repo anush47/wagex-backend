@@ -6,8 +6,8 @@ interface ShiftDto {
     name: string;
     startTime: string;
     endTime: string;
-    breakMinutes: number;
-    graceMinutes?: number;
+    breakTime: number;
+    gracePeriodLate?: number;
     autoClockOut?: boolean;
 }
 
@@ -152,8 +152,8 @@ export class ShiftSelectionService {
             name: shift.name,
             startTime: shift.startTime,
             endTime: shift.endTime,
-            breakMinutes: shift.breakMinutes || 0,
-            graceMinutes: shift.graceMinutes || 0,
+            breakTime: shift.breakTime || 0,
+            gracePeriodLate: shift.gracePeriodLate || 0,
             autoClockOut: shift.autoClockOut || false,
         };
     }

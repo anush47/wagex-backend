@@ -6,8 +6,8 @@ interface ShiftDto {
     name: string;
     startTime: string;
     endTime: string;
-    breakMinutes: number;
-    graceMinutes?: number;
+    breakTime: number;
+    gracePeriodLate?: number;
     autoClockOut?: boolean;
 }
 
@@ -62,11 +62,17 @@ export class AttendanceCalculationService {
         );
 
         // Calculate breaks from multiple IN/OUT pairs
-        const { totalMinutes, breakMinutes } =
+        const { totalMinutes, breakMinutes: calculatedBreakMinutes } =
             this.calculateBreaksFromEvents(sortedEvents);
 
+        // Apply automatic break if total time > 6 hours and no break calculated yet
+        let breakMinutes = calculatedBreakMinutes;
+        if (breakMinutes === 0 && totalMinutes > 360 && shift?.breakTime) {
+            breakMinutes = shift.breakTime;
+        }
+
         // Work minutes = total - breaks
-        const workMinutes = totalMinutes - breakMinutes;
+        const workMinutes = Math.max(0, totalMinutes - breakMinutes);
 
         // Calculate overtime if shift is defined
         let overtimeMinutes = 0;
@@ -158,7 +164,7 @@ export class AttendanceCalculationService {
             return flags;
         }
 
-        const graceMinutes = shift.graceMinutes || 0;
+        const graceMinutes = shift.gracePeriodLate || 0;
 
         // Check if late
         const shiftStartTime = this.parseTimeString(shift.startTime, checkInTime);

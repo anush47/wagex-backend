@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceProcessingService } from './services/attendance-processing.service';
+import { PoliciesService } from '../policies/policies.service';
 import { CreateEventDto, BulkCreateEventsDto } from './dto/event.dto';
 import {
     UpdateSessionDto,
@@ -22,6 +23,7 @@ export class AttendanceService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly processingService: AttendanceProcessingService,
+        private readonly policiesService: PoliciesService,
     ) { }
 
     /**
@@ -232,6 +234,7 @@ export class AttendanceService {
                             employeeNo: true,
                             nameWithInitials: true,
                             fullName: true,
+                            photo: true,
                         },
                     },
                 },
@@ -289,6 +292,7 @@ export class AttendanceService {
                             employeeNo: true,
                             nameWithInitials: true,
                             fullName: true,
+                            photo: true,
                         },
                     },
                 },
@@ -323,14 +327,42 @@ export class AttendanceService {
             throw new NotFoundException('Session not found');
         }
 
+        const updateData: any = {
+            ...dto,
+            checkInTime: dto.checkInTime === null ? null : (dto.checkInTime ? new Date(dto.checkInTime) : undefined),
+            checkOutTime: dto.checkOutTime === null ? null : (dto.checkOutTime ? new Date(dto.checkOutTime) : undefined),
+            manuallyEdited: true,
+        };
+
+        // Handle shift snapshot if shiftId is being updated
+        if (dto.shiftId !== undefined) {
+            if (dto.shiftId === null) {
+                // Clear shift snapshots
+                updateData.shiftName = null;
+                updateData.shiftStartTime = null;
+                updateData.shiftEndTime = null;
+                updateData.shiftBreakMinutes = null;
+            } else {
+                // Fetch shift details from effective policy
+                const policy = await this.policiesService.getEffectivePolicy(session.employeeId);
+                const shiftList = policy.shifts?.list || [];
+                const shift = shiftList.find((s: any) => s.id === dto.shiftId);
+
+                if (shift) {
+                    this.logger.log(`Found shift details: ${shift.name}, ${shift.startTime}-${shift.endTime}`);
+                    updateData.shiftName = shift.name;
+                    updateData.shiftStartTime = shift.startTime;
+                    updateData.shiftEndTime = shift.endTime;
+                    updateData.shiftBreakMinutes = shift.breakTime;
+                } else {
+                    this.logger.warn(`Shift ID ${dto.shiftId} not found in employee policy`);
+                }
+            }
+        }
+
         return this.prisma.attendanceSession.update({
             where: { id },
-            data: {
-                ...dto,
-                checkInTime: dto.checkInTime === null ? null : (dto.checkInTime ? new Date(dto.checkInTime) : undefined),
-                checkOutTime: dto.checkOutTime === null ? null : (dto.checkOutTime ? new Date(dto.checkOutTime) : undefined),
-                manuallyEdited: true,
-            },
+            data: updateData,
         });
     }
 

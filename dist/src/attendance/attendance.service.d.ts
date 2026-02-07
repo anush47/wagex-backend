@@ -1,13 +1,15 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceProcessingService } from './services/attendance-processing.service';
+import { PoliciesService } from '../policies/policies.service';
 import { CreateEventDto, BulkCreateEventsDto } from './dto/event.dto';
 import { UpdateSessionDto, SessionQueryDto, EventQueryDto } from './dto/session.dto';
 import { EventSource, AttendanceEvent, AttendanceSession } from '@prisma/client';
 export declare class AttendanceService {
     private readonly prisma;
     private readonly processingService;
+    private readonly policiesService;
     private readonly logger;
-    constructor(prisma: PrismaService, processingService: AttendanceProcessingService);
+    constructor(prisma: PrismaService, processingService: AttendanceProcessingService, policiesService: PoliciesService);
     createManualEvent(dto: CreateEventDto, source?: EventSource): Promise<AttendanceEvent>;
     createExternalEvent(dto: CreateEventDto, companyId: string, apiKeyName: string): Promise<AttendanceEvent>;
     bulkCreateExternalEvents(dto: BulkCreateEventsDto, companyId: string, apiKeyName: string): Promise<{
@@ -24,17 +26,18 @@ export declare class AttendanceService {
     getSessions(query: SessionQueryDto): Promise<{
         items: ({
             employee: {
+                employeeNo: number;
                 nameWithInitials: string;
                 fullName: string;
-                employeeNo: number;
+                photo: string | null;
             };
         } & {
             id: string;
+            employeeId: string;
+            companyId: string;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             createdAt: Date;
             updatedAt: Date;
-            companyId: string;
-            employeeId: string;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             totalMinutes: number | null;
             breakMinutes: number | null;
             date: Date;
@@ -76,19 +79,15 @@ export declare class AttendanceService {
     getEvents(query: EventQueryDto): Promise<{
         items: ({
             employee: {
+                employeeNo: number;
                 nameWithInitials: string;
                 fullName: string;
-                employeeNo: number;
+                photo: string | null;
             };
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
-            status: import("@prisma/client").$Enums.EventStatus;
-            remark: string | null;
             employeeId: string;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            companyId: string;
             eventTime: Date;
             eventType: import("@prisma/client").$Enums.EventType;
             source: import("@prisma/client").$Enums.EventSource;
@@ -97,8 +96,13 @@ export declare class AttendanceService {
             location: string | null;
             latitude: number | null;
             longitude: number | null;
+            status: import("@prisma/client").$Enums.EventStatus;
             sessionId: string | null;
             manualOverride: boolean;
+            remark: string | null;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         })[];
         meta: {
             total: number;

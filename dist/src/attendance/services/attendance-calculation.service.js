@@ -21,8 +21,12 @@ let AttendanceCalculationService = AttendanceCalculationService_1 = class Attend
             };
         }
         const sortedEvents = [...events].sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime());
-        const { totalMinutes, breakMinutes } = this.calculateBreaksFromEvents(sortedEvents);
-        const workMinutes = totalMinutes - breakMinutes;
+        const { totalMinutes, breakMinutes: calculatedBreakMinutes } = this.calculateBreaksFromEvents(sortedEvents);
+        let breakMinutes = calculatedBreakMinutes;
+        if (breakMinutes === 0 && totalMinutes > 360 && shift?.breakTime) {
+            breakMinutes = shift.breakTime;
+        }
+        const workMinutes = Math.max(0, totalMinutes - breakMinutes);
         let overtimeMinutes = 0;
         if (shift) {
             const shiftDurationMinutes = this.getShiftDurationMinutes(shift);
@@ -77,7 +81,7 @@ let AttendanceCalculationService = AttendanceCalculationService_1 = class Attend
         if (!shift || !checkInTime) {
             return flags;
         }
-        const graceMinutes = shift.graceMinutes || 0;
+        const graceMinutes = shift.gracePeriodLate || 0;
         const shiftStartTime = this.parseTimeString(shift.startTime, checkInTime);
         const lateThreshold = new Date(shiftStartTime.getTime() + graceMinutes * 60 * 1000);
         flags.isLate = checkInTime > lateThreshold;

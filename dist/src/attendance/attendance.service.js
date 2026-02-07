@@ -14,13 +14,16 @@ exports.AttendanceService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const attendance_processing_service_1 = require("./services/attendance-processing.service");
+const policies_service_1 = require("../policies/policies.service");
 let AttendanceService = AttendanceService_1 = class AttendanceService {
     prisma;
     processingService;
+    policiesService;
     logger = new common_1.Logger(AttendanceService_1.name);
-    constructor(prisma, processingService) {
+    constructor(prisma, processingService, policiesService) {
         this.prisma = prisma;
         this.processingService = processingService;
+        this.policiesService = policiesService;
     }
     async createManualEvent(dto, source = 'MANUAL') {
         this.logger.log(`Creating ${source} event for employee ${dto.employeeId || dto.employeeNo}`);
@@ -163,6 +166,7 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
                             employeeNo: true,
                             nameWithInitials: true,
                             fullName: true,
+                            photo: true,
                         },
                     },
                 },
@@ -210,6 +214,7 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
                             employeeNo: true,
                             nameWithInitials: true,
                             fullName: true,
+                            photo: true,
                         },
                     },
                 },
@@ -233,14 +238,38 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         if (!session) {
             throw new common_1.NotFoundException('Session not found');
         }
+        const updateData = {
+            ...dto,
+            checkInTime: dto.checkInTime === null ? null : (dto.checkInTime ? new Date(dto.checkInTime) : undefined),
+            checkOutTime: dto.checkOutTime === null ? null : (dto.checkOutTime ? new Date(dto.checkOutTime) : undefined),
+            manuallyEdited: true,
+        };
+        if (dto.shiftId !== undefined) {
+            if (dto.shiftId === null) {
+                updateData.shiftName = null;
+                updateData.shiftStartTime = null;
+                updateData.shiftEndTime = null;
+                updateData.shiftBreakMinutes = null;
+            }
+            else {
+                const policy = await this.policiesService.getEffectivePolicy(session.employeeId);
+                const shiftList = policy.shifts?.list || [];
+                const shift = shiftList.find((s) => s.id === dto.shiftId);
+                if (shift) {
+                    this.logger.log(`Found shift details: ${shift.name}, ${shift.startTime}-${shift.endTime}`);
+                    updateData.shiftName = shift.name;
+                    updateData.shiftStartTime = shift.startTime;
+                    updateData.shiftEndTime = shift.endTime;
+                    updateData.shiftBreakMinutes = shift.breakTime;
+                }
+                else {
+                    this.logger.warn(`Shift ID ${dto.shiftId} not found in employee policy`);
+                }
+            }
+        }
         return this.prisma.attendanceSession.update({
             where: { id },
-            data: {
-                ...dto,
-                checkInTime: dto.checkInTime === null ? null : (dto.checkInTime ? new Date(dto.checkInTime) : undefined),
-                checkOutTime: dto.checkOutTime === null ? null : (dto.checkOutTime ? new Date(dto.checkOutTime) : undefined),
-                manuallyEdited: true,
-            },
+            data: updateData,
         });
     }
     async deleteSession(id) {
@@ -303,6 +332,7 @@ exports.AttendanceService = AttendanceService;
 exports.AttendanceService = AttendanceService = AttendanceService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        attendance_processing_service_1.AttendanceProcessingService])
+        attendance_processing_service_1.AttendanceProcessingService,
+        policies_service_1.PoliciesService])
 ], AttendanceService);
 //# sourceMappingURL=attendance.service.js.map

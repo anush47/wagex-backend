@@ -4,8 +4,8 @@ interface ShiftDto {
     name: string;
     startTime: string;
     endTime: string;
-    breakMinutes: number;
-    graceMinutes?: number;
+    breakTime: number;
+    gracePeriodLate?: number;
     autoClockOut?: boolean;
 }
 export declare class ShiftSelectionService {

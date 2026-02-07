@@ -107,8 +107,8 @@ let ShiftSelectionService = ShiftSelectionService_1 = class ShiftSelectionServic
             name: shift.name,
             startTime: shift.startTime,
             endTime: shift.endTime,
-            breakMinutes: shift.breakMinutes || 0,
-            graceMinutes: shift.graceMinutes || 0,
+            breakTime: shift.breakTime || 0,
+            gracePeriodLate: shift.gracePeriodLate || 0,
             autoClockOut: shift.autoClockOut || false,
         };
     }
