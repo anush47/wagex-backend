@@ -21,7 +21,7 @@ let AuditService = class AuditService {
         this.prisma.auditLog.create({
             data: {
                 action: data.action,
-                resource: data.resource,
+                entity: data.entity,
                 resourceId: data.resourceId,
                 userId: data.userId,
                 ipAddress: data.ipAddress,

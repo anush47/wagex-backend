@@ -262,8 +262,7 @@ export class LeavesService {
                         id: true,
                         employeeNo: true,
                         nameWithInitials: true,
-                        fullName: true,
-                        photo: true
+                        fullName: true
                     }
                 }
             },

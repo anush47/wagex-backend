@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Employee as PrismaEmployee } from '@prisma/client';
-import { EmploymentType, Gender } from '../../common/enums/employee.enum';
+import { Employee as PrismaEmployee, EmploymentType } from '@prisma/client';
+import { Gender } from '../../common/enums/employee.enum';
 
 export class Employee implements PrismaEmployee {
     @ApiProperty({ example: 'uuid-1234', description: 'Unique identifier' })
@@ -71,6 +71,12 @@ export class Employee implements PrismaEmployee {
 
     @ApiProperty({ example: 'dept-uuid', description: 'Department ID', nullable: true })
     departmentId: string | null;
+
+    @ApiProperty({ example: 'Bank of Ceylon', description: 'Bank Name', nullable: true })
+    bankName: string | null;
+
+    @ApiProperty({ example: '1234567890', description: 'Account Number', nullable: true })
+    accountNumber: string | null;
 
     @ApiProperty()
     createdAt: Date;

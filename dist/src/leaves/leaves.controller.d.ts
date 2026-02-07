@@ -45,7 +45,6 @@ export declare class LeavesController {
             nameWithInitials: string;
             fullName: string;
             employeeNo: number;
-            photo: string | null;
         };
     } & {
         id: string;

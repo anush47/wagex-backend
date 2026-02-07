@@ -40,7 +40,7 @@ export class AuditInterceptor implements NestInterceptor {
 
                     this.auditService.logAction({
                         action: method,
-                        resource: resource,
+                        entity: resource,
                         userId: user?.id,
                         ipAddress: req.ip,
                         details,

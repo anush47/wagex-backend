@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Employee = void 0;
 const swagger_1 = require("@nestjs/swagger");
+const client_1 = require("@prisma/client");
 const employee_enum_1 = require("../../common/enums/employee.enum");
 class Employee {
     id;
@@ -36,6 +37,8 @@ class Employee {
     photo;
     files;
     departmentId;
+    bankName;
+    accountNumber;
     createdAt;
     updatedAt;
 }
@@ -113,7 +116,7 @@ __decorate([
     __metadata("design:type", String)
 ], Employee.prototype, "gender", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ enum: employee_enum_1.EmploymentType, example: employee_enum_1.EmploymentType.PERMANENT }),
+    (0, swagger_1.ApiProperty)({ enum: client_1.EmploymentType, example: client_1.EmploymentType.PERMANENT }),
     __metadata("design:type", String)
 ], Employee.prototype, "employmentType", void 0);
 __decorate([
@@ -132,6 +135,14 @@ __decorate([
     (0, swagger_1.ApiProperty)({ example: 'dept-uuid', description: 'Department ID', nullable: true }),
     __metadata("design:type", Object)
 ], Employee.prototype, "departmentId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Bank of Ceylon', description: 'Bank Name', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "bankName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '1234567890', description: 'Account Number', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "accountNumber", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

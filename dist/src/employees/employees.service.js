@@ -88,12 +88,9 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
         return employee;
     }
     async findAll(companyId, queryDto, user) {
-        const { page = 1, limit = 20, search, sortBy = 'employeeNo', sortOrder = 'asc', status = 'ACTIVE' } = queryDto || {};
+        const { page = 1, limit = 20, search, sortBy = 'employeeNo', sortOrder = 'asc', } = queryDto || {};
         const skip = (page - 1) * limit;
         const where = {};
-        if (status && status.toUpperCase() !== 'ALL') {
-            where.status = status.toUpperCase();
-        }
         if (companyId) {
             where.companyId = companyId;
             if (user && user.role === client_1.Role.EMPLOYER) {

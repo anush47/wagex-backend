@@ -7,7 +7,7 @@ export class AuditService {
 
     async logAction(data: {
         action: string;
-        resource: string;
+        entity: string;
         resourceId?: string;
         userId?: string;
         ipAddress?: string;
@@ -17,7 +17,7 @@ export class AuditService {
         this.prisma.auditLog.create({
             data: {
                 action: data.action,
-                resource: data.resource,
+                entity: data.entity,
                 resourceId: data.resourceId,
                 userId: data.userId,
                 ipAddress: data.ipAddress,

@@ -63,17 +63,11 @@ export class EmployeesService {
       search,
       sortBy = 'employeeNo',
       sortOrder = 'asc',
-      status = 'ACTIVE'
     } = queryDto || {};
     const skip = (page - 1) * limit;
 
     // Build where clause
     const where: any = {};
-
-    // Status filtering logic
-    if (status && status.toUpperCase() !== 'ALL') {
-      where.status = status.toUpperCase();
-    }
 
     if (companyId) {
       // If specific company requested, filter by it

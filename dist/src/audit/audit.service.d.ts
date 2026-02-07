@@ -4,7 +4,7 @@ export declare class AuditService {
     constructor(prisma: PrismaService);
     logAction(data: {
         action: string;
-        resource: string;
+        entity: string;
         resourceId?: string;
         userId?: string;
         ipAddress?: string;

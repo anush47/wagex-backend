@@ -42,7 +42,7 @@ let AuditInterceptor = class AuditInterceptor {
                 }
                 this.auditService.logAction({
                     action: method,
-                    resource: resource,
+                    entity: resource,
                     userId: user?.id,
                     ipAddress: req.ip,
                     details,
