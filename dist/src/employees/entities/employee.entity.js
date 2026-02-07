@@ -38,7 +38,15 @@ class Employee {
     files;
     departmentId;
     bankName;
+    bankBranch;
     accountNumber;
+    mothersName;
+    fathersName;
+    maritalStatus;
+    spouseName;
+    nationality;
+    emergencyContactName;
+    emergencyContactPhone;
     createdAt;
     updatedAt;
 }
@@ -140,9 +148,41 @@ __decorate([
     __metadata("design:type", Object)
 ], Employee.prototype, "bankName", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Kaduwela', description: 'Bank Branch', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "bankBranch", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ example: '1234567890', description: 'Account Number', nullable: true }),
     __metadata("design:type", Object)
 ], Employee.prototype, "accountNumber", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Mary Doe', description: 'Mothers Name', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "mothersName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'John Doe Sr.', description: 'Fathers Name', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "fathersName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: client_1.MaritalStatus, example: client_1.MaritalStatus.SINGLE }),
+    __metadata("design:type", String)
+], Employee.prototype, "maritalStatus", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Jane Doe', description: 'Spouse Name', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "spouseName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Sri Lankan', description: 'Nationality', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "nationality", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Jane Doe', description: 'Emergency Contact Name', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "emergencyContactName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '+94771234567', description: 'Emergency Contact Phone', nullable: true }),
+    __metadata("design:type", Object)
+], Employee.prototype, "emergencyContactPhone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

@@ -1,22 +1,38 @@
-import { IsOptional, IsString, IsDateString, IsBoolean, IsNumber, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsDateString, IsBoolean, IsNumber, IsUUID, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { SessionWorkDayStatus, ApprovalStatus } from '@prisma/client';
 
 export class UpdateSessionDto {
-    @ApiPropertyOptional({ description: 'Check-in time in ISO format' })
+    @ApiPropertyOptional({ enum: ApprovalStatus, description: 'Check-in approval status' })
     @IsOptional()
-    @IsDateString()
-    checkInTime?: string;
+    @IsEnum(ApprovalStatus)
+    inApprovalStatus?: ApprovalStatus;
 
-    @ApiPropertyOptional({ description: 'Check-out time in ISO format' })
+    @ApiPropertyOptional({ enum: ApprovalStatus, description: 'Check-out approval status' })
+    @IsOptional()
+    @IsEnum(ApprovalStatus)
+    outApprovalStatus?: ApprovalStatus;
+
+    @ApiPropertyOptional({ description: 'Check-in time in ISO format', type: String, nullable: true })
     @IsOptional()
     @IsDateString()
-    checkOutTime?: string;
+    checkInTime?: string | null;
+
+    @ApiPropertyOptional({ description: 'Check-out time in ISO format', type: String, nullable: true })
+    @IsOptional()
+    @IsDateString()
+    checkOutTime?: string | null;
 
     @ApiPropertyOptional({ description: 'Shift ID override' })
     @IsOptional()
     @IsUUID()
     shiftId?: string;
+
+    @ApiPropertyOptional({ enum: SessionWorkDayStatus, description: 'Work day status' })
+    @IsOptional()
+    @IsEnum(SessionWorkDayStatus)
+    workDayStatus?: SessionWorkDayStatus;
 
     @ApiPropertyOptional({ description: 'Late flag' })
     @IsOptional()

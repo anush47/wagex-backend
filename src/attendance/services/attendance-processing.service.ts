@@ -3,7 +3,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ShiftSelectionService } from './shift-selection.service';
 import { AttendanceCalculationService } from './attendance-calculation.service';
 import { LeaveIntegrationService } from './leave-integration.service';
-import { AttendanceEvent, AttendanceSession, EventSource } from '@prisma/client';
+import { AttendanceEvent, AttendanceSession, EventSource, ApprovalStatus, SessionWorkDayStatus } from '@prisma/client';
+import { PoliciesService } from '../../policies/policies.service';
+import { ApprovalPolicyMode } from '../../policies/dto/attendance-policy.dto';
 
 @Injectable()
 export class AttendanceProcessingService {
@@ -14,6 +16,7 @@ export class AttendanceProcessingService {
         private readonly shiftService: ShiftSelectionService,
         private readonly calculationService: AttendanceCalculationService,
         private readonly leaveService: LeaveIntegrationService,
+        private readonly policiesService: PoliciesService,
     ) { }
 
     /**
@@ -137,6 +140,75 @@ export class AttendanceProcessingService {
             throw new Error('Employee not found');
         }
 
+        // 6. Determine Approval Status based on Policy
+        const policy = await this.policiesService.getEffectivePolicy(employeeId);
+        const approvalConfig = policy?.attendance?.approvalPolicy;
+
+        // Check if session exists and was manually edited
+        const existingSession = await this.prisma.attendanceSession.findUnique({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date,
+                },
+            },
+        });
+
+        if (existingSession?.manuallyEdited) {
+            this.logger.log(`Session for ${employeeId} on ${date.toISOString()} was manually edited, skipping auto-processing`);
+            return existingSession;
+        }
+
+        const determineApproval = (event?: AttendanceEvent, isLate?: boolean) => {
+            if (!event) return ApprovalStatus.APPROVED; // No event = effectively approved/empty
+
+            if (!approvalConfig) return ApprovalStatus.APPROVED;
+
+            // Mode: AUTO_APPROVE (Permissive, applies to manual too by default if that's what user wants)
+            if (approvalConfig.mode === 'AUTO_APPROVE') {
+                return ApprovalStatus.APPROVED;
+            }
+
+            // Manual entries REQUIRE approval unless in AUTO_APPROVE mode
+            if (event.source === 'MANUAL') return ApprovalStatus.PENDING;
+
+            switch (approvalConfig.mode) {
+                case ApprovalPolicyMode.REQUIRE_APPROVAL_ALL:
+                    return ApprovalStatus.PENDING;
+                case ApprovalPolicyMode.REQUIRE_APPROVAL_EXCEPTIONS:
+                    // Check triggers
+                    if (isLate && (approvalConfig.exceptionTriggers?.deviceMismatch || approvalConfig.exceptionTriggers?.outsideZone)) {
+                        return ApprovalStatus.PENDING;
+                    }
+                    return ApprovalStatus.APPROVED;
+                default:
+                    return ApprovalStatus.APPROVED;
+            }
+        };
+
+        const inApprovalStatus = determineApproval(firstIn, flags.isLate);
+        const outApprovalStatus = determineApproval(lastOut, flags.isEarlyLeave);
+
+        // 7. Determine Work Day Status from Policy
+        const workingDaysConfig = policy?.workingDays;
+        let workDayStatus: SessionWorkDayStatus = SessionWorkDayStatus.FULL;
+
+        if (workingDaysConfig?.defaultPattern) {
+            const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            const dayOfWeek = dayNames[date.getDay()];
+            const dayConfig = (workingDaysConfig.defaultPattern as any)[dayOfWeek];
+
+            if (dayConfig) {
+                if (dayConfig.type === 'OFF') {
+                    workDayStatus = SessionWorkDayStatus.OFF;
+                } else if (dayConfig.type === 'HALF') {
+                    workDayStatus = dayConfig.halfDayShift === 'LAST'
+                        ? SessionWorkDayStatus.HALF_LAST
+                        : SessionWorkDayStatus.HALF_FIRST;
+                }
+            }
+        }
+
         const sessionData = {
             employeeId,
             companyId: employee.companyId,
@@ -171,6 +243,11 @@ export class AttendanceProcessingService {
             // Additional flags
             manuallyEdited: false,
             autoCheckout: false,
+            // Work Day Status
+            workDayStatus,
+            // Approval
+            inApprovalStatus,
+            outApprovalStatus,
         };
 
         // Upsert session
@@ -182,7 +259,12 @@ export class AttendanceProcessingService {
                 },
             },
             create: sessionData,
-            update: sessionData,
+            update: {
+                ...sessionData,
+                // DO NOT overwrite manual approval if it was already set?
+                // For now, we overwrite unless the session was "manuallyEdited"
+                // but we might want to check existing session status.
+            },
         });
 
         // Link events to session

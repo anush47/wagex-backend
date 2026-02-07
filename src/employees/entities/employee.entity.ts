@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Employee as PrismaEmployee, EmploymentType } from '@prisma/client';
+import { Employee as PrismaEmployee, EmploymentType, MaritalStatus } from '@prisma/client';
 import { Gender } from '../../common/enums/employee.enum';
 
 export class Employee implements PrismaEmployee {
@@ -75,8 +75,32 @@ export class Employee implements PrismaEmployee {
     @ApiProperty({ example: 'Bank of Ceylon', description: 'Bank Name', nullable: true })
     bankName: string | null;
 
+    @ApiProperty({ example: 'Kaduwela', description: 'Bank Branch', nullable: true })
+    bankBranch: string | null;
+
     @ApiProperty({ example: '1234567890', description: 'Account Number', nullable: true })
     accountNumber: string | null;
+
+    @ApiProperty({ example: 'Mary Doe', description: 'Mothers Name', nullable: true })
+    mothersName: string | null;
+
+    @ApiProperty({ example: 'John Doe Sr.', description: 'Fathers Name', nullable: true })
+    fathersName: string | null;
+
+    @ApiProperty({ enum: MaritalStatus, example: MaritalStatus.SINGLE })
+    maritalStatus: MaritalStatus;
+
+    @ApiProperty({ example: 'Jane Doe', description: 'Spouse Name', nullable: true })
+    spouseName: string | null;
+
+    @ApiProperty({ example: 'Sri Lankan', description: 'Nationality', nullable: true })
+    nationality: string | null;
+
+    @ApiProperty({ example: 'Jane Doe', description: 'Emergency Contact Name', nullable: true })
+    emergencyContactName: string | null;
+
+    @ApiProperty({ example: '+94771234567', description: 'Emergency Contact Phone', nullable: true })
+    emergencyContactPhone: string | null;
 
     @ApiProperty()
     createdAt: Date;

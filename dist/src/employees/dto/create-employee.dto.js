@@ -36,6 +36,16 @@ class CreateEmployeeDto {
     files;
     active;
     departmentId;
+    bankName;
+    bankBranch;
+    accountNumber;
+    mothersName;
+    fathersName;
+    maritalStatus;
+    spouseName;
+    nationality;
+    emergencyContactName;
+    emergencyContactPhone;
 }
 exports.CreateEmployeeDto = CreateEmployeeDto;
 __decorate([
@@ -168,4 +178,64 @@ __decorate([
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "departmentId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Bank of Ceylon', description: 'Bank Name', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "bankName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Kaduwela', description: 'Bank Branch', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "bankBranch", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '1234567890', description: 'Account Number', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "accountNumber", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Mary Doe', description: 'Mothers Name', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "mothersName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'John Doe Sr.', description: 'Fathers Name', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "fathersName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: employee_enum_1.MaritalStatus, example: employee_enum_1.MaritalStatus.SINGLE }),
+    (0, class_validator_1.IsEnum)(employee_enum_1.MaritalStatus),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "maritalStatus", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Jane Doe', description: 'Spouse Name', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "spouseName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Sri Lankan', description: 'Nationality', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "nationality", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Jane Doe', description: 'Emergency Contact Name', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "emergencyContactName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '+94771234567', description: 'Emergency Contact Phone', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "emergencyContactPhone", void 0);
 //# sourceMappingURL=create-employee.dto.js.map

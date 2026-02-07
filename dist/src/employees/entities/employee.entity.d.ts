@@ -1,4 +1,4 @@
-import { Employee as PrismaEmployee, EmploymentType } from '@prisma/client';
+import { Employee as PrismaEmployee, EmploymentType, MaritalStatus } from '@prisma/client';
 import { Gender } from '../../common/enums/employee.enum';
 export declare class Employee implements PrismaEmployee {
     id: string;
@@ -25,7 +25,15 @@ export declare class Employee implements PrismaEmployee {
     files: any;
     departmentId: string | null;
     bankName: string | null;
+    bankBranch: string | null;
     accountNumber: string | null;
+    mothersName: string | null;
+    fathersName: string | null;
+    maritalStatus: MaritalStatus;
+    spouseName: string | null;
+    nationality: string | null;
+    emergencyContactName: string | null;
+    emergencyContactPhone: string | null;
     createdAt: Date;
     updatedAt: Date;
 }

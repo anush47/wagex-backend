@@ -15,12 +15,13 @@ const attendance_calculation_service_1 = require("./services/attendance-calculat
 const attendance_processing_service_1 = require("./services/attendance-processing.service");
 const leave_integration_service_1 = require("./services/leave-integration.service");
 const prisma_module_1 = require("../prisma/prisma.module");
+const policies_module_1 = require("../policies/policies.module");
 let AttendanceModule = class AttendanceModule {
 };
 exports.AttendanceModule = AttendanceModule;
 exports.AttendanceModule = AttendanceModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule],
+        imports: [prisma_module_1.PrismaModule, policies_module_1.PoliciesModule],
         controllers: [attendance_controller_1.AttendanceManualController, attendance_controller_1.AttendanceExternalController],
         providers: [
             attendance_service_1.AttendanceService,

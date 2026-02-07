@@ -1,7 +1,11 @@
+import { SessionWorkDayStatus, ApprovalStatus } from '@prisma/client';
 export declare class UpdateSessionDto {
-    checkInTime?: string;
-    checkOutTime?: string;
+    inApprovalStatus?: ApprovalStatus;
+    outApprovalStatus?: ApprovalStatus;
+    checkInTime?: string | null;
+    checkOutTime?: string | null;
     shiftId?: string;
+    workDayStatus?: SessionWorkDayStatus;
     isLate?: boolean;
     isEarlyLeave?: boolean;
     isOnLeave?: boolean;

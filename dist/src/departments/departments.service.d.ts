@@ -10,6 +10,7 @@ export declare class DepartmentsService {
         updatedAt: Date;
         companyId: string;
         name: string;
+        headId: string | null;
     }>;
     findAll(companyId: string): Promise<({
         _count: {
@@ -21,6 +22,7 @@ export declare class DepartmentsService {
         updatedAt: Date;
         companyId: string;
         name: string;
+        headId: string | null;
     })[]>;
     findOne(id: string): Promise<{
         id: string;
@@ -28,6 +30,7 @@ export declare class DepartmentsService {
         updatedAt: Date;
         companyId: string;
         name: string;
+        headId: string | null;
     }>;
     update(id: string, updateDepartmentDto: UpdateDepartmentDto): Promise<{
         id: string;
@@ -35,6 +38,7 @@ export declare class DepartmentsService {
         updatedAt: Date;
         companyId: string;
         name: string;
+        headId: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
@@ -42,5 +46,6 @@ export declare class DepartmentsService {
         updatedAt: Date;
         companyId: string;
         name: string;
+        headId: string | null;
     }>;
 }

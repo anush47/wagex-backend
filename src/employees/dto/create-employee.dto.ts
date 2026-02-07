@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, IsBoolean } from 'class-validator';
-import { EmploymentType, Gender } from '../../common/enums/employee.enum';
+import { EmploymentType, Gender, MaritalStatus } from '../../common/enums/employee.enum';
 
 export class CreateEmployeeDto {
     @ApiProperty({ example: 1001, description: 'Employee Number' })
@@ -110,4 +110,54 @@ export class CreateEmployeeDto {
     @IsOptional()
     @IsUUID()
     departmentId?: string;
+
+    @ApiProperty({ example: 'Bank of Ceylon', description: 'Bank Name', required: false })
+    @IsOptional()
+    @IsString()
+    bankName?: string;
+
+    @ApiProperty({ example: 'Kaduwela', description: 'Bank Branch', required: false })
+    @IsOptional()
+    @IsString()
+    bankBranch?: string;
+
+    @ApiProperty({ example: '1234567890', description: 'Account Number', required: false })
+    @IsOptional()
+    @IsString()
+    accountNumber?: string;
+
+    @ApiProperty({ example: 'Mary Doe', description: 'Mothers Name', required: false })
+    @IsOptional()
+    @IsString()
+    mothersName?: string;
+
+    @ApiProperty({ example: 'John Doe Sr.', description: 'Fathers Name', required: false })
+    @IsOptional()
+    @IsString()
+    fathersName?: string;
+
+    @ApiProperty({ enum: MaritalStatus, example: MaritalStatus.SINGLE })
+    @IsEnum(MaritalStatus)
+    @IsOptional()
+    maritalStatus?: MaritalStatus;
+
+    @ApiProperty({ example: 'Jane Doe', description: 'Spouse Name', required: false })
+    @IsOptional()
+    @IsString()
+    spouseName?: string;
+
+    @ApiProperty({ example: 'Sri Lankan', description: 'Nationality', required: false })
+    @IsOptional()
+    @IsString()
+    nationality?: string;
+
+    @ApiProperty({ example: 'Jane Doe', description: 'Emergency Contact Name', required: false })
+    @IsOptional()
+    @IsString()
+    emergencyContactName?: string;
+
+    @ApiProperty({ example: '+94771234567', description: 'Emergency Contact Phone', required: false })
+    @IsOptional()
+    @IsString()
+    emergencyContactPhone?: string;
 }

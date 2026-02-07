@@ -16,17 +16,22 @@ const prisma_service_1 = require("../../prisma/prisma.service");
 const shift_selection_service_1 = require("./shift-selection.service");
 const attendance_calculation_service_1 = require("./attendance-calculation.service");
 const leave_integration_service_1 = require("./leave-integration.service");
+const client_1 = require("@prisma/client");
+const policies_service_1 = require("../../policies/policies.service");
+const attendance_policy_dto_1 = require("../../policies/dto/attendance-policy.dto");
 let AttendanceProcessingService = AttendanceProcessingService_1 = class AttendanceProcessingService {
     prisma;
     shiftService;
     calculationService;
     leaveService;
+    policiesService;
     logger = new common_1.Logger(AttendanceProcessingService_1.name);
-    constructor(prisma, shiftService, calculationService, leaveService) {
+    constructor(prisma, shiftService, calculationService, leaveService, policiesService) {
         this.prisma = prisma;
         this.shiftService = shiftService;
         this.calculationService = calculationService;
         this.leaveService = leaveService;
+        this.policiesService = policiesService;
     }
     async processEmployeeDate(employeeId, date) {
         this.logger.log(`Processing attendance for employee ${employeeId} on ${date.toISOString()}`);
@@ -80,6 +85,61 @@ let AttendanceProcessingService = AttendanceProcessingService_1 = class Attendan
         if (!employee) {
             throw new Error('Employee not found');
         }
+        const policy = await this.policiesService.getEffectivePolicy(employeeId);
+        const approvalConfig = policy?.attendance?.approvalPolicy;
+        const existingSession = await this.prisma.attendanceSession.findUnique({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date,
+                },
+            },
+        });
+        if (existingSession?.manuallyEdited) {
+            this.logger.log(`Session for ${employeeId} on ${date.toISOString()} was manually edited, skipping auto-processing`);
+            return existingSession;
+        }
+        const determineApproval = (event, isLate) => {
+            if (!event)
+                return client_1.ApprovalStatus.APPROVED;
+            if (!approvalConfig)
+                return client_1.ApprovalStatus.APPROVED;
+            if (approvalConfig.mode === 'AUTO_APPROVE') {
+                return client_1.ApprovalStatus.APPROVED;
+            }
+            if (event.source === 'MANUAL')
+                return client_1.ApprovalStatus.PENDING;
+            switch (approvalConfig.mode) {
+                case attendance_policy_dto_1.ApprovalPolicyMode.REQUIRE_APPROVAL_ALL:
+                    return client_1.ApprovalStatus.PENDING;
+                case attendance_policy_dto_1.ApprovalPolicyMode.REQUIRE_APPROVAL_EXCEPTIONS:
+                    if (isLate && (approvalConfig.exceptionTriggers?.deviceMismatch || approvalConfig.exceptionTriggers?.outsideZone)) {
+                        return client_1.ApprovalStatus.PENDING;
+                    }
+                    return client_1.ApprovalStatus.APPROVED;
+                default:
+                    return client_1.ApprovalStatus.APPROVED;
+            }
+        };
+        const inApprovalStatus = determineApproval(firstIn, flags.isLate);
+        const outApprovalStatus = determineApproval(lastOut, flags.isEarlyLeave);
+        const workingDaysConfig = policy?.workingDays;
+        let workDayStatus = client_1.SessionWorkDayStatus.FULL;
+        if (workingDaysConfig?.defaultPattern) {
+            const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            const dayOfWeek = dayNames[date.getDay()];
+            const dayConfig = workingDaysConfig.defaultPattern[dayOfWeek];
+            if (dayConfig) {
+                if (dayConfig.type === 'OFF') {
+                    workDayStatus = client_1.SessionWorkDayStatus.OFF;
+                }
+                else if (dayConfig.type === 'HALF') {
+                    workDayStatus = dayConfig.halfDayShift === 'LAST'
+                        ? client_1.SessionWorkDayStatus.HALF_LAST
+                        : client_1.SessionWorkDayStatus.HALF_FIRST;
+                }
+            }
+        }
         const sessionData = {
             employeeId,
             companyId: employee.companyId,
@@ -108,6 +168,9 @@ let AttendanceProcessingService = AttendanceProcessingService_1 = class Attendan
             hasShortLeave: flags.hasShortLeave,
             manuallyEdited: false,
             autoCheckout: false,
+            workDayStatus,
+            inApprovalStatus,
+            outApprovalStatus,
         };
         const session = await this.prisma.attendanceSession.upsert({
             where: {
@@ -117,7 +180,9 @@ let AttendanceProcessingService = AttendanceProcessingService_1 = class Attendan
                 },
             },
             create: sessionData,
-            update: sessionData,
+            update: {
+                ...sessionData,
+            },
         });
         await this.prisma.attendanceEvent.updateMany({
             where: {
@@ -154,6 +219,7 @@ exports.AttendanceProcessingService = AttendanceProcessingService = AttendancePr
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         shift_selection_service_1.ShiftSelectionService,
         attendance_calculation_service_1.AttendanceCalculationService,
-        leave_integration_service_1.LeaveIntegrationService])
+        leave_integration_service_1.LeaveIntegrationService,
+        policies_service_1.PoliciesService])
 ], AttendanceProcessingService);
 //# sourceMappingURL=attendance-processing.service.js.map

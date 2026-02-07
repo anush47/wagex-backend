@@ -18,47 +18,48 @@ export declare class AttendanceManualController {
     getSessions(query: SessionQueryDto): Promise<{
         items: ({
             employee: {
-                employeeNo: number;
                 nameWithInitials: string;
                 fullName: string;
+                employeeNo: number;
             };
         } & {
-            checkInTime: Date | null;
-            checkOutTime: Date | null;
-            shiftId: string | null;
-            isLate: boolean;
-            isEarlyLeave: boolean;
-            isOnLeave: boolean;
-            isHalfDay: boolean;
-            hasShortLeave: boolean;
-            remarks: string | null;
-            totalMinutes: number | null;
-            breakMinutes: number | null;
-            workMinutes: number | null;
-            overtimeMinutes: number | null;
-            companyId: string;
-            employeeId: string;
             id: string;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             createdAt: Date;
             updatedAt: Date;
+            companyId: string;
+            employeeId: string;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            totalMinutes: number | null;
+            breakMinutes: number | null;
             date: Date;
+            shiftId: string | null;
             shiftName: string | null;
             shiftStartTime: string | null;
             shiftEndTime: string | null;
             shiftBreakMinutes: number | null;
+            checkInTime: Date | null;
+            checkOutTime: Date | null;
             checkInLocation: string | null;
             checkInLatitude: number | null;
             checkInLongitude: number | null;
             checkOutLocation: string | null;
             checkOutLatitude: number | null;
             checkOutLongitude: number | null;
+            workMinutes: number | null;
+            overtimeMinutes: number | null;
+            isLate: boolean;
+            isEarlyLeave: boolean;
+            isOnLeave: boolean;
+            isHalfDay: boolean;
+            hasShortLeave: boolean;
             manuallyEdited: boolean;
             autoCheckout: boolean;
+            workDayStatus: import("@prisma/client").$Enums.SessionWorkDayStatus;
             inApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
             outApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
             approvedById: string | null;
             approvedAt: Date | null;
+            remarks: string | null;
         })[];
         meta: {
             total: number;
@@ -69,14 +70,19 @@ export declare class AttendanceManualController {
     getEvents(query: EventQueryDto): Promise<{
         items: ({
             employee: {
-                employeeNo: number;
                 nameWithInitials: string;
                 fullName: string;
+                employeeNo: number;
             };
         } & {
-            companyId: string;
-            employeeId: string;
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            status: import("@prisma/client").$Enums.EventStatus;
+            remark: string | null;
+            employeeId: string;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             eventTime: Date;
             eventType: import("@prisma/client").$Enums.EventType;
             source: import("@prisma/client").$Enums.EventSource;
@@ -85,13 +91,8 @@ export declare class AttendanceManualController {
             location: string | null;
             latitude: number | null;
             longitude: number | null;
-            status: import("@prisma/client").$Enums.EventStatus;
             sessionId: string | null;
             manualOverride: boolean;
-            remark: string | null;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         })[];
         meta: {
             total: number;
@@ -100,42 +101,43 @@ export declare class AttendanceManualController {
         };
     }>;
     updateSession(id: string, updateSessionDto: UpdateSessionDto): Promise<{
-        checkInTime: Date | null;
-        checkOutTime: Date | null;
-        shiftId: string | null;
-        isLate: boolean;
-        isEarlyLeave: boolean;
-        isOnLeave: boolean;
-        isHalfDay: boolean;
-        hasShortLeave: boolean;
-        remarks: string | null;
-        totalMinutes: number | null;
-        breakMinutes: number | null;
-        workMinutes: number | null;
-        overtimeMinutes: number | null;
-        companyId: string;
-        employeeId: string;
         id: string;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
+        employeeId: string;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        totalMinutes: number | null;
+        breakMinutes: number | null;
         date: Date;
+        shiftId: string | null;
         shiftName: string | null;
         shiftStartTime: string | null;
         shiftEndTime: string | null;
         shiftBreakMinutes: number | null;
+        checkInTime: Date | null;
+        checkOutTime: Date | null;
         checkInLocation: string | null;
         checkInLatitude: number | null;
         checkInLongitude: number | null;
         checkOutLocation: string | null;
         checkOutLatitude: number | null;
         checkOutLongitude: number | null;
+        workMinutes: number | null;
+        overtimeMinutes: number | null;
+        isLate: boolean;
+        isEarlyLeave: boolean;
+        isOnLeave: boolean;
+        isHalfDay: boolean;
+        hasShortLeave: boolean;
         manuallyEdited: boolean;
         autoCheckout: boolean;
+        workDayStatus: import("@prisma/client").$Enums.SessionWorkDayStatus;
         inApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
         outApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
         approvedById: string | null;
         approvedAt: Date | null;
+        remarks: string | null;
     }>;
     deleteSession(id: string): Promise<{
         message: string;

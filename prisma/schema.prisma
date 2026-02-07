@@ -82,8 +82,6 @@ model UserCompany {
   
   // Granular permissions for this company
   // Example: { "can_edit_payroll": true, "can_view_audit": false }
-  // Granular permissions for this company
-  // Example: { "can_edit_payroll": true, "can_view_audit": false }
   permissions Json?    @default("{}")
   
   active    Boolean    @default(false) // Whether user has active portal access to this company
@@ -103,14 +101,32 @@ enum EmploymentType {
   PERMANENT
   CONTRACT
   INTERN
+  TEMPORARY
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
 }
 
 model Department {
   id        String   @id @default(uuid())
   name      String
+  
   companyId String
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  employees Employee[]
+  
+  // Department Head
+  headId    String?
+  head      Employee? @relation("DepartmentHead", fields: [headId], references: [id])
+  
+  // Department Members
+  employees Employee[] @relation("DepartmentMembers")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -119,52 +135,88 @@ model Department {
 }
 
 model Employee {
-  id        String   @id @default(uuid())
-  
-  // Basic Info
-  employeeNo       Int
+  id         String   @id @default(uuid())
+  employeeNo Int
+  nic        String?
   nameWithInitials String
-  fullName         String
-  address          String?
-  phone            String?
-  email            String?
-  nic              String?
+  fullName   String
+  designation String?
+  address    String?
+  phone      String?
+  email      String?  @unique
   
-  // Employment Details
-  employmentType EmploymentType
-  designation    String?
-  joinedDate     DateTime
+  basicSalary Float   @default(0.0)
+  status      String  @default("ACTIVE")
+  gender      Gender  @default(MALE)
+  employmentType EmploymentType @default(PERMANENT)
+
+  joinedDate   DateTime @default(now())
+  resignedDate DateTime?
+  remark       String?   @db.Text
   
-  // Bank Details
-  bankName      String?
-  accountNumber String?
-  
+  details      EmployeeDetail?
+
   // Relationships
-  companyId String
-  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId  String
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  userId     String?
+  user       User?   @relation(fields: [userId], references: [id])
+
+  // Manager Self-Relation
+  managerId  String?
+  manager    Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
+  reports    Employee[] @relation("EmployeeManager")
   
+  canSelfEdit Boolean   @default(true)
+  photo       String?
+  files       Json?     @default("[]")
+
+  // Department Relations
   departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
+  department   Department? @relation("DepartmentMembers", fields: [departmentId], references: [id])
   
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-  
-  policy Policy?
+  headOfDepartments Department[] @relation("DepartmentHead")
+
+  policy    Policy?
   leaveRequests LeaveRequest[]
   attendanceEvents AttendanceEvent[]
   attendanceSessions AttendanceSession[]
-  
-  // Future relations for Payroll, Attendance, etc.
-  // payroll Payroll[]
-  // attendance Attendance[]
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   @@unique([companyId, employeeNo])
   @@index([companyId])
   @@index([userId])
   @@map("employees")
+}
+
+model EmployeeDetail {
+  id                    String        @id @default(uuid())
+  employeeId            String        @unique
+  employee              Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // Bank Details
+  bankName              String?
+  bankBranch            String?
+  accountNumber         String?
+
+  // Personal & Family Details
+  mothersName           String?
+  fathersName           String?
+  maritalStatus         MaritalStatus @default(SINGLE)
+  spouseName            String?
+  nationality           String?       @default("Sri Lankan")
+  
+  // Emergency Contact
+  emergencyContactName  String?
+  emergencyContactPhone String?
+
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@map("employee_details")
 }
 
 model AuditLog {
@@ -351,6 +403,13 @@ enum ApprovalStatus {
   REJECTED
 }
 
+enum SessionWorkDayStatus {
+  FULL
+  HALF_FIRST
+  HALF_LAST
+  OFF
+}
+
 model AttendanceSession {
   id               String   @id @default(uuid())
   employeeId       String
@@ -397,6 +456,9 @@ model AttendanceSession {
   // Additional Flags
   manuallyEdited   Boolean  @default(false)
   autoCheckout     Boolean  @default(false)
+  
+  // Work Day Status (Calculated from Policy)
+  workDayStatus    SessionWorkDayStatus @default(FULL)
   
   // Approval
   inApprovalStatus  ApprovalStatus @default(PENDING)

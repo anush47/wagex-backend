@@ -10,6 +10,7 @@ export declare class DepartmentsController {
         updatedAt: Date;
         companyId: string;
         name: string;
+        headId: string | null;
     }>;
     findAll(companyId: string, req: any): Promise<({
         _count: {
@@ -21,6 +22,7 @@ export declare class DepartmentsController {
         updatedAt: Date;
         companyId: string;
         name: string;
+        headId: string | null;
     })[]>;
     findOne(id: string, req: any): Promise<{
         id: string;
@@ -28,6 +30,7 @@ export declare class DepartmentsController {
         updatedAt: Date;
         companyId: string;
         name: string;
+        headId: string | null;
     }>;
     update(id: string, updateDepartmentDto: UpdateDepartmentDto, req: any): Promise<{
         id: string;
@@ -35,6 +38,7 @@ export declare class DepartmentsController {
         updatedAt: Date;
         companyId: string;
         name: string;
+        headId: string | null;
     }>;
     remove(id: string, req: any): Promise<{
         id: string;
@@ -42,5 +46,6 @@ export declare class DepartmentsController {
         updatedAt: Date;
         companyId: string;
         name: string;
+        headId: string | null;
     }>;
 }

@@ -237,8 +237,8 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             where: { id },
             data: {
                 ...dto,
-                checkInTime: dto.checkInTime ? new Date(dto.checkInTime) : undefined,
-                checkOutTime: dto.checkOutTime ? new Date(dto.checkOutTime) : undefined,
+                checkInTime: dto.checkInTime === null ? null : (dto.checkInTime ? new Date(dto.checkInTime) : undefined),
+                checkOutTime: dto.checkOutTime === null ? null : (dto.checkOutTime ? new Date(dto.checkOutTime) : undefined),
                 manuallyEdited: true,
             },
         });
@@ -253,7 +253,10 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         }
         await this.prisma.attendanceEvent.updateMany({
             where: { sessionId: id },
-            data: { sessionId: null },
+            data: {
+                sessionId: null,
+                status: 'IGNORED'
+            },
         });
         await this.prisma.attendanceSession.delete({
             where: { id },

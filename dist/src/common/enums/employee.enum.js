@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Gender = exports.EmploymentType = void 0;
+exports.MaritalStatus = exports.Gender = exports.EmploymentType = void 0;
 var EmploymentType;
 (function (EmploymentType) {
     EmploymentType["PROBATION"] = "PROBATION";
@@ -14,4 +14,9 @@ var Gender;
     Gender["MALE"] = "MALE";
     Gender["FEMALE"] = "FEMALE";
 })(Gender || (exports.Gender = Gender = {}));
+var MaritalStatus;
+(function (MaritalStatus) {
+    MaritalStatus["SINGLE"] = "SINGLE";
+    MaritalStatus["MARRIED"] = "MARRIED";
+})(MaritalStatus || (exports.MaritalStatus = MaritalStatus = {}));
 //# sourceMappingURL=employee.enum.js.map

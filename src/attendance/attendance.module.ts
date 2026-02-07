@@ -9,9 +9,10 @@ import { AttendanceCalculationService } from './services/attendance-calculation.
 import { AttendanceProcessingService } from './services/attendance-processing.service';
 import { LeaveIntegrationService } from './services/leave-integration.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { PoliciesModule } from '../policies/policies.module';
 
 @Module({
-    imports: [PrismaModule],
+    imports: [PrismaModule, PoliciesModule],
     controllers: [AttendanceManualController, AttendanceExternalController],
     providers: [
         AttendanceService,

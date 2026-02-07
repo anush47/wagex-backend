@@ -74,17 +74,31 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
     }
     async create(createEmployeeDto) {
         this.logger.log(`Creating new employee for company: ${createEmployeeDto.companyId}`);
+        const { active, bankName, bankBranch, accountNumber, mothersName, fathersName, maritalStatus, spouseName, nationality, emergencyContactName, emergencyContactPhone, ...dto } = createEmployeeDto;
         const data = {
-            ...createEmployeeDto,
-            joinedDate: createEmployeeDto.joinedDate
-                ? new Date(createEmployeeDto.joinedDate)
-                : new Date(),
-            resignedDate: createEmployeeDto.resignedDate
-                ? new Date(createEmployeeDto.resignedDate)
-                : undefined,
+            ...dto,
+            joinedDate: createEmployeeDto.joinedDate ? new Date(createEmployeeDto.joinedDate) : new Date(),
+            resignedDate: createEmployeeDto.resignedDate ? new Date(createEmployeeDto.resignedDate) : undefined,
             remark: createEmployeeDto.remark || undefined,
+            details: {
+                create: {
+                    bankName,
+                    bankBranch,
+                    accountNumber,
+                    mothersName,
+                    fathersName,
+                    maritalStatus: maritalStatus || undefined,
+                    spouseName,
+                    nationality,
+                    emergencyContactName,
+                    emergencyContactPhone
+                }
+            }
         };
-        const employee = await this.prisma.employee.create({ data });
+        const employee = await this.prisma.employee.create({
+            data,
+            include: { details: true }
+        });
         return employee;
     }
     async findAll(companyId, queryDto, user) {
@@ -170,7 +184,8 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
             where: { id },
             include: {
                 user: true,
-                company: true
+                company: true,
+                details: true
             }
         });
         if (!employee) {
@@ -181,11 +196,41 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
     }
     async update(id, updateEmployeeDto) {
         await this.findOne(id);
-        const { companyId, active, ...updateData } = updateEmployeeDto;
+        const { companyId, active, bankName, bankBranch, accountNumber, mothersName, fathersName, maritalStatus, spouseName, nationality, emergencyContactName, emergencyContactPhone, ...updateData } = updateEmployeeDto;
         this.logger.log(`Updating employee ID: ${id}`);
+        const nestedDetails = {};
+        if (bankName !== undefined)
+            nestedDetails.bankName = bankName;
+        if (bankBranch !== undefined)
+            nestedDetails.bankBranch = bankBranch;
+        if (accountNumber !== undefined)
+            nestedDetails.accountNumber = accountNumber;
+        if (mothersName !== undefined)
+            nestedDetails.mothersName = mothersName;
+        if (fathersName !== undefined)
+            nestedDetails.fathersName = fathersName;
+        if (maritalStatus !== undefined)
+            nestedDetails.maritalStatus = maritalStatus;
+        if (spouseName !== undefined)
+            nestedDetails.spouseName = spouseName;
+        if (nationality !== undefined)
+            nestedDetails.nationality = nationality;
+        if (emergencyContactName !== undefined)
+            nestedDetails.emergencyContactName = emergencyContactName;
+        if (emergencyContactPhone !== undefined)
+            nestedDetails.emergencyContactPhone = emergencyContactPhone;
         const updated = await this.prisma.employee.update({
             where: { id },
-            data: updateData,
+            data: {
+                ...updateData,
+                details: Object.keys(nestedDetails).length > 0 ? {
+                    upsert: {
+                        create: nestedDetails,
+                        update: nestedDetails
+                    }
+                } : undefined
+            },
+            include: { details: true }
         });
         if (updated.userId) {
             const userUpdate = {};

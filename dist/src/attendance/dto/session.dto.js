@@ -13,10 +13,14 @@ exports.EventQueryDto = exports.SessionQueryDto = exports.UpdateSessionDto = voi
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
+const client_1 = require("@prisma/client");
 class UpdateSessionDto {
+    inApprovalStatus;
+    outApprovalStatus;
     checkInTime;
     checkOutTime;
     shiftId;
+    workDayStatus;
     isLate;
     isEarlyLeave;
     isOnLeave;
@@ -30,16 +34,28 @@ class UpdateSessionDto {
 }
 exports.UpdateSessionDto = UpdateSessionDto;
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'Check-in time in ISO format' }),
+    (0, swagger_1.ApiPropertyOptional)({ enum: client_1.ApprovalStatus, description: 'Check-in approval status' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(client_1.ApprovalStatus),
+    __metadata("design:type", String)
+], UpdateSessionDto.prototype, "inApprovalStatus", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: client_1.ApprovalStatus, description: 'Check-out approval status' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(client_1.ApprovalStatus),
+    __metadata("design:type", String)
+], UpdateSessionDto.prototype, "outApprovalStatus", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Check-in time in ISO format', type: String, nullable: true }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsDateString)(),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], UpdateSessionDto.prototype, "checkInTime", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'Check-out time in ISO format' }),
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Check-out time in ISO format', type: String, nullable: true }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsDateString)(),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], UpdateSessionDto.prototype, "checkOutTime", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ description: 'Shift ID override' }),
@@ -47,6 +63,12 @@ __decorate([
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
 ], UpdateSessionDto.prototype, "shiftId", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: client_1.SessionWorkDayStatus, description: 'Work day status' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(client_1.SessionWorkDayStatus),
+    __metadata("design:type", String)
+], UpdateSessionDto.prototype, "workDayStatus", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ description: 'Late flag' }),
     (0, class_validator_1.IsOptional)(),

@@ -59,9 +59,15 @@ let ShiftSelectionService = ShiftSelectionService_1 = class ShiftSelectionServic
     }
     selectShiftByPolicy(shiftsConfig, eventTime) {
         const policy = shiftsConfig.shiftSelectionPolicy || 'FIXED';
-        const shifts = shiftsConfig.shifts || [];
+        const shifts = shiftsConfig.list || shiftsConfig.shifts || [];
+        const defaultShiftId = shiftsConfig.defaultShiftId;
         if (shifts.length === 0) {
             return null;
+        }
+        if (defaultShiftId && (policy === 'FIXED' || !eventTime)) {
+            const defaultShift = shifts.find((s) => s.id === defaultShiftId);
+            if (defaultShift)
+                return this.mapShift(defaultShift);
         }
         switch (policy) {
             case 'FIXED':

@@ -1,4 +1,4 @@
-import { EmploymentType, Gender } from '../../common/enums/employee.enum';
+import { EmploymentType, Gender, MaritalStatus } from '../../common/enums/employee.enum';
 export declare class CreateEmployeeDto {
     employeeNo: number;
     nic: string;
@@ -22,4 +22,14 @@ export declare class CreateEmployeeDto {
     files?: any;
     active?: boolean;
     departmentId?: string;
+    bankName?: string;
+    bankBranch?: string;
+    accountNumber?: string;
+    mothersName?: string;
+    fathersName?: string;
+    maritalStatus?: MaritalStatus;
+    spouseName?: string;
+    nationality?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
 }

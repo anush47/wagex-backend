@@ -327,8 +327,8 @@ export class AttendanceService {
             where: { id },
             data: {
                 ...dto,
-                checkInTime: dto.checkInTime ? new Date(dto.checkInTime) : undefined,
-                checkOutTime: dto.checkOutTime ? new Date(dto.checkOutTime) : undefined,
+                checkInTime: dto.checkInTime === null ? null : (dto.checkInTime ? new Date(dto.checkInTime) : undefined),
+                checkOutTime: dto.checkOutTime === null ? null : (dto.checkOutTime ? new Date(dto.checkOutTime) : undefined),
                 manuallyEdited: true,
             },
         });
@@ -348,10 +348,13 @@ export class AttendanceService {
             throw new NotFoundException('Session not found');
         }
 
-        // Unlink events
+        // Mark events as IGNORED and unlink them
         await this.prisma.attendanceEvent.updateMany({
             where: { sessionId: id },
-            data: { sessionId: null },
+            data: {
+                sessionId: null,
+                status: 'IGNORED'
+            },
         });
 
         // Delete session

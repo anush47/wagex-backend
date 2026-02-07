@@ -83,15 +83,22 @@ export class ShiftSelectionService {
         eventTime?: Date,
     ): ShiftDto | null {
         const policy = shiftsConfig.shiftSelectionPolicy || 'FIXED';
-        const shifts = shiftsConfig.shifts || [];
+        const shifts = shiftsConfig.list || shiftsConfig.shifts || [];
+        const defaultShiftId = shiftsConfig.defaultShiftId;
 
         if (shifts.length === 0) {
             return null;
         }
 
+        // If there's a defaultShiftId and we're in FIXED mode (or no eventTime), use it
+        if (defaultShiftId && (policy === 'FIXED' || !eventTime)) {
+            const defaultShift = shifts.find((s: any) => s.id === defaultShiftId);
+            if (defaultShift) return this.mapShift(defaultShift);
+        }
+
         switch (policy) {
             case 'FIXED':
-                // Return first shift (default)
+                // Return default or first shift
                 return this.mapShift(shifts[0]);
 
             case 'CLOSEST_START_TIME':
