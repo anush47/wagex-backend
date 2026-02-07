@@ -47,6 +47,10 @@ let AttendanceManualController = AttendanceManualController_1 = class Attendance
         this.logger.log(`Fetching sessions with filters: ${JSON.stringify(query)}`);
         return this.attendanceService.getSessions(query);
     }
+    async getSession(id) {
+        this.logger.log(`Fetching session details for ${id}`);
+        return this.attendanceService.getSession(id);
+    }
     async getEvents(query) {
         this.logger.log(`Fetching events with filters: ${JSON.stringify(query)}`);
         return this.attendanceService.getEvents(query);
@@ -81,6 +85,17 @@ __decorate([
     __metadata("design:paramtypes", [session_dto_1.SessionQueryDto]),
     __metadata("design:returntype", Promise)
 ], AttendanceManualController.prototype, "getSessions", null);
+__decorate([
+    (0, common_1.Get)('sessions/:id'),
+    (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Get single attendance session by ID' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Session retrieved successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Session not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendanceManualController.prototype, "getSession", null);
 __decorate([
     (0, common_1.Get)('events'),
     (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),

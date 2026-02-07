@@ -35,11 +35,6 @@ export declare class AttendanceService {
             id: string;
             employeeId: string;
             companyId: string;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
-            totalMinutes: number | null;
-            breakMinutes: number | null;
             date: Date;
             shiftId: string | null;
             shiftName: string | null;
@@ -54,6 +49,8 @@ export declare class AttendanceService {
             checkOutLocation: string | null;
             checkOutLatitude: number | null;
             checkOutLongitude: number | null;
+            totalMinutes: number | null;
+            breakMinutes: number | null;
             workMinutes: number | null;
             overtimeMinutes: number | null;
             isLate: boolean;
@@ -69,6 +66,9 @@ export declare class AttendanceService {
             approvedById: string | null;
             approvedAt: Date | null;
             remarks: string | null;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         })[];
         meta: {
             total: number;
@@ -76,6 +76,7 @@ export declare class AttendanceService {
             lastPage: number;
         };
     }>;
+    getSession(id: string): Promise<AttendanceSession>;
     getEvents(query: EventQueryDto): Promise<{
         items: ({
             employee: {
@@ -88,6 +89,11 @@ export declare class AttendanceService {
             id: string;
             employeeId: string;
             companyId: string;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import("@prisma/client").$Enums.EventStatus;
+            remark: string | null;
             eventTime: Date;
             eventType: import("@prisma/client").$Enums.EventType;
             source: import("@prisma/client").$Enums.EventSource;
@@ -96,13 +102,8 @@ export declare class AttendanceService {
             location: string | null;
             latitude: number | null;
             longitude: number | null;
-            status: import("@prisma/client").$Enums.EventStatus;
             sessionId: string | null;
             manualOverride: boolean;
-            remark: string | null;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         })[];
         meta: {
             total: number;

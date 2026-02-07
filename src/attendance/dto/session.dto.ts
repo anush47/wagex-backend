@@ -1,7 +1,7 @@
 import { IsOptional, IsString, IsDateString, IsBoolean, IsNumber, IsUUID, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { SessionWorkDayStatus, ApprovalStatus } from '@prisma/client';
+import { SessionWorkDayStatus, ApprovalStatus, EventStatus } from '@prisma/client';
 
 export class UpdateSessionDto {
     @ApiPropertyOptional({ enum: ApprovalStatus, description: 'Check-in approval status' })
@@ -151,4 +151,9 @@ export class EventQueryDto {
     @Type(() => Number)
     @IsNumber()
     limit?: number;
+
+    @ApiPropertyOptional({ enum: EventStatus, description: 'Event status filter' })
+    @IsOptional()
+    @IsEnum(EventStatus)
+    status?: EventStatus;
 }

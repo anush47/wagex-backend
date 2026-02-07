@@ -83,6 +83,16 @@ export class AttendanceManualController {
         return this.attendanceService.getSessions(query);
     }
 
+    @Get('sessions/:id')
+    @Roles(Role.EMPLOYER, Role.ADMIN)
+    @ApiOperation({ summary: 'Get single attendance session by ID' })
+    @ApiResponse({ status: 200, description: 'Session retrieved successfully' })
+    @ApiResponse({ status: 404, description: 'Session not found' })
+    async getSession(@Param('id') id: string) {
+        this.logger.log(`Fetching session details for ${id}`);
+        return this.attendanceService.getSession(id);
+    }
+
     @Get('events')
     @Roles(Role.EMPLOYER, Role.ADMIN)
     @ApiOperation({ summary: 'Get attendance events (paginated)' })

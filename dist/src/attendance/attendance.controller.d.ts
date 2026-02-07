@@ -30,8 +30,6 @@ export declare class AttendanceManualController {
             metadata: import("@prisma/client/runtime/client").JsonValue | null;
             createdAt: Date;
             updatedAt: Date;
-            totalMinutes: number | null;
-            breakMinutes: number | null;
             date: Date;
             shiftId: string | null;
             shiftName: string | null;
@@ -46,6 +44,8 @@ export declare class AttendanceManualController {
             checkOutLocation: string | null;
             checkOutLatitude: number | null;
             checkOutLongitude: number | null;
+            totalMinutes: number | null;
+            breakMinutes: number | null;
             workMinutes: number | null;
             overtimeMinutes: number | null;
             isLate: boolean;
@@ -67,6 +67,45 @@ export declare class AttendanceManualController {
             page: number;
             lastPage: number;
         };
+    }>;
+    getSession(id: string): Promise<{
+        id: string;
+        employeeId: string;
+        companyId: string;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        createdAt: Date;
+        updatedAt: Date;
+        date: Date;
+        shiftId: string | null;
+        shiftName: string | null;
+        shiftStartTime: string | null;
+        shiftEndTime: string | null;
+        shiftBreakMinutes: number | null;
+        checkInTime: Date | null;
+        checkOutTime: Date | null;
+        checkInLocation: string | null;
+        checkInLatitude: number | null;
+        checkInLongitude: number | null;
+        checkOutLocation: string | null;
+        checkOutLatitude: number | null;
+        checkOutLongitude: number | null;
+        totalMinutes: number | null;
+        breakMinutes: number | null;
+        workMinutes: number | null;
+        overtimeMinutes: number | null;
+        isLate: boolean;
+        isEarlyLeave: boolean;
+        isOnLeave: boolean;
+        isHalfDay: boolean;
+        hasShortLeave: boolean;
+        manuallyEdited: boolean;
+        autoCheckout: boolean;
+        workDayStatus: import("@prisma/client").$Enums.SessionWorkDayStatus;
+        inApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
+        outApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
+        approvedById: string | null;
+        approvedAt: Date | null;
+        remarks: string | null;
     }>;
     getEvents(query: EventQueryDto): Promise<{
         items: ({
@@ -109,8 +148,6 @@ export declare class AttendanceManualController {
         metadata: import("@prisma/client/runtime/client").JsonValue | null;
         createdAt: Date;
         updatedAt: Date;
-        totalMinutes: number | null;
-        breakMinutes: number | null;
         date: Date;
         shiftId: string | null;
         shiftName: string | null;
@@ -125,6 +162,8 @@ export declare class AttendanceManualController {
         checkOutLocation: string | null;
         checkOutLatitude: number | null;
         checkOutLongitude: number | null;
+        totalMinutes: number | null;
+        breakMinutes: number | null;
         workMinutes: number | null;
         overtimeMinutes: number | null;
         isLate: boolean;

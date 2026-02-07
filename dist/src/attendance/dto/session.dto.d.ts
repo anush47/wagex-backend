@@ -1,4 +1,4 @@
-import { SessionWorkDayStatus, ApprovalStatus } from '@prisma/client';
+import { SessionWorkDayStatus, ApprovalStatus, EventStatus } from '@prisma/client';
 export declare class UpdateSessionDto {
     inApprovalStatus?: ApprovalStatus;
     outApprovalStatus?: ApprovalStatus;
@@ -32,4 +32,5 @@ export declare class EventQueryDto {
     endDate?: string;
     page?: number;
     limit?: number;
+    status?: EventStatus;
 }

@@ -182,6 +182,26 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             },
         };
     }
+    async getSession(id) {
+        this.logger.log(`Fetching session ${id}`);
+        const session = await this.prisma.attendanceSession.findUnique({
+            where: { id },
+            include: {
+                employee: {
+                    select: {
+                        employeeNo: true,
+                        nameWithInitials: true,
+                        fullName: true,
+                        photo: true,
+                    },
+                },
+            },
+        });
+        if (!session) {
+            throw new common_1.NotFoundException('Session not found');
+        }
+        return session;
+    }
     async getEvents(query) {
         const page = query.page || 1;
         const limit = query.limit || 20;
@@ -201,6 +221,9 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             if (query.endDate) {
                 where.eventTime.lte = new Date(query.endDate);
             }
+        }
+        if (query.status) {
+            where.status = query.status;
         }
         const [items, total] = await Promise.all([
             this.prisma.attendanceEvent.findMany({

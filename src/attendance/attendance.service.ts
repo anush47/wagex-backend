@@ -253,6 +253,32 @@ export class AttendanceService {
     }
 
     /**
+     * Get single session by ID
+     */
+    async getSession(id: string): Promise<AttendanceSession> {
+        this.logger.log(`Fetching session ${id}`);
+        const session = await this.prisma.attendanceSession.findUnique({
+            where: { id },
+            include: {
+                employee: {
+                    select: {
+                        employeeNo: true,
+                        nameWithInitials: true,
+                        fullName: true,
+                        photo: true,
+                    },
+                },
+            },
+        });
+
+        if (!session) {
+            throw new NotFoundException('Session not found');
+        }
+
+        return session;
+    }
+
+    /**
      * Get events with pagination
      */
     async getEvents(query: EventQueryDto) {
@@ -278,6 +304,10 @@ export class AttendanceService {
             if (query.endDate) {
                 where.eventTime.lte = new Date(query.endDate);
             }
+        }
+
+        if (query.status) {
+            where.status = query.status;
         }
 
         const [items, total] = await Promise.all([

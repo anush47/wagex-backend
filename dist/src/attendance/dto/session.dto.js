@@ -183,6 +183,7 @@ class EventQueryDto {
     endDate;
     page;
     limit;
+    status;
 }
 exports.EventQueryDto = EventQueryDto;
 __decorate([
@@ -223,4 +224,10 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], EventQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: client_1.EventStatus, description: 'Event status filter' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(client_1.EventStatus),
+    __metadata("design:type", String)
+], EventQueryDto.prototype, "status", void 0);
 //# sourceMappingURL=session.dto.js.map
