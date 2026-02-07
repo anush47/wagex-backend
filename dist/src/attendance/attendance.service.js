@@ -151,7 +151,9 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
                 where.date.gte = new Date(query.startDate);
             }
             if (query.endDate) {
-                where.date.lte = new Date(query.endDate);
+                const end = new Date(query.endDate);
+                end.setHours(23, 59, 59, 999);
+                where.date.lte = end;
             }
         }
         const [items, total] = await Promise.all([
@@ -219,7 +221,9 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
                 where.eventTime.gte = new Date(query.startDate);
             }
             if (query.endDate) {
-                where.eventTime.lte = new Date(query.endDate);
+                const end = new Date(query.endDate);
+                end.setHours(23, 59, 59, 999);
+                where.eventTime.lte = end;
             }
         }
         if (query.status) {
