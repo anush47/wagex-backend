@@ -62,6 +62,67 @@ To maintain a clean and searchable database, follow these formatting rules:
 
 ---
 
+## 📊 Attendance System Architecture
+
+### Overview
+The attendance system uses a **two-table architecture** to separate raw event logs from processed attendance sessions.
+
+### Tables
+
+#### 1. AttendanceEvent (Raw Logs)
+- **Purpose**: Immutable audit trail of all attendance events
+- **Source Types**: 
+  - `WEB`: Employee portal check-in/out
+  - `API_KEY`: External devices (biometric, time clocks)
+  - `MANUAL`: Employer-created entries
+- **Status**: `ACTIVE`, `REJECTED`, `IGNORED`
+- **Key Fields**: `employeeId`, `eventTime`, `eventType` (IN/OUT), `source`, `device`, `location`
+
+#### 2. AttendanceSession (Processed Sessions)
+- **Purpose**: Calculated daily work sessions with approval workflow
+- **Lifecycle**: Created from events, can be manually edited, requires approval
+- **Key Fields**: 
+  - Times: `checkInTime`, `checkOutTime`, `sessionDate`
+  - Approvals: `inApprovalStatus`, `outApprovalStatus`
+  - Calculations: `totalMinutes`, `workMinutes`, `breakMinutes`, `overtimeMinutes`
+  - Flags: `isLate`, `isEarlyLeave`, `isOnLeave`, `isHalfDay`
+
+### External API Integration
+
+The system provides API key authentication for external devices:
+
+**Endpoints**:
+- `POST /attendance/external/event` - Single event submission
+- `POST /attendance/external/events/bulk` - Bulk event submission
+- `GET /attendance/external/verify` - API key verification
+
+**Authentication**: API keys are managed per company and passed via `X-API-Key` header.
+
+See [ATTENDANCE_EXTERNAL_API.md](./ATTENDANCE_EXTERNAL_API.md) for complete integration guide.
+
+### Approval Workflow
+
+1. **Event Creation**: Raw events are logged with `ACTIVE` status
+2. **Session Processing**: Events are grouped into daily sessions
+3. **Approval States**: 
+   - `PENDING`: Awaiting employer approval
+   - `APPROVED`: Confirmed by employer
+   - `REJECTED`: Rejected by employer
+4. **Manual Edits**: Sessions can be edited, which sets times to `PENDING` for re-approval
+
+### Session Lifecycle
+
+```
+Event (IN) → Event (OUT) → Session Created → Approval → Salary Calculation
+```
+
+- Events are processed into sessions automatically
+- Sessions can be manually edited (times, shift, flags)
+- Approved sessions are used for salary calculations
+- Rejected sessions are excluded from calculations
+
+---
+
 ## 🚀 Common Commands
 - **Sync Database**: `bun x prisma db push`
 - **Generate Client**: `bun x prisma generate`
