@@ -15,6 +15,11 @@ export declare class DepartmentsService {
         headId: string | null;
     }>;
     findAll(companyId: string): Promise<({
+        head: {
+            id: string;
+            nameWithInitials: string;
+            photo: string | null;
+        } | null;
         _count: {
             employees: number;
         };
@@ -29,6 +34,12 @@ export declare class DepartmentsService {
         headId: string | null;
     })[]>;
     findOne(id: string): Promise<{
+        head: {
+            id: string;
+            nameWithInitials: string;
+            photo: string | null;
+        } | null;
+    } & {
         id: string;
         name: string;
         description: string | null;

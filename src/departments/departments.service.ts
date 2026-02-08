@@ -17,6 +17,13 @@ export class DepartmentsService {
     return this.prisma.department.findMany({
       where: { companyId },
       include: {
+        head: {
+          select: {
+            id: true,
+            nameWithInitials: true,
+            photo: true
+          }
+        },
         _count: {
           select: { employees: true }
         }
@@ -28,6 +35,15 @@ export class DepartmentsService {
   async findOne(id: string) {
     const department = await this.prisma.department.findUnique({
       where: { id },
+      include: {
+        head: {
+          select: {
+            id: true,
+            nameWithInitials: true,
+            photo: true
+          }
+        }
+      }
     });
 
     if (!department) {
