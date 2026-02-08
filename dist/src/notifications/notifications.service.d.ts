@@ -13,8 +13,8 @@ export declare class NotificationsService {
         type: import("@prisma/client").$Enums.NotificationType;
         title: string;
         message: string;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         isRead: boolean;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
     }>;
     broadcast(sender: User, targetRole: Role | null, title: string, message: string, specificUserIds?: string[], type?: NotificationType, metadata?: any): Promise<void>;
     getUserNotifications(userId: string, query: NotificationQueryDto): Promise<{
@@ -26,8 +26,8 @@ export declare class NotificationsService {
             type: import("@prisma/client").$Enums.NotificationType;
             title: string;
             message: string;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             isRead: boolean;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
         meta: {
             total: number;
@@ -44,8 +44,8 @@ export declare class NotificationsService {
         type: import("@prisma/client").$Enums.NotificationType;
         title: string;
         message: string;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         isRead: boolean;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
     }>;
     markAllAsRead(userId: string): Promise<import("@prisma/client").Prisma.BatchPayload>;
 }

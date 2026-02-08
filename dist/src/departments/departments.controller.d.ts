@@ -6,10 +6,12 @@ export declare class DepartmentsController {
     constructor(departmentsService: DepartmentsService);
     create(createDepartmentDto: CreateDepartmentDto, req: any): Promise<{
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        name: string;
+        parentId: string | null;
         headId: string | null;
     }>;
     findAll(companyId: string, req: any): Promise<({
@@ -18,34 +20,42 @@ export declare class DepartmentsController {
         };
     } & {
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        name: string;
+        parentId: string | null;
         headId: string | null;
     })[]>;
     findOne(id: string, req: any): Promise<{
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        name: string;
+        parentId: string | null;
         headId: string | null;
     }>;
     update(id: string, updateDepartmentDto: UpdateDepartmentDto, req: any): Promise<{
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        name: string;
+        parentId: string | null;
         headId: string | null;
     }>;
     remove(id: string, req: any): Promise<{
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        name: string;
+        parentId: string | null;
         headId: string | null;
     }>;
 }

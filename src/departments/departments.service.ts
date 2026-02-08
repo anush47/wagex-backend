@@ -31,7 +31,7 @@ export class DepartmentsService {
     });
 
     if (!department) {
-      throw new NotFoundException(`Department with ID ${id} not found`);
+      throw new NotFoundException(`Department with ID ${id} not found.`);
     }
 
     return department;
@@ -43,8 +43,14 @@ export class DepartmentsService {
         where: { id },
         data: updateDepartmentDto,
       });
-    } catch (error) {
-      throw new NotFoundException(`Department with ID ${id} not found`);
+    } catch (error: any) {
+      if (error.code === 'P2003') {
+        throw new NotFoundException(`Reference error: The assigned Parent Department or Head does not exist.`);
+      }
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Department with ID ${id} not found.`);
+      }
+      throw error;
     }
   }
 

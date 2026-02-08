@@ -115,12 +115,18 @@ enum MaritalStatus {
 }
 
 model Department {
-  id        String   @id @default(uuid())
-  name      String
+  id          String   @id @default(uuid())
+  name        String
+  description String?
   
   companyId String
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
+  // Hierarchy
+  parentId    String?
+  parent      Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children    Department[] @relation("DepartmentHierarchy")
+
   // Department Head
   headId    String?
   head      Employee? @relation("DepartmentHead", fields: [headId], references: [id])

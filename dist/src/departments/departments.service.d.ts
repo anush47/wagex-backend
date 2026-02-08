@@ -6,10 +6,12 @@ export declare class DepartmentsService {
     constructor(prisma: PrismaService);
     create(createDepartmentDto: CreateDepartmentDto): Promise<{
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        name: string;
+        parentId: string | null;
         headId: string | null;
     }>;
     findAll(companyId: string): Promise<({
@@ -18,34 +20,42 @@ export declare class DepartmentsService {
         };
     } & {
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        name: string;
+        parentId: string | null;
         headId: string | null;
     })[]>;
     findOne(id: string): Promise<{
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        name: string;
+        parentId: string | null;
         headId: string | null;
     }>;
     update(id: string, updateDepartmentDto: UpdateDepartmentDto): Promise<{
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        name: string;
+        parentId: string | null;
         headId: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
+        name: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
-        name: string;
+        parentId: string | null;
         headId: string | null;
     }>;
 }

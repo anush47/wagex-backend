@@ -38,7 +38,7 @@ let DepartmentsService = class DepartmentsService {
             where: { id },
         });
         if (!department) {
-            throw new common_1.NotFoundException(`Department with ID ${id} not found`);
+            throw new common_1.NotFoundException(`Department with ID ${id} not found.`);
         }
         return department;
     }
@@ -50,7 +50,13 @@ let DepartmentsService = class DepartmentsService {
             });
         }
         catch (error) {
-            throw new common_1.NotFoundException(`Department with ID ${id} not found`);
+            if (error.code === 'P2003') {
+                throw new common_1.NotFoundException(`Reference error: The assigned Parent Department or Head does not exist.`);
+            }
+            if (error.code === 'P2025') {
+                throw new common_1.NotFoundException(`Department with ID ${id} not found.`);
+            }
+            throw error;
         }
     }
     async remove(id) {
