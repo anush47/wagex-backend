@@ -125,6 +125,40 @@ let LeavesService = LeavesService_1 = class LeavesService {
         if (documentsRequired && (!dto.documents || dto.documents.length === 0)) {
             throw new common_1.BadRequestException("Supporting documents are required for this leave request.");
         }
+        if (leaveType.isHolidayReplacement) {
+            if (!dto.holidayId) {
+                throw new common_1.BadRequestException("This leave type requires selecting the holiday you worked on.");
+            }
+            const holiday = await this.prisma.holiday.findUnique({
+                where: { id: dto.holidayId }
+            });
+            if (!holiday) {
+                throw new common_1.BadRequestException("Selected holiday not found.");
+            }
+            const session = await this.prisma.attendanceSession.findFirst({
+                where: {
+                    employeeId: dto.employeeId,
+                    date: holiday.date,
+                    OR: [
+                        { inApprovalStatus: 'APPROVED' },
+                        { outApprovalStatus: 'APPROVED' }
+                    ]
+                }
+            });
+            if (!session) {
+                throw new common_1.BadRequestException(`No approved attendance found on ${holiday.date.toLocaleDateString()} (${holiday.name}). You must work on a holiday to claim this leave.`);
+            }
+            const alreadyUsed = await this.prisma.leaveRequest.findFirst({
+                where: {
+                    employeeId: dto.employeeId,
+                    holidayId: dto.holidayId,
+                    status: { in: [leave_enum_1.LeaveStatus.PENDING, leave_enum_1.LeaveStatus.APPROVED] }
+                }
+            });
+            if (alreadyUsed) {
+                throw new common_1.BadRequestException(`This holiday (${holiday.name}) has already been used for another leave request.`);
+            }
+        }
         return this.prisma.leaveRequest.create({
             data: {
                 employeeId: dto.employeeId,
@@ -139,7 +173,8 @@ let LeavesService = LeavesService_1 = class LeavesService {
                 leaveNumber,
                 reason: dto.reason,
                 documents: dto.documents || [],
-                status: leave_enum_1.LeaveStatus.PENDING
+                status: leave_enum_1.LeaveStatus.PENDING,
+                holidayId: dto.holidayId
             }
         });
     }

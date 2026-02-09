@@ -335,6 +335,10 @@ model LeaveRequest {
   // Attachments
   documents Json? @default("[]") // [{ key: string, name: string, url: string }]
 
+  // Linked Holiday (for substitute/earned leaves)
+  holidayId String?
+  holiday   Holiday? @relation(fields: [holidayId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
@@ -342,6 +346,7 @@ model LeaveRequest {
   @@index([employeeId])
   @@index([status])
   @@index([leaveTypeId])
+  @@index([holidayId])
   @@map("leave_requests")
 }
 
@@ -536,6 +541,8 @@ model Holiday {
 
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+
+  leaveRequests LeaveRequest[]
 
   @@unique([calendarId, date])
   @@index([date])

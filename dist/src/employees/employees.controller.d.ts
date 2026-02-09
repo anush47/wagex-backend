@@ -14,8 +14,8 @@ export declare class EmployeesController {
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            address: string | null;
             employerNumber: string | null;
+            address: string | null;
             startedDate: Date | null;
             logo: string | null;
             files: import("@prisma/client/runtime/client").JsonValue | null;
@@ -28,9 +28,9 @@ export declare class EmployeesController {
             createdAt: Date;
             updatedAt: Date;
             email: string;
+            address: string | null;
             nameWithInitials: string | null;
             fullName: string | null;
-            address: string | null;
             phone: string | null;
         } | null;
     } & {
@@ -40,17 +40,17 @@ export declare class EmployeesController {
         userId: string | null;
         companyId: string;
         email: string | null;
-        nameWithInitials: string;
-        fullName: string;
         address: string | null;
-        phone: string | null;
         files: import("@prisma/client/runtime/client").JsonValue | null;
         calendarId: string | null;
-        status: string;
+        nameWithInitials: string;
+        fullName: string;
+        phone: string | null;
         employeeNo: number;
         nic: string | null;
         designation: string | null;
         basicSalary: number;
+        status: string;
         gender: import("@prisma/client").$Enums.Gender;
         employmentType: import("@prisma/client").$Enums.EmploymentType;
         joinedDate: Date;

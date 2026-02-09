@@ -5,18 +5,18 @@ export declare class PoliciesController {
     private readonly policiesService;
     constructor(policiesService: PoliciesService);
     create(createPolicyDto: CreatePolicyDto): Promise<{
+        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
     }>;
     findByCompany(companyId: string): Promise<{
+        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
     } | null>;
@@ -28,30 +28,34 @@ export declare class PoliciesController {
             companyPolicyId: string | undefined;
             employeePolicyId: string | undefined;
         };
+        employee: {
+            id: string;
+            calendarId: string | null;
+        };
         companyPolicy: import("./dto/policy-settings.dto").PolicySettingsDto;
         employeeOverride: import("./dto/policy-settings.dto").PolicySettingsDto;
     }>;
     update(id: string, companyId: string, updatePolicyDto: UpdatePolicyDto): Promise<{
+        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
     }>;
     remove(id: string, companyId: string): Promise<{
+        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
     }>;
     removeOverride(employeeId: string, companyId: string): Promise<{
+        id: string;
         settings: import("@prisma/client/runtime/client").JsonValue;
         companyId: string | null;
         employeeId: string | null;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
     }>;

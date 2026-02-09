@@ -188,6 +188,50 @@ export class LeavesService {
             throw new BadRequestException("Supporting documents are required for this leave request.");
         }
 
+        // Validate Holiday Substitution
+        if (leaveType.isHolidayReplacement) {
+            if (!dto.holidayId) {
+                throw new BadRequestException("This leave type requires selecting the holiday you worked on.");
+            }
+
+            const holiday = await this.prisma.holiday.findUnique({
+                where: { id: dto.holidayId }
+            });
+
+            if (!holiday) {
+                throw new BadRequestException("Selected holiday not found.");
+            }
+
+            // Check if employee worked on this date
+            const session = await this.prisma.attendanceSession.findFirst({
+                where: {
+                    employeeId: dto.employeeId,
+                    date: holiday.date,
+                    OR: [
+                        { inApprovalStatus: 'APPROVED' },
+                        { outApprovalStatus: 'APPROVED' }
+                    ]
+                }
+            });
+
+            if (!session) {
+                throw new BadRequestException(`No approved attendance found on ${holiday.date.toLocaleDateString()} (${holiday.name}). You must work on a holiday to claim this leave.`);
+            }
+
+            // Check for double-claiming
+            const alreadyUsed = await this.prisma.leaveRequest.findFirst({
+                where: {
+                    employeeId: dto.employeeId,
+                    holidayId: dto.holidayId,
+                    status: { in: [LeaveStatus.PENDING, LeaveStatus.APPROVED] }
+                }
+            });
+
+            if (alreadyUsed) {
+                throw new BadRequestException(`This holiday (${holiday.name}) has already been used for another leave request.`);
+            }
+        }
+
         // Create request
         return this.prisma.leaveRequest.create({
             data: {
@@ -203,7 +247,8 @@ export class LeavesService {
                 leaveNumber,
                 reason: dto.reason,
                 documents: dto.documents || [],
-                status: LeaveStatus.PENDING
+                status: LeaveStatus.PENDING,
+                holidayId: dto.holidayId
             }
         });
     }

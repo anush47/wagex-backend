@@ -8,4 +8,5 @@ export declare class CreateLeaveRequestDto {
     endDate: string;
     reason?: string;
     documents?: any[];
+    holidayId?: string;
 }

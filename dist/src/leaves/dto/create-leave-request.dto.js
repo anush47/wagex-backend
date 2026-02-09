@@ -22,6 +22,7 @@ class CreateLeaveRequestDto {
     endDate;
     reason;
     documents;
+    holidayId;
 }
 exports.CreateLeaveRequestDto = CreateLeaveRequestDto;
 __decorate([
@@ -68,4 +69,10 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Array)
 ], CreateLeaveRequestDto.prototype, "documents", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'ID of the holiday being substituted' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateLeaveRequestDto.prototype, "holidayId", void 0);
 //# sourceMappingURL=create-leave-request.dto.js.map

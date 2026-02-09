@@ -24,9 +24,9 @@ export declare class AttendanceManualController {
                 photo: string | null;
             };
         } & {
+            id: string;
             companyId: string;
             employeeId: string;
-            id: string;
             createdAt: Date;
             updatedAt: Date;
             date: Date;
@@ -69,9 +69,9 @@ export declare class AttendanceManualController {
         };
     }>;
     getSession(id: string): Promise<{
+        id: string;
         companyId: string;
         employeeId: string;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
         date: Date;
@@ -116,9 +116,9 @@ export declare class AttendanceManualController {
                 photo: string | null;
             };
         } & {
+            id: string;
             companyId: string;
             employeeId: string;
-            id: string;
             createdAt: Date;
             updatedAt: Date;
             status: import("@prisma/client").$Enums.EventStatus;
@@ -142,9 +142,9 @@ export declare class AttendanceManualController {
         };
     }>;
     updateSession(id: string, updateSessionDto: UpdateSessionDto): Promise<{
+        id: string;
         companyId: string;
         employeeId: string;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
         date: Date;

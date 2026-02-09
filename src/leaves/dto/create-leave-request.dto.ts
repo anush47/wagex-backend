@@ -38,4 +38,9 @@ export class CreateLeaveRequestDto {
     @ApiPropertyOptional({ type: 'array', items: { type: 'object' } })
     @IsOptional()
     documents?: any[];
+
+    @ApiPropertyOptional({ description: 'ID of the holiday being substituted' })
+    @IsOptional()
+    @IsString()
+    holidayId?: string;
 }

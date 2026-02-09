@@ -32,9 +32,9 @@ export declare class AttendanceService {
                 photo: string | null;
             };
         } & {
+            id: string;
             companyId: string;
             employeeId: string;
-            id: string;
             createdAt: Date;
             updatedAt: Date;
             date: Date;
@@ -86,9 +86,9 @@ export declare class AttendanceService {
                 photo: string | null;
             };
         } & {
+            id: string;
             companyId: string;
             employeeId: string;
-            id: string;
             createdAt: Date;
             updatedAt: Date;
             status: import("@prisma/client").$Enums.EventStatus;

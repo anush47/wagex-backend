@@ -179,6 +179,10 @@ export class PoliciesService {
                 companyPolicyId: employee.company?.policy?.id,
                 employeePolicyId: employee.policy?.id
             },
+            employee: {
+                id: employee.id,
+                calendarId: employee.calendarId || employee.company?.calendarId
+            },
             // Return raw objects too for full transparency if needed
             companyPolicy,
             employeeOverride
