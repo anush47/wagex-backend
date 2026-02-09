@@ -15,16 +15,16 @@ export declare class LeavesController {
         status: import("@prisma/client").$Enums.LeaveStatus;
         managerId: string | null;
         employeeId: string;
+        documents: import("@prisma/client/runtime/client").JsonValue | null;
         leaveTypeId: string;
-        leaveTypeName: string | null;
         startDate: Date;
         endDate: Date;
+        reason: string | null;
+        responseReason: string | null;
+        leaveTypeName: string | null;
         days: number;
         minutes: number | null;
         leaveNumber: number | null;
-        reason: string | null;
-        responseReason: string | null;
-        documents: import("@prisma/client/runtime/client").JsonValue | null;
     }>;
     getBalances(employeeId: string): Promise<{
         leaveTypeId: string;
@@ -55,16 +55,16 @@ export declare class LeavesController {
         status: import("@prisma/client").$Enums.LeaveStatus;
         managerId: string | null;
         employeeId: string;
+        documents: import("@prisma/client/runtime/client").JsonValue | null;
         leaveTypeId: string;
-        leaveTypeName: string | null;
         startDate: Date;
         endDate: Date;
+        reason: string | null;
+        responseReason: string | null;
+        leaveTypeName: string | null;
         days: number;
         minutes: number | null;
         leaveNumber: number | null;
-        reason: string | null;
-        responseReason: string | null;
-        documents: import("@prisma/client/runtime/client").JsonValue | null;
     })[]>;
     findOne(id: string): Promise<{
         id: string;
@@ -75,16 +75,16 @@ export declare class LeavesController {
         status: import("@prisma/client").$Enums.LeaveStatus;
         managerId: string | null;
         employeeId: string;
+        documents: import("@prisma/client/runtime/client").JsonValue | null;
         leaveTypeId: string;
-        leaveTypeName: string | null;
         startDate: Date;
         endDate: Date;
+        reason: string | null;
+        responseReason: string | null;
+        leaveTypeName: string | null;
         days: number;
         minutes: number | null;
         leaveNumber: number | null;
-        reason: string | null;
-        responseReason: string | null;
-        documents: import("@prisma/client/runtime/client").JsonValue | null;
     }>;
     update(id: string, updateLeaveRequestDto: UpdateLeaveRequestDto): Promise<{
         id: string;
@@ -95,16 +95,16 @@ export declare class LeavesController {
         status: import("@prisma/client").$Enums.LeaveStatus;
         managerId: string | null;
         employeeId: string;
+        documents: import("@prisma/client/runtime/client").JsonValue | null;
         leaveTypeId: string;
-        leaveTypeName: string | null;
         startDate: Date;
         endDate: Date;
+        reason: string | null;
+        responseReason: string | null;
+        leaveTypeName: string | null;
         days: number;
         minutes: number | null;
         leaveNumber: number | null;
-        reason: string | null;
-        responseReason: string | null;
-        documents: import("@prisma/client/runtime/client").JsonValue | null;
     }>;
     delete(id: string): Promise<{
         message: string;

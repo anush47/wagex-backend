@@ -6,30 +6,30 @@ export declare class DepartmentsController {
     constructor(departmentsService: DepartmentsService);
     create(createDepartmentDto: CreateDepartmentDto, req: any): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        description: string | null;
+        name: string;
         parentId: string | null;
         headId: string | null;
     }>;
     findAll(companyId: string, req: any): Promise<({
+        _count: {
+            employees: number;
+        };
         head: {
             id: string;
             nameWithInitials: string;
             photo: string | null;
         } | null;
-        _count: {
-            employees: number;
-        };
     } & {
         id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        description: string | null;
+        name: string;
         parentId: string | null;
         headId: string | null;
     })[]>;
@@ -41,31 +41,31 @@ export declare class DepartmentsController {
         } | null;
     } & {
         id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        description: string | null;
+        name: string;
         parentId: string | null;
         headId: string | null;
     }>;
     update(id: string, updateDepartmentDto: UpdateDepartmentDto, req: any): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        description: string | null;
+        name: string;
         parentId: string | null;
         headId: string | null;
     }>;
     remove(id: string, req: any): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         companyId: string;
+        description: string | null;
+        name: string;
         parentId: string | null;
         headId: string | null;
     }>;

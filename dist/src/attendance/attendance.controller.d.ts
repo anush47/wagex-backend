@@ -122,6 +122,8 @@ export declare class AttendanceManualController {
             companyId: string;
             status: import("@prisma/client").$Enums.EventStatus;
             remark: string | null;
+            latitude: number | null;
+            longitude: number | null;
             employeeId: string;
             metadata: import("@prisma/client/runtime/client").JsonValue | null;
             eventTime: Date;
@@ -130,8 +132,6 @@ export declare class AttendanceManualController {
             apiKeyName: string | null;
             device: string | null;
             location: string | null;
-            latitude: number | null;
-            longitude: number | null;
             sessionId: string | null;
             manualOverride: boolean;
         })[];
