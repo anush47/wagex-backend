@@ -47,13 +47,22 @@ let CompaniesService = CompaniesService_1 = class CompaniesService {
     async findAll(queryDto) {
         const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto;
         const skip = (page - 1) * limit;
-        const where = search ? {
-            OR: [
+        const where = {};
+        if (search) {
+            where.OR = [
                 { name: { contains: search, mode: 'insensitive' } },
                 { address: { contains: search, mode: 'insensitive' } },
                 { employerNumber: { contains: search, mode: 'insensitive' } }
-            ]
-        } : {};
+            ];
+        }
+        if (queryDto.status) {
+            if (queryDto.status.toUpperCase() === 'ACTIVE') {
+                where.active = true;
+            }
+            else if (queryDto.status.toUpperCase() === 'INACTIVE') {
+                where.active = false;
+            }
+        }
         const orderBy = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
         const [data, total] = await Promise.all([
             this.prisma.company.findMany({ where, skip, take: limit, orderBy }),
@@ -82,6 +91,14 @@ let CompaniesService = CompaniesService_1 = class CompaniesService {
                 { address: { contains: search, mode: 'insensitive' } },
                 { employerNumber: { contains: search, mode: 'insensitive' } }
             ];
+        }
+        if (queryDto.status) {
+            if (queryDto.status.toUpperCase() === 'ACTIVE') {
+                where.active = true;
+            }
+            else if (queryDto.status.toUpperCase() === 'INACTIVE') {
+                where.active = false;
+            }
         }
         const orderBy = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
         const [data, total] = await Promise.all([

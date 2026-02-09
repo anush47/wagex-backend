@@ -49,13 +49,24 @@ export class CompaniesService {
     const skip = (page - 1) * limit;
 
     // Build where clause for search
-    const where = search ? {
-      OR: [
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
         { name: { contains: search, mode: 'insensitive' as const } },
         { address: { contains: search, mode: 'insensitive' as const } },
         { employerNumber: { contains: search, mode: 'insensitive' as const } }
-      ]
-    } : {};
+      ];
+    }
+
+    // Filter by status if provided
+    if (queryDto.status) {
+      if (queryDto.status.toUpperCase() === 'ACTIVE') {
+        where.active = true;
+      } else if (queryDto.status.toUpperCase() === 'INACTIVE') {
+        where.active = false;
+      }
+    }
 
     // Build orderBy clause
     const orderBy: any = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
@@ -85,6 +96,7 @@ export class CompaniesService {
     const skip = (page - 1) * limit;
 
     // Build where clause
+    // Build where clause
     const where: any = { id: { in: ids } };
     if (search) {
       where.OR = [
@@ -92,6 +104,15 @@ export class CompaniesService {
         { address: { contains: search, mode: 'insensitive' as const } },
         { employerNumber: { contains: search, mode: 'insensitive' as const } }
       ];
+    }
+
+    // Filter by status if provided
+    if (queryDto.status) {
+      if (queryDto.status.toUpperCase() === 'ACTIVE') {
+        where.active = true;
+      } else if (queryDto.status.toUpperCase() === 'INACTIVE') {
+        where.active = false;
+      }
     }
 
     // Build orderBy clause
