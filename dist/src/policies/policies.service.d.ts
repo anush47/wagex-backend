@@ -10,51 +10,51 @@ export declare class PoliciesService {
     create(createPolicyDto: CreatePolicyDto): Promise<Policy>;
     findAll(): Promise<{
         id: string;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        companyId: string | null;
-        employeeId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string | null;
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        employeeId: string | null;
     }[]>;
     findOne(id: string): Promise<{
         id: string;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        companyId: string | null;
-        employeeId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string | null;
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        employeeId: string | null;
     }>;
     findByCompany(companyId: string): Promise<{
         id: string;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        companyId: string | null;
-        employeeId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string | null;
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        employeeId: string | null;
     } | null>;
     findByEmployee(employeeId: string): Promise<{
         id: string;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        companyId: string | null;
-        employeeId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string | null;
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        employeeId: string | null;
     } | null>;
     update(id: string, updatePolicyDto: UpdatePolicyDto): Promise<{
         id: string;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        companyId: string | null;
-        employeeId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string | null;
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        employeeId: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        companyId: string | null;
-        employeeId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string | null;
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        employeeId: string | null;
     }>;
     getEffectivePolicy(employeeId: string): Promise<PolicySettingsDto>;
     getEffectivePolicyDetail(employeeId: string): Promise<{
@@ -74,10 +74,10 @@ export declare class PoliciesService {
     }>;
     removeByEmployee(employeeId: string): Promise<{
         id: string;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        companyId: string | null;
-        employeeId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string | null;
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        employeeId: string | null;
     }>;
 }

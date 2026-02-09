@@ -27,11 +27,11 @@ export declare class CalendarsController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            isPublic: boolean;
             description: string | null;
             name: string;
             calendarId: string;
             date: Date;
-            isPublic: boolean;
             isMercantile: boolean;
             isBank: boolean;
         })[];
@@ -47,11 +47,11 @@ export declare class CalendarsController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            isPublic: boolean;
             description: string | null;
             name: string;
             calendarId: string;
             date: Date;
-            isPublic: boolean;
             isMercantile: boolean;
             isBank: boolean;
         }[];
