@@ -312,7 +312,8 @@ export class LeavesService {
                         id: true,
                         employeeNo: true,
                         nameWithInitials: true,
-                        fullName: true
+                        fullName: true,
+                        photo: true
                     }
                 }
             },

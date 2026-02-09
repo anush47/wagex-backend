@@ -224,6 +224,13 @@ export class AttendanceService {
             }
         }
 
+        if (query.isPending) {
+            where.OR = [
+                { inApprovalStatus: 'PENDING' },
+                { outApprovalStatus: 'PENDING' }
+            ];
+        }
+
         const [items, total] = await Promise.all([
             this.prisma.attendanceSession.findMany({
                 where,

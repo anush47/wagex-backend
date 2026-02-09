@@ -24,6 +24,7 @@ export declare class SessionQueryDto {
     endDate?: string;
     page?: number;
     limit?: number;
+    isPending?: boolean;
 }
 export declare class EventQueryDto {
     companyId?: string;

@@ -36,6 +36,7 @@ export declare class LeavesService {
             employeeNo: number;
             nameWithInitials: string;
             fullName: string;
+            photo: string | null;
         };
     } & {
         id: string;

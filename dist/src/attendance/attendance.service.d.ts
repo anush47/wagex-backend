@@ -33,13 +33,9 @@ export declare class AttendanceService {
             };
         } & {
             id: string;
-            companyId: string;
             employeeId: string;
-            createdAt: Date;
-            updatedAt: Date;
+            companyId: string;
             date: Date;
-            outApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
-            inApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
             shiftId: string | null;
             shiftName: string | null;
             shiftStartTime: string | null;
@@ -65,10 +61,14 @@ export declare class AttendanceService {
             manuallyEdited: boolean;
             autoCheckout: boolean;
             workDayStatus: import("@prisma/client").$Enums.SessionWorkDayStatus;
+            inApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
+            outApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
             approvedById: string | null;
             approvedAt: Date | null;
             remarks: string | null;
             metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         })[];
         meta: {
             total: number;
@@ -87,13 +87,13 @@ export declare class AttendanceService {
             };
         } & {
             id: string;
-            companyId: string;
             employeeId: string;
+            companyId: string;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             createdAt: Date;
             updatedAt: Date;
             status: import("@prisma/client").$Enums.EventStatus;
             remark: string | null;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             eventTime: Date;
             eventType: import("@prisma/client").$Enums.EventType;
             source: import("@prisma/client").$Enums.EventSource;

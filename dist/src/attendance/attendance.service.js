@@ -156,6 +156,12 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
                 where.date.lte = end;
             }
         }
+        if (query.isPending) {
+            where.OR = [
+                { inApprovalStatus: 'PENDING' },
+                { outApprovalStatus: 'PENDING' }
+            ];
+        }
         const [items, total] = await Promise.all([
             this.prisma.attendanceSession.findMany({
                 where,

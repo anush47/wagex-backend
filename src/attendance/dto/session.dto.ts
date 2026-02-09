@@ -117,6 +117,12 @@ export class SessionQueryDto {
     @Type(() => Number)
     @IsNumber()
     limit?: number;
+
+    @ApiPropertyOptional({ description: 'Filter only pending approvals' })
+    @IsOptional()
+    @IsBoolean()
+    @Type(() => Boolean)
+    isPending?: boolean;
 }
 
 export class EventQueryDto {
