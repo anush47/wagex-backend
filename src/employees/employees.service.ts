@@ -121,10 +121,11 @@ export class EmployeesService {
       const isNumericSearch = !isNaN(Number(search));
       where.OR = [
         ...(isNumericSearch ? [{ employeeNo: Number(search) }] : []),
-        { nameWithInitials: { contains: search, mode: 'insensitive' as const } },
-        { fullName: { contains: search, mode: 'insensitive' as const } },
-        { nic: { contains: search, mode: 'insensitive' as const } },
-        { designation: { contains: search, mode: 'insensitive' as const } },
+        { nameWithInitials: { contains: search, mode: 'insensitive' } },
+        { fullName: { contains: search, mode: 'insensitive' } },
+        { nic: { contains: search, mode: 'insensitive' } },
+        { address: { contains: search, mode: 'insensitive' } },
+        { designation: { contains: search, mode: 'insensitive' } },
       ];
     }
 

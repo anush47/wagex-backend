@@ -135,6 +135,7 @@ let EmployeesService = EmployeesService_1 = class EmployeesService {
                 { nameWithInitials: { contains: search, mode: 'insensitive' } },
                 { fullName: { contains: search, mode: 'insensitive' } },
                 { nic: { contains: search, mode: 'insensitive' } },
+                { address: { contains: search, mode: 'insensitive' } },
                 { designation: { contains: search, mode: 'insensitive' } },
             ];
         }
