@@ -180,8 +180,7 @@ export class PoliciesService {
                 employeePolicyId: employee.policy?.id
             },
             employee: {
-                id: employee.id,
-                calendarId: employee.calendarId || employee.company?.calendarId
+                id: employee.id
             },
             // Return raw objects too for full transparency if needed
             companyPolicy,

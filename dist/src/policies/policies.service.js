@@ -132,8 +132,7 @@ let PoliciesService = PoliciesService_1 = class PoliciesService {
                 employeePolicyId: employee.policy?.id
             },
             employee: {
-                id: employee.id,
-                calendarId: employee.calendarId || employee.company?.calendarId
+                id: employee.id
             },
             companyPolicy,
             employeeOverride

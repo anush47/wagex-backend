@@ -67,7 +67,6 @@ export declare class PoliciesService {
         };
         employee: {
             id: string;
-            calendarId: string | null;
         };
         companyPolicy: PolicySettingsDto;
         employeeOverride: PolicySettingsDto;

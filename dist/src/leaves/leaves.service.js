@@ -38,7 +38,7 @@ let LeavesService = LeavesService_1 = class LeavesService {
         for (const leaveType of leaveTypes) {
             const period = this.calculatePeriod(leaveType.accrualFrequency, employee.joinedDate, currentDate);
             let entitled = this.calculateEntitlement(leaveType, employee.joinedDate, period);
-            const calendarId = employee.calendarId || employee.company?.calendarId || undefined;
+            const calendarId = policyDetail.effective.calendarId;
             const earned = await this.calculateEarnedLeave(employeeId, leaveType, period, calendarId);
             entitled += earned;
             const used = await this.calculateUsage(employeeId, leaveType.id, period);

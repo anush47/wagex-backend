@@ -54,7 +54,7 @@ export class LeavesService {
             let entitled = this.calculateEntitlement(leaveType, employee.joinedDate, period);
 
             // Calculate earned leave from working on holidays
-            const calendarId = employee.calendarId || employee.company?.calendarId || undefined;
+            const calendarId = policyDetail.effective.calendarId;
             const earned = await this.calculateEarnedLeave(employeeId, leaveType, period, calendarId);
             entitled += earned;
 

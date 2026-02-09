@@ -17,4 +17,5 @@ export declare class PolicySettingsDto {
     payrollConfiguration?: PayrollSettingsConfigDto;
     workingDays?: WorkingDaysConfigDto;
     leaves?: LeavesConfigDto;
+    calendarId?: string;
 }

@@ -30,7 +30,6 @@ export declare class PoliciesController {
         };
         employee: {
             id: string;
-            calendarId: string | null;
         };
         companyPolicy: import("./dto/policy-settings.dto").PolicySettingsDto;
         employeeOverride: import("./dto/policy-settings.dto").PolicySettingsDto;

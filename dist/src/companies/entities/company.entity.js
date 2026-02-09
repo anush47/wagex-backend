@@ -21,7 +21,6 @@ class Company {
     startedDate;
     logo;
     files;
-    calendarId;
     memberships;
     createdAt;
     updatedAt;
@@ -59,10 +58,6 @@ __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: [], description: 'Uploaded files' }),
     __metadata("design:type", Object)
 ], Company.prototype, "files", void 0);
-__decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: 'uuid-calendar', description: 'Default Calendar ID' }),
-    __metadata("design:type", Object)
-], Company.prototype, "calendarId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ type: () => [user_company_entity_1.UserCompany], description: 'Company memberships/users' }),
     __metadata("design:type", Array)

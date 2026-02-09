@@ -102,8 +102,6 @@ export class Employee implements PrismaEmployee {
     @ApiProperty({ example: '+94771234567', description: 'Emergency Contact Phone', nullable: true })
     emergencyContactPhone: string | null;
 
-    @ApiPropertyOptional({ example: 'uuid-calendar', description: 'Assigned Calendar ID' })
-    calendarId: string | null;
 
     @ApiProperty()
     createdAt: Date;

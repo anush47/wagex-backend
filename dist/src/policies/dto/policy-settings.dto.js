@@ -46,6 +46,7 @@ class PolicySettingsDto {
     payrollConfiguration;
     workingDays;
     leaves;
+    calendarId;
 }
 exports.PolicySettingsDto = PolicySettingsDto;
 __decorate([
@@ -90,4 +91,9 @@ __decorate([
     (0, class_transformer_1.Type)(() => leaves_policy_dto_1.LeavesConfigDto),
     __metadata("design:type", leaves_policy_dto_1.LeavesConfigDto)
 ], PolicySettingsDto.prototype, "leaves", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'uuid-calendar', description: 'Assigned Calendar ID' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], PolicySettingsDto.prototype, "calendarId", void 0);
 //# sourceMappingURL=policy-settings.dto.js.map

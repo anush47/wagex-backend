@@ -53,4 +53,8 @@ export class PolicySettingsDto {
     @ValidateNested()
     @Type(() => LeavesConfigDto)
     leaves?: LeavesConfigDto;
+
+    @ApiPropertyOptional({ example: 'uuid-calendar', description: 'Assigned Calendar ID' })
+    @IsOptional()
+    calendarId?: string;
 }

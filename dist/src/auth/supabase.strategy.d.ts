@@ -21,7 +21,6 @@ export declare class SupabaseStrategy extends SupabaseStrategy_base {
                 startedDate: Date | null;
                 logo: string | null;
                 files: import("@prisma/client/runtime/client").JsonValue | null;
-                calendarId: string | null;
             };
         } & {
             role: import("@prisma/client").$Enums.Role;
