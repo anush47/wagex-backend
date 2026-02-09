@@ -44,6 +44,9 @@ model Company {
   leaveRequests LeaveRequest[]
   attendanceEvents AttendanceEvent[]
   attendanceSessions AttendanceSession[]
+  
+  calendarId         String?
+  calendar           Calendar?         @relation("CompanyDefaultCalendar", fields: [calendarId], references: [id])
 
   @@map("companies")
 }
@@ -188,6 +191,9 @@ model Employee {
   leaveRequests LeaveRequest[]
   attendanceEvents AttendanceEvent[]
   attendanceSessions AttendanceSession[]
+
+  calendarId         String?
+  calendar           Calendar?         @relation("EmployeeCalendar", fields: [calendarId], references: [id])
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -487,4 +493,51 @@ model AttendanceSession {
   @@index([inApprovalStatus])
   @@index([outApprovalStatus])
   @@map("attendance_sessions")
+}
+
+// ============================================
+// CALENDARS & HOLIDAYS
+// ============================================
+
+model Calendar {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  isGlobal    Boolean   @default(false)
+  
+  // Customization
+  companyId   String?
+  
+  // Relations
+  holidays    Holiday[]
+  companies   Company[] @relation("CompanyDefaultCalendar")
+  employees   Employee[] @relation("EmployeeCalendar")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([companyId])
+  @@map("calendars")
+}
+
+model Holiday {
+  id           String      @id @default(uuid())
+  calendarId   String
+  calendar     Calendar    @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  
+  date         DateTime    @db.Date
+  name         String
+  description  String?
+  
+  // Boolean flags for multi-category support
+  isPublic     Boolean     @default(false)
+  isMercantile Boolean     @default(false)
+  isBank       Boolean     @default(false)
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([calendarId, date])
+  @@index([date])
+  @@map("holidays")
 }

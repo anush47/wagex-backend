@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum WorkDayType {
@@ -10,10 +10,6 @@ export enum WorkDayType {
 export enum HalfDayShift {
     FIRST = 'FIRST',
     LAST = 'LAST'
-}
-
-export enum CalendarType {
-    SL_DEFAULT = 'sl_default'
 }
 
 export class DailyWorkConfigDto {
@@ -37,13 +33,13 @@ export class WorkingDaysConfigDto {
     @IsBoolean()
     isDynamic?: boolean;
 
-    @ApiPropertyOptional({ description: 'ID of the selected working calendar', default: CalendarType.SL_DEFAULT, enum: CalendarType })
+    @ApiPropertyOptional({ description: 'ID of the selected working calendar' })
     @IsOptional()
-    @IsEnum(CalendarType)
-    workingCalendar?: CalendarType;
+    @IsString()
+    workingCalendar?: string;
 
-    @ApiPropertyOptional({ description: 'ID of the selected payroll calendar', default: CalendarType.SL_DEFAULT, enum: CalendarType })
+    @ApiPropertyOptional({ description: 'ID of the selected payroll calendar' })
     @IsOptional()
-    @IsEnum(CalendarType)
-    payrollCalendar?: CalendarType;
+    @IsString()
+    payrollCalendar?: string;
 }

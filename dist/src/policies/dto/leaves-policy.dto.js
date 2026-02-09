@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LeavesConfigDto = exports.LeaveTypeDto = exports.AccrualMethod = exports.EncashmentType = exports.AccrualFrequency = void 0;
+exports.LeavesConfigDto = exports.LeaveTypeDto = exports.HolidayEarnCategory = exports.AccrualMethod = exports.EncashmentType = exports.AccrualFrequency = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
@@ -33,6 +33,12 @@ var AccrualMethod;
     AccrualMethod["PRO_RATA"] = "PRO_RATA";
     AccrualMethod["FULL_UPFRONT"] = "FULL_UPFRONT";
 })(AccrualMethod || (exports.AccrualMethod = AccrualMethod = {}));
+var HolidayEarnCategory;
+(function (HolidayEarnCategory) {
+    HolidayEarnCategory["PUBLIC"] = "PUBLIC";
+    HolidayEarnCategory["MERCANTILE"] = "MERCANTILE";
+    HolidayEarnCategory["BANK"] = "BANK";
+})(HolidayEarnCategory || (exports.HolidayEarnCategory = HolidayEarnCategory = {}));
 class LeaveTypeDto {
     id;
     name;
@@ -60,6 +66,8 @@ class LeaveTypeDto {
     encashmentType;
     encashmentMultiplier;
     fixedAmount;
+    isHolidayReplacement = false;
+    earnedOnHolidayCategories;
 }
 exports.LeaveTypeDto = LeaveTypeDto;
 __decorate([
@@ -212,6 +220,18 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], LeaveTypeDto.prototype, "fixedAmount", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ default: false, description: 'Whether this leave type is earned by working on holidays' }),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], LeaveTypeDto.prototype, "isHolidayReplacement", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: HolidayEarnCategory, isArray: true, description: 'The holiday types that trigger earning this leave' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsEnum)(HolidayEarnCategory, { each: true }),
+    __metadata("design:type", Array)
+], LeaveTypeDto.prototype, "earnedOnHolidayCategories", void 0);
 class LeavesConfigDto {
     leaveTypes;
 }

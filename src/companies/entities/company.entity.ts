@@ -27,6 +27,9 @@ export class Company implements PrismaCompany {
     @ApiPropertyOptional({ example: [], description: 'Uploaded files' })
     files: any | null;
 
+    @ApiPropertyOptional({ example: 'uuid-calendar', description: 'Default Calendar ID' })
+    calendarId: string | null;
+
     @ApiProperty({ type: () => [UserCompany], description: 'Company memberships/users' })
     memberships?: UserCompany[];
 

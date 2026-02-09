@@ -50,8 +50,13 @@ export class LeavesService {
             // Calculate period based on accrual frequency
             const period = this.calculatePeriod(leaveType.accrualFrequency, employee.joinedDate, currentDate);
 
-            // Calculate entitlement
-            const entitled = this.calculateEntitlement(leaveType, employee.joinedDate, period);
+            // Calculate entitlement (Policy Base + Pro-rata)
+            let entitled = this.calculateEntitlement(leaveType, employee.joinedDate, period);
+
+            // Calculate earned leave from working on holidays
+            const calendarId = employee.calendarId || employee.company?.calendarId || undefined;
+            const earned = await this.calculateEarnedLeave(employeeId, leaveType, period, calendarId);
+            entitled += earned;
 
             // Calculate usage from approved requests
             const used = await this.calculateUsage(employeeId, leaveType.id, period);
@@ -399,5 +404,46 @@ export class LeavesService {
         }
 
         return { days, minutes: null };
+    }
+
+    private async calculateEarnedLeave(employeeId: string, leaveType: any, period: { start: Date; end: Date }, calendarId?: string): Promise<number> {
+        if (!leaveType.isHolidayReplacement || !leaveType.earnedOnHolidayCategories?.length) {
+            return 0;
+        }
+
+        if (!calendarId) return 0;
+
+        // Fetch holidays that match the earned categories
+        const holidays = await this.prisma.holiday.findMany({
+            where: {
+                calendarId,
+                date: { gte: period.start, lte: period.end },
+                OR: [
+                    leaveType.earnedOnHolidayCategories.includes('PUBLIC') ? { isPublic: true } : null,
+                    leaveType.earnedOnHolidayCategories.includes('MERCANTILE') ? { isMercantile: true } : null,
+                    leaveType.earnedOnHolidayCategories.includes('BANK') ? { isBank: true } : null
+                ].filter(Boolean) as any[]
+            },
+            select: { date: true }
+        });
+
+        if (holidays.length === 0) return 0;
+
+        const holidayDates = holidays.map(h => h.date);
+
+        // Fetch approved attendance sessions on those dates
+        const sessions = await this.prisma.attendanceSession.count({
+            where: {
+                employeeId,
+                date: { in: holidayDates },
+                OR: [
+                    { inApprovalStatus: 'APPROVED' },
+                    { outApprovalStatus: 'APPROVED' }
+                ]
+            }
+        });
+
+        // Each day worked on a qualifying holiday = 1 day earned
+        return sessions;
     }
 }

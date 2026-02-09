@@ -33,29 +33,29 @@ export declare class LeavesService {
     }): Promise<({
         employee: {
             id: string;
+            employeeNo: number;
             nameWithInitials: string;
             fullName: string;
-            employeeNo: number;
         };
     } & {
+        type: import("@prisma/client").$Enums.LeaveRequestType;
+        companyId: string;
+        employeeId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
-        type: import("@prisma/client").$Enums.LeaveRequestType;
         status: import("@prisma/client").$Enums.LeaveStatus;
         managerId: string | null;
-        employeeId: string;
-        documents: import("@prisma/client/runtime/client").JsonValue | null;
         leaveTypeId: string;
+        leaveTypeName: string | null;
         startDate: Date;
         endDate: Date;
-        reason: string | null;
-        responseReason: string | null;
-        leaveTypeName: string | null;
         days: number;
         minutes: number | null;
         leaveNumber: number | null;
+        reason: string | null;
+        responseReason: string | null;
+        documents: import("@prisma/client/runtime/client").JsonValue | null;
     })[]>;
     findOne(id: string): Promise<LeaveRequest>;
     private calculatePeriod;
@@ -64,4 +64,5 @@ export declare class LeavesService {
     private calculatePending;
     private calculateLeaveNumber;
     private calculateDuration;
+    private calculateEarnedLeave;
 }

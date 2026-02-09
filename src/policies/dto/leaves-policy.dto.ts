@@ -22,6 +22,12 @@ export enum AccrualMethod {
     FULL_UPFRONT = 'FULL_UPFRONT'    // Grant full amount at period start
 }
 
+export enum HolidayEarnCategory {
+    PUBLIC = 'PUBLIC',
+    MERCANTILE = 'MERCANTILE',
+    BANK = 'BANK'
+}
+
 
 export class LeaveTypeDto {
     @ApiProperty({ example: 'leave-1' })
@@ -152,6 +158,17 @@ export class LeaveTypeDto {
     @IsOptional()
     @IsNumber()
     fixedAmount?: number;
+
+    // Holiday Replacement
+    @ApiProperty({ default: false, description: 'Whether this leave type is earned by working on holidays' })
+    @IsBoolean()
+    isHolidayReplacement: boolean = false;
+
+    @ApiPropertyOptional({ enum: HolidayEarnCategory, isArray: true, description: 'The holiday types that trigger earning this leave' })
+    @IsOptional()
+    @IsArray()
+    @IsEnum(HolidayEarnCategory, { each: true })
+    earnedOnHolidayCategories?: HolidayEarnCategory[];
 }
 
 export class LeavesConfigDto {

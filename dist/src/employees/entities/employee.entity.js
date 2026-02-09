@@ -47,6 +47,7 @@ class Employee {
     nationality;
     emergencyContactName;
     emergencyContactPhone;
+    calendarId;
     createdAt;
     updatedAt;
 }
@@ -183,6 +184,10 @@ __decorate([
     (0, swagger_1.ApiProperty)({ example: '+94771234567', description: 'Emergency Contact Phone', nullable: true }),
     __metadata("design:type", Object)
 ], Employee.prototype, "emergencyContactPhone", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'uuid-calendar', description: 'Assigned Calendar ID' }),
+    __metadata("design:type", Object)
+], Employee.prototype, "calendarId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Date)

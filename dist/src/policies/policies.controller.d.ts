@@ -5,20 +5,20 @@ export declare class PoliciesController {
     private readonly policiesService;
     constructor(policiesService: PoliciesService);
     create(createPolicyDto: CreatePolicyDto): Promise<{
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        companyId: string | null;
+        employeeId: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string | null;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        employeeId: string | null;
     }>;
     findByCompany(companyId: string): Promise<{
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        companyId: string | null;
+        employeeId: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string | null;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        employeeId: string | null;
     } | null>;
     getEffective(employeeId: string): Promise<{
         effective: import("./dto/policy-settings.dto").PolicySettingsDto;
@@ -32,27 +32,27 @@ export declare class PoliciesController {
         employeeOverride: import("./dto/policy-settings.dto").PolicySettingsDto;
     }>;
     update(id: string, companyId: string, updatePolicyDto: UpdatePolicyDto): Promise<{
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        companyId: string | null;
+        employeeId: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string | null;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        employeeId: string | null;
     }>;
     remove(id: string, companyId: string): Promise<{
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        companyId: string | null;
+        employeeId: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string | null;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        employeeId: string | null;
     }>;
     removeOverride(employeeId: string, companyId: string): Promise<{
+        settings: import("@prisma/client/runtime/client").JsonValue;
+        companyId: string | null;
+        employeeId: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string | null;
-        settings: import("@prisma/client/runtime/client").JsonValue;
-        employeeId: string | null;
     }>;
 }

@@ -30,6 +30,7 @@ const notifications_module_1 = require("./notifications/notifications.module");
 const departments_module_1 = require("./departments/departments.module");
 const leaves_module_1 = require("./leaves/leaves.module");
 const attendance_module_1 = require("./attendance/attendance.module");
+const calendars_module_1 = require("./calendars/calendars.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -53,6 +54,7 @@ exports.AppModule = AppModule = __decorate([
             departments_module_1.DepartmentsModule,
             leaves_module_1.LeavesModule,
             attendance_module_1.AttendanceModule,
+            calendars_module_1.CalendarsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

@@ -37,7 +37,10 @@ let LeavesService = LeavesService_1 = class LeavesService {
         const balances = [];
         for (const leaveType of leaveTypes) {
             const period = this.calculatePeriod(leaveType.accrualFrequency, employee.joinedDate, currentDate);
-            const entitled = this.calculateEntitlement(leaveType, employee.joinedDate, period);
+            let entitled = this.calculateEntitlement(leaveType, employee.joinedDate, period);
+            const calendarId = employee.calendarId || employee.company?.calendarId || undefined;
+            const earned = await this.calculateEarnedLeave(employeeId, leaveType, period, calendarId);
+            entitled += earned;
             const used = await this.calculateUsage(employeeId, leaveType.id, period);
             const pending = await this.calculatePending(employeeId, leaveType.id, period);
             balances.push({
@@ -288,6 +291,39 @@ let LeavesService = LeavesService_1 = class LeavesService {
             }
         }
         return { days, minutes: null };
+    }
+    async calculateEarnedLeave(employeeId, leaveType, period, calendarId) {
+        if (!leaveType.isHolidayReplacement || !leaveType.earnedOnHolidayCategories?.length) {
+            return 0;
+        }
+        if (!calendarId)
+            return 0;
+        const holidays = await this.prisma.holiday.findMany({
+            where: {
+                calendarId,
+                date: { gte: period.start, lte: period.end },
+                OR: [
+                    leaveType.earnedOnHolidayCategories.includes('PUBLIC') ? { isPublic: true } : null,
+                    leaveType.earnedOnHolidayCategories.includes('MERCANTILE') ? { isMercantile: true } : null,
+                    leaveType.earnedOnHolidayCategories.includes('BANK') ? { isBank: true } : null
+                ].filter(Boolean)
+            },
+            select: { date: true }
+        });
+        if (holidays.length === 0)
+            return 0;
+        const holidayDates = holidays.map(h => h.date);
+        const sessions = await this.prisma.attendanceSession.count({
+            where: {
+                employeeId,
+                date: { in: holidayDates },
+                OR: [
+                    { inApprovalStatus: 'APPROVED' },
+                    { outApprovalStatus: 'APPROVED' }
+                ]
+            }
+        });
+        return sessions;
     }
 };
 exports.LeavesService = LeavesService;

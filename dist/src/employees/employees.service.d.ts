@@ -25,6 +25,7 @@ export declare class EmployeesService {
             startedDate: Date | null;
             logo: string | null;
             files: import("@prisma/client/runtime/client").JsonValue | null;
+            calendarId: string | null;
         };
         user: {
             role: import("@prisma/client").$Enums.Role;
@@ -50,6 +51,7 @@ export declare class EmployeesService {
         address: string | null;
         phone: string | null;
         files: import("@prisma/client/runtime/client").JsonValue | null;
+        calendarId: string | null;
         status: string;
         employeeNo: number;
         nic: string | null;

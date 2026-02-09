@@ -9,6 +9,7 @@ export declare class Company implements PrismaCompany {
     startedDate: Date | null;
     logo: string | null;
     files: any | null;
+    calendarId: string | null;
     memberships?: UserCompany[];
     createdAt: Date;
     updatedAt: Date;

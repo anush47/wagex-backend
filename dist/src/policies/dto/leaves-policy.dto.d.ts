@@ -15,6 +15,11 @@ export declare enum AccrualMethod {
     PRO_RATA = "PRO_RATA",
     FULL_UPFRONT = "FULL_UPFRONT"
 }
+export declare enum HolidayEarnCategory {
+    PUBLIC = "PUBLIC",
+    MERCANTILE = "MERCANTILE",
+    BANK = "BANK"
+}
 export declare class LeaveTypeDto {
     id: string;
     name: string;
@@ -42,6 +47,8 @@ export declare class LeaveTypeDto {
     encashmentType?: EncashmentType;
     encashmentMultiplier?: number;
     fixedAmount?: number;
+    isHolidayReplacement: boolean;
+    earnedOnHolidayCategories?: HolidayEarnCategory[];
 }
 export declare class LeavesConfigDto {
     leaveTypes: LeaveTypeDto[];

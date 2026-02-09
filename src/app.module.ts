@@ -21,6 +21,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { LeavesModule } from './leaves/leaves.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { CalendarsModule } from './calendars/calendars.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { AttendanceModule } from './attendance/attendance.module';
     DepartmentsModule,
     LeavesModule,
     AttendanceModule,
+    CalendarsModule,
   ],
   controllers: [AppController],
   providers: [

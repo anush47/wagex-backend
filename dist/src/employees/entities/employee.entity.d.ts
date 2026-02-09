@@ -34,6 +34,7 @@ export declare class Employee implements PrismaEmployee {
     nationality: string | null;
     emergencyContactName: string | null;
     emergencyContactPhone: string | null;
+    calendarId: string | null;
     createdAt: Date;
     updatedAt: Date;
 }

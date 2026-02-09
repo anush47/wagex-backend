@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.WorkingDaysConfigDto = exports.DailyWorkConfigDto = exports.CalendarType = exports.HalfDayShift = exports.WorkDayType = void 0;
+exports.WorkingDaysConfigDto = exports.DailyWorkConfigDto = exports.HalfDayShift = exports.WorkDayType = void 0;
 const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 var WorkDayType;
@@ -23,10 +23,6 @@ var HalfDayShift;
     HalfDayShift["FIRST"] = "FIRST";
     HalfDayShift["LAST"] = "LAST";
 })(HalfDayShift || (exports.HalfDayShift = HalfDayShift = {}));
-var CalendarType;
-(function (CalendarType) {
-    CalendarType["SL_DEFAULT"] = "sl_default";
-})(CalendarType || (exports.CalendarType = CalendarType = {}));
 class DailyWorkConfigDto {
     type;
     halfDayShift;
@@ -62,15 +58,15 @@ __decorate([
     __metadata("design:type", Boolean)
 ], WorkingDaysConfigDto.prototype, "isDynamic", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'ID of the selected working calendar', default: CalendarType.SL_DEFAULT, enum: CalendarType }),
+    (0, swagger_1.ApiPropertyOptional)({ description: 'ID of the selected working calendar' }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEnum)(CalendarType),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], WorkingDaysConfigDto.prototype, "workingCalendar", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'ID of the selected payroll calendar', default: CalendarType.SL_DEFAULT, enum: CalendarType }),
+    (0, swagger_1.ApiPropertyOptional)({ description: 'ID of the selected payroll calendar' }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEnum)(CalendarType),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], WorkingDaysConfigDto.prototype, "payrollCalendar", void 0);
 //# sourceMappingURL=working-days-policy.dto.js.map
