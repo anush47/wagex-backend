@@ -49,6 +49,7 @@ class PayrollSettingsConfigDto {
     unpaidLeaveAction;
     lateDeductionType;
     lateDeductionValue;
+    calendarId;
 }
 exports.PayrollSettingsConfigDto = PayrollSettingsConfigDto;
 __decorate([
@@ -102,4 +103,10 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], PayrollSettingsConfigDto.prototype, "lateDeductionValue", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'uuid-calendar', description: 'Override Calendar ID for Payroll' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PayrollSettingsConfigDto.prototype, "calendarId", void 0);
 //# sourceMappingURL=payroll-settings-policy.dto.js.map

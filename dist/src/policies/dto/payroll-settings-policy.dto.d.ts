@@ -31,4 +31,5 @@ export declare class PayrollSettingsConfigDto {
     unpaidLeaveAction: UnpaidLeaveAction;
     lateDeductionType: LateDeductionType;
     lateDeductionValue: number;
+    calendarId?: string;
 }

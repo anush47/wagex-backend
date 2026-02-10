@@ -23,6 +23,30 @@ export declare class AttendanceManualController {
                 employeeNo: number;
                 photo: string | null;
             };
+            workHoliday: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                isPublic: boolean;
+                description: string | null;
+                name: string;
+                calendarId: string;
+                date: Date;
+                isMercantile: boolean;
+                isBank: boolean;
+            } | null;
+            payrollHoliday: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                isPublic: boolean;
+                description: string | null;
+                name: string;
+                calendarId: string;
+                date: Date;
+                isMercantile: boolean;
+                isBank: boolean;
+            } | null;
         } & {
             id: string;
             createdAt: Date;
@@ -61,6 +85,8 @@ export declare class AttendanceManualController {
             approvedById: string | null;
             approvedAt: Date | null;
             remarks: string | null;
+            workHolidayId: string | null;
+            payrollHolidayId: string | null;
         })[];
         meta: {
             total: number;
@@ -106,6 +132,8 @@ export declare class AttendanceManualController {
         approvedById: string | null;
         approvedAt: Date | null;
         remarks: string | null;
+        workHolidayId: string | null;
+        payrollHolidayId: string | null;
     }>;
     getEvents(query: EventQueryDto): Promise<{
         items: ({
@@ -179,6 +207,8 @@ export declare class AttendanceManualController {
         approvedById: string | null;
         approvedAt: Date | null;
         remarks: string | null;
+        workHolidayId: string | null;
+        payrollHolidayId: string | null;
     }>;
     deleteSession(id: string): Promise<{
         message: string;

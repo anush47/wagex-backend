@@ -219,7 +219,7 @@ export class AttendanceService {
             }
             if (query.endDate) {
                 const end = new Date(query.endDate);
-                end.setHours(23, 59, 59, 999);
+                end.setUTCHours(23, 59, 59, 999);
                 where.date.lte = end;
             }
         }
@@ -246,6 +246,8 @@ export class AttendanceService {
                             photo: true,
                         },
                     },
+                    workHoliday: true,
+                    payrollHoliday: true,
                 },
             }),
             this.prisma.attendanceSession.count({ where }),
@@ -277,6 +279,8 @@ export class AttendanceService {
                         photo: true,
                     },
                 },
+                workHoliday: true,
+                payrollHoliday: true,
             },
         });
 
@@ -312,7 +316,7 @@ export class AttendanceService {
             }
             if (query.endDate) {
                 const end = new Date(query.endDate);
-                end.setHours(23, 59, 59, 999);
+                end.setUTCHours(23, 59, 59, 999);
                 where.eventTime.lte = end;
             }
         }
@@ -368,6 +372,12 @@ export class AttendanceService {
             throw new NotFoundException('Session not found');
         }
 
+        this.logger.log(`[ATTENDANCE_LOGIC] updateSession Input: ${JSON.stringify({
+            in: dto.checkInTime,
+            out: dto.checkOutTime,
+            work: dto.workMinutes
+        })}`);
+
         const updateData: any = {
             ...dto,
             checkInTime: dto.checkInTime === null ? null : (dto.checkInTime ? new Date(dto.checkInTime) : undefined),
@@ -375,6 +385,39 @@ export class AttendanceService {
             manuallyEdited: true,
         };
 
+        this.logger.log(`[ATTENDANCE_LOGIC] updateData conversion: IN: ${updateData.checkInTime?.toISOString() || 'NULL'}, OUT: ${updateData.checkOutTime?.toISOString() || 'NULL'}`);
+
+        // Update session logical date if checkInTime has shifted to another day
+        if (dto.checkInTime) {
+            const dateObj = new Date(dto.checkInTime);
+            const newCheckInDate = new Date(Date.UTC(
+                dateObj.getFullYear(),
+                dateObj.getMonth(),
+                dateObj.getDate()
+            ));
+
+            if (newCheckInDate.getTime() !== session.date.getTime()) {
+                this.logger.log(`Shifting session date from ${session.date.toISOString()} to ${newCheckInDate.toISOString()}`);
+
+                // Check if a session already exists for this employee on the new date
+                const conflict = await this.prisma.attendanceSession.findUnique({
+                    where: {
+                        employeeId_date: {
+                            employeeId: session.employeeId,
+                            date: newCheckInDate,
+                        }
+                    }
+                });
+
+                if (conflict && conflict.id !== id) {
+                    throw new BadRequestException(`A session already exists for this employee on ${newCheckInDate.toISOString().split('T')[0]}.`);
+                }
+
+                updateData.date = newCheckInDate;
+            }
+        }
+
+        // Handle shift snapshot if shiftId is being updated
         // Handle shift snapshot if shiftId is being updated
         if (dto.shiftId !== undefined) {
             if (dto.shiftId === null) {
@@ -398,6 +441,75 @@ export class AttendanceService {
                 } else {
                     this.logger.warn(`Shift ID ${dto.shiftId} not found in employee policy`);
                 }
+            }
+        }
+
+        // Re-evaluate Holidays (User Request: "also in time updated this should be rechecked")
+        // We always re-check holidays on manual update to ensure consistency
+        const policy = await this.policiesService.getEffectivePolicy(session.employeeId);
+        const policySettings = policy as any;
+
+        // Use workingDays as primary source for calendars, then fall back
+        const workCalendarId = policySettings.workingDays?.workingCalendar || policySettings.attendance?.calendarId || policySettings.calendarId;
+        const payrollCalendarId = policySettings.workingDays?.payrollCalendar || policySettings.payrollConfiguration?.calendarId || policySettings.calendarId;
+
+        const date = updateData.date || session.date;
+        const startOfDay = new Date(date);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setUTCHours(23, 59, 59, 999);
+
+        if (workCalendarId || payrollCalendarId) {
+            // Fetch calendar names for cleaner logging
+            const calendars = await this.prisma.calendar.findMany({
+                where: { id: { in: [workCalendarId, payrollCalendarId].filter(id => !!id) } },
+                select: { id: true, name: true }
+            });
+            const getCalName = (id: string | null) => calendars.find(c => c.id === id)?.name || 'NONE';
+
+            this.logger.log(`[ATTENDANCE_LOGIC] --- Manually Updating Session ---`);
+            this.logger.log(`[ATTENDANCE_LOGIC] Work Calendar: ${getCalName(workCalendarId)} (${workCalendarId || 'MISSING'})`);
+            this.logger.log(`[ATTENDANCE_LOGIC] Payroll Calendar: ${getCalName(payrollCalendarId)} (${payrollCalendarId || 'MISSING'})`);
+            this.logger.log(`[ATTENDANCE_LOGIC] Search Range UTC: ${startOfDay.toISOString()} --- ${endOfDay.toISOString()}`);
+
+            // Reset by default if we are re-evaluating
+            updateData.workHolidayId = null;
+            updateData.payrollHolidayId = null;
+
+            const findHoliday = async (calendarId: string, type: string) => {
+                const holiday = await this.prisma.holiday.findFirst({
+                    where: {
+                        calendarId,
+                        date: {
+                            gte: startOfDay,
+                            lte: endOfDay
+                        }
+                    },
+                    select: { id: true, name: true }
+                });
+
+                if (holiday) {
+                    this.logger.log(`[ATTENDANCE_LOGIC] ✅ Found ${type} Holiday: ${holiday.name}`);
+                } else {
+                    this.logger.log(`[ATTENDANCE_LOGIC] ❌ No ${type} Holiday in ${getCalName(calendarId)}`);
+                }
+                return holiday;
+            };
+
+            if (workCalendarId === payrollCalendarId && workCalendarId) {
+                const holiday = await findHoliday(workCalendarId, 'JOINT');
+                if (holiday) {
+                    updateData.workHolidayId = (holiday as any).id;
+                    updateData.payrollHolidayId = (holiday as any).id;
+                }
+            } else {
+                const [workHoliday, payrollHoliday] = await Promise.all([
+                    workCalendarId ? findHoliday(workCalendarId, 'WORK') : Promise.resolve(null),
+                    payrollCalendarId ? findHoliday(payrollCalendarId, 'PAYROLL') : Promise.resolve(null),
+                ]);
+
+                if (workHoliday) updateData.workHolidayId = (workHoliday as any).id;
+                if (payrollHoliday) updateData.payrollHolidayId = (payrollHoliday as any).id;
             }
         }
 

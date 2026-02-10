@@ -31,6 +31,30 @@ export declare class AttendanceService {
                 employeeNo: number;
                 photo: string | null;
             };
+            workHoliday: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                isPublic: boolean;
+                description: string | null;
+                name: string;
+                calendarId: string;
+                date: Date;
+                isMercantile: boolean;
+                isBank: boolean;
+            } | null;
+            payrollHoliday: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                isPublic: boolean;
+                description: string | null;
+                name: string;
+                calendarId: string;
+                date: Date;
+                isMercantile: boolean;
+                isBank: boolean;
+            } | null;
         } & {
             id: string;
             createdAt: Date;
@@ -69,6 +93,8 @@ export declare class AttendanceService {
             approvedById: string | null;
             approvedAt: Date | null;
             remarks: string | null;
+            workHolidayId: string | null;
+            payrollHolidayId: string | null;
         })[];
         meta: {
             total: number;

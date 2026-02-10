@@ -483,6 +483,13 @@ model AttendanceSession {
   remarks          String?  @db.Text
   metadata         Json?    @default("{}")
   
+  // Linked Holidays
+  workHolidayId String?
+  workHoliday   Holiday? @relation("WorkHoliday", fields: [workHolidayId], references: [id])
+
+  payrollHolidayId String?
+  payrollHoliday   Holiday? @relation("PayrollHoliday", fields: [payrollHolidayId], references: [id])
+
   // Relations
   events           AttendanceEvent[]
   
@@ -537,6 +544,10 @@ model Holiday {
   updatedAt    DateTime    @updatedAt
 
   leaveRequests LeaveRequest[]
+  
+  // Reverse relations for AttendanceSession
+  workSessions    AttendanceSession[] @relation("WorkHoliday")
+  payrollSessions AttendanceSession[] @relation("PayrollHoliday")
 
   @@unique([calendarId, date])
   @@index([date])

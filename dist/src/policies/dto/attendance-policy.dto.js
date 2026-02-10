@@ -166,6 +166,7 @@ class AttendanceConfigDto {
     geofencing;
     approvalPolicy;
     apiKeys;
+    calendarId;
 }
 exports.AttendanceConfigDto = AttendanceConfigDto;
 __decorate([
@@ -202,4 +203,10 @@ __decorate([
     (0, class_transformer_1.Type)(() => CompanyApiKeyDto),
     __metadata("design:type", Array)
 ], AttendanceConfigDto.prototype, "apiKeys", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'uuid-calendar', description: 'Override Calendar ID for Attendance' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], AttendanceConfigDto.prototype, "calendarId", void 0);
 //# sourceMappingURL=attendance-policy.dto.js.map

@@ -31,9 +31,12 @@ export class AttendanceProcessingService {
             `Processing attendance for employee ${employeeId} on ${date.toISOString()}`,
         );
 
-        // Normalize date to start of day
-        const sessionDate = new Date(date);
-        sessionDate.setHours(0, 0, 0, 0);
+        // Normalize date to 'Logical Day' (UTC Midnight of the Local Day)
+        const sessionDate = new Date(Date.UTC(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate()
+        ));
 
         // 1. Fetch all ACTIVE events for this employee on this date
         const events = await this.getEventsForDate(employeeId, sessionDate);
@@ -93,10 +96,10 @@ export class AttendanceProcessingService {
         date: Date,
     ): Promise<AttendanceEvent[]> {
         const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
+        startOfDay.setUTCHours(0, 0, 0, 0);
 
         const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
+        endOfDay.setUTCHours(23, 59, 59, 999);
 
         return this.prisma.attendanceEvent.findMany({
             where: {
@@ -141,6 +144,17 @@ export class AttendanceProcessingService {
         }
 
         // 6. Determine Approval Status based on Policy
+        const effectivePolicyData = await this.prisma.employee.findUnique({
+            where: { id: employeeId },
+            include: {
+                policy: true, // Employee Override
+                company: { include: { policy: true } } // Company Default
+            }
+        });
+
+        const policySrc = effectivePolicyData?.policy ? 'EMPLOYEE_OVERRIDE' : 'COMPANY_DEFAULT';
+        this.logger.log(`[ATTENDANCE_LOGIC] Policy Source for ${employeeId}: ${policySrc}`);
+
         const policy = await this.policiesService.getEffectivePolicy(employeeId);
         const approvalConfig = policy?.attendance?.approvalPolicy;
 
@@ -209,6 +223,78 @@ export class AttendanceProcessingService {
             }
         }
 
+        // 8. Link Holidays (Work & Payroll)
+        // Resolve IDs from policy or fall back to company default (stored in policy.calendarId potentially? 
+        // actually policy object from getEffectivePolicy is PolicySettingsDto, so it has .calendarId)
+
+        // The policy object returned by getEffectivePolicy is of type PolicySettingsDto
+        // We need to cast it or ensuring it has the fields we expect from our DTO updates
+        const policySettings = policy as any;
+
+        // Use workingDays as primary source for calendars, then fall back
+        const workCalendarId = policySettings.workingDays?.workingCalendar || policySettings.attendance?.calendarId || policySettings.calendarId;
+        const payrollCalendarId = policySettings.workingDays?.payrollCalendar || policySettings.payrollConfiguration?.calendarId || policySettings.calendarId;
+
+        // Fetch calendar names for cleaner logging
+        const calendars = await this.prisma.calendar.findMany({
+            where: { id: { in: [workCalendarId, payrollCalendarId].filter(id => !!id) } },
+            select: { id: true, name: true }
+        });
+        const getCalName = (id: string | null) => calendars.find(c => c.id === id)?.name || 'NONE';
+
+        this.logger.log(`[ATTENDANCE_LOGIC] --- Processing Session ---`);
+        this.logger.log(`[ATTENDANCE_LOGIC] Employee: ${employeeId} | Date: ${date.toISOString().split('T')[0]}`);
+        this.logger.log(`[ATTENDANCE_LOGIC] Work Calendar: ${getCalName(workCalendarId)} (${workCalendarId || 'MISSING'})`);
+        this.logger.log(`[ATTENDANCE_LOGIC] Payroll Calendar: ${getCalName(payrollCalendarId)} (${payrollCalendarId || 'MISSING'})`);
+
+        let workHolidayId: string | null = null;
+        let payrollHolidayId: string | null = null;
+
+        const findHoliday = async (calendarId: string, type: string) => {
+            if (!calendarId) return null;
+
+            const startOfDay = new Date(date);
+            startOfDay.setUTCHours(0, 0, 0, 0);
+            const endOfDay = new Date(date);
+            endOfDay.setUTCHours(23, 59, 59, 999);
+
+            const holiday = await this.prisma.holiday.findFirst({
+                where: {
+                    calendarId,
+                    date: {
+                        gte: startOfDay,
+                        lte: endOfDay
+                    }
+                },
+                select: { id: true, name: true }
+            });
+
+            if (holiday) {
+                this.logger.log(`[ATTENDANCE_LOGIC] ✅ Found ${type} Holiday: ${holiday.name} (Search Range UTC: ${startOfDay.toISOString()} to ${endOfDay.toISOString()})`);
+            } else {
+                this.logger.log(`[ATTENDANCE_LOGIC] ❌ No ${type} Holiday in ${getCalName(calendarId)}`);
+            }
+            return holiday;
+        };
+
+        if (workCalendarId || payrollCalendarId) {
+            if (workCalendarId === payrollCalendarId && workCalendarId) {
+                const holiday = await findHoliday(workCalendarId, 'JOINT');
+                if (holiday) {
+                    workHolidayId = holiday.id;
+                    payrollHolidayId = holiday.id;
+                }
+            } else {
+                const [workHoliday, payrollHoliday] = await Promise.all([
+                    workCalendarId ? findHoliday(workCalendarId, 'WORK') : Promise.resolve(null),
+                    payrollCalendarId ? findHoliday(payrollCalendarId, 'PAYROLL') : Promise.resolve(null),
+                ]);
+
+                if (workHoliday) workHolidayId = (workHoliday as any).id;
+                if (payrollHoliday) payrollHolidayId = (payrollHoliday as any).id;
+            }
+        }
+
         const sessionData = {
             employeeId,
             companyId: employee.companyId,
@@ -248,6 +334,9 @@ export class AttendanceProcessingService {
             // Approval
             inApprovalStatus,
             outApprovalStatus,
+            // Linked Holidays
+            workHolidayId,
+            payrollHolidayId,
         };
 
         // Upsert session

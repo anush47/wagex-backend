@@ -68,4 +68,9 @@ export class PayrollSettingsConfigDto {
     @ApiProperty({ example: 8, description: 'Divisor (e.g. 8 hours) or Fixed Amount' })
     @IsNumber()
     lateDeductionValue: number;
+
+    @ApiPropertyOptional({ example: 'uuid-calendar', description: 'Override Calendar ID for Payroll' })
+    @IsOptional()
+    @IsString()
+    calendarId?: string;
 }

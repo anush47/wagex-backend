@@ -133,4 +133,9 @@ export class AttendanceConfigDto {
     @ValidateNested({ each: true })
     @Type(() => CompanyApiKeyDto)
     apiKeys: CompanyApiKeyDto[];
+
+    @ApiPropertyOptional({ example: 'uuid-calendar', description: 'Override Calendar ID for Attendance' })
+    @IsOptional()
+    @IsString()
+    calendarId?: string;
 }

@@ -44,4 +44,5 @@ export declare class AttendanceConfigDto {
     geofencing: GeofencingConfigDto;
     approvalPolicy: ApprovalPolicyConfigDto;
     apiKeys: CompanyApiKeyDto[];
+    calendarId?: string;
 }
