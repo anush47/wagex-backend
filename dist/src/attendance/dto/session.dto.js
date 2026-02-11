@@ -31,6 +31,7 @@ class UpdateSessionDto {
     breakMinutes;
     workMinutes;
     overtimeMinutes;
+    isBreakOverrideActive;
 }
 exports.UpdateSessionDto = UpdateSessionDto;
 __decorate([
@@ -129,6 +130,12 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], UpdateSessionDto.prototype, "overtimeMinutes", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Whether break override is active' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateSessionDto.prototype, "isBreakOverrideActive", void 0);
 class SessionQueryDto {
     companyId;
     employeeId;

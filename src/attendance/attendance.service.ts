@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceProcessingService } from './services/attendance-processing.service';
+import { AttendanceCalculationService } from './services/attendance-calculation.service';
+import { LeaveIntegrationService } from './services/leave-integration.service';
 import { PoliciesService } from '../policies/policies.service';
 import { CreateEventDto, BulkCreateEventsDto } from './dto/event.dto';
 import {
@@ -24,6 +26,8 @@ export class AttendanceService {
         private readonly prisma: PrismaService,
         private readonly processingService: AttendanceProcessingService,
         private readonly policiesService: PoliciesService,
+        private readonly calculationService: AttendanceCalculationService,
+        private readonly leaveService: LeaveIntegrationService,
     ) { }
 
     /**
@@ -81,6 +85,9 @@ export class AttendanceService {
         const eventDate = new Date(dto.eventTime);
         this.processingService
             .processEmployeeDate(employeeId, eventDate)
+            .then((sessions) => {
+                this.logger.log(`Processed ${sessions.length} sessions for employee ${employeeId} on ${eventDate.toISOString()}`);
+            })
             .catch((error) => {
                 this.logger.error(`Failed to process event: ${error.message}`);
             });
@@ -135,6 +142,9 @@ export class AttendanceService {
         const eventDate = new Date(dto.eventTime);
         this.processingService
             .processEmployeeDate(employee.id, eventDate)
+            .then((sessions) => {
+                this.logger.log(`Processed ${sessions.length} sessions for employee ${employee.id} on ${eventDate.toISOString()}`);
+            })
             .catch((error) => {
                 this.logger.error(`Failed to process event: ${error.message}`);
             });
@@ -292,6 +302,30 @@ export class AttendanceService {
     }
 
     /**
+     * Get events for a specific session
+     */
+    async getSessionEvents(sessionId: string) {
+        this.logger.log(`Fetching events for session ${sessionId}`);
+
+        const events = await this.prisma.attendanceEvent.findMany({
+            where: { sessionId },
+            orderBy: { eventTime: 'asc' },
+            include: {
+                employee: {
+                    select: {
+                        employeeNo: true,
+                        nameWithInitials: true,
+                        fullName: true,
+                        photo: true,
+                    },
+                },
+            },
+        });
+
+        return events;
+    }
+
+    /**
      * Get events with pagination
      */
     async getEvents(query: EventQueryDto) {
@@ -391,9 +425,9 @@ export class AttendanceService {
         if (dto.checkInTime) {
             const dateObj = new Date(dto.checkInTime);
             const newCheckInDate = new Date(Date.UTC(
-                dateObj.getFullYear(),
-                dateObj.getMonth(),
-                dateObj.getDate()
+                dateObj.getUTCFullYear(),
+                dateObj.getUTCMonth(),
+                dateObj.getUTCDate()
             ));
 
             if (newCheckInDate.getTime() !== session.date.getTime()) {
@@ -417,101 +451,120 @@ export class AttendanceService {
             }
         }
 
-        // Handle shift snapshot if shiftId is being updated
-        // Handle shift snapshot if shiftId is being updated
+        // Handle break override logic
+        if (dto.isBreakOverrideActive !== undefined) {
+            updateData.isBreakOverrideActive = dto.isBreakOverrideActive;
+        }
+
+        // --- Centralized Calculation Start ---
+        // Resolve current state for calculation
+        const effectiveCheckIn = updateData.checkInTime !== undefined ? updateData.checkInTime : session.checkInTime;
+        const effectiveCheckOut = updateData.checkOutTime !== undefined ? updateData.checkOutTime : session.checkOutTime;
+        const effectiveShiftId = dto.shiftId !== undefined ? (dto.shiftId === "none" ? null : dto.shiftId) : session.shiftId;
+        const effectiveDate = updateData.date || session.date;
+
+        // Fetch effective policy for shift and calendar resolution
+        const policy = await this.policiesService.getEffectivePolicy(session.employeeId);
+        const policySettings = policy as any;
+
+        const workCalendarId = policySettings.workingDays?.workingCalendar || policySettings.attendance?.calendarId || policySettings.calendarId;
+        const payrollCalendarId = policySettings.workingDays?.payrollCalendar || policySettings.payrollConfiguration?.calendarId || policySettings.calendarId;
+
+        // Fetch shift details if needed for calculation
+        let calcShift: any = null;
+        if (effectiveShiftId) {
+            calcShift = policySettings.shifts?.list?.find((s: any) => s.id === effectiveShiftId);
+        }
+
+        // Fetch leaves for the session date
+        const leaves = await this.leaveService.getApprovedLeaves(session.employeeId, effectiveDate);
+
+        // Determine break minutes based on override status
+        let breakMinutesToUse: number;
+        if (session.isBreakOverrideActive) {
+            // If break override is active, use the breakMinutes value from the DTO (manual override)
+            breakMinutesToUse = dto.breakMinutes ?? session.breakMinutes ?? 0;
+        } else {
+            // If break override is not active, calculate break from events or use shift break
+            // Get events for this session to calculate breaks from IN/OUT pairs
+            const sessionEvents = await this.prisma.attendanceEvent.findMany({
+                where: { sessionId: id },
+                orderBy: { eventTime: 'asc' }
+            });
+
+            if (sessionEvents.length > 0) {
+                // Calculate breaks from the actual IN/OUT pairs in the session
+                const calculatedBreaks = this.calculationService.calculateBreaksFromEvents(sessionEvents);
+
+                // If calculated break is smaller than the shift's break, use the shift break
+                const shiftBreak = calcShift?.breakTime ?? session.shiftBreakMinutes ?? 0;
+                breakMinutesToUse = Math.max(calculatedBreaks.breakMinutes, shiftBreak);
+            } else {
+                // Fallback to shift break if no events
+                breakMinutesToUse = calcShift?.breakTime ?? session.shiftBreakMinutes ?? 0;
+            }
+        }
+
+        // Execute unified calculation
+        const calculation = this.calculationService.calculate(
+            {
+                checkInTime: effectiveCheckIn,
+                checkOutTime: effectiveCheckOut,
+                shiftBreakMinutes: breakMinutesToUse
+            },
+            calcShift,
+            leaves
+        );
+
+        // Populate updateData with results
+        // Status flags are ALWAYS recalculated on the server to ensure consistency
+        updateData.isLate = calculation.isLate;
+        updateData.isEarlyLeave = calculation.isEarlyLeave;
+        updateData.isOnLeave = calculation.isOnLeave;
+        updateData.isHalfDay = calculation.isHalfDay;
+        updateData.hasShortLeave = calculation.hasShortLeave;
+
+        // Recalculate Work Day Status (e.g. if session moved to weekend)
+        updateData.workDayStatus = this.calculationService.determineWorkDayStatus(effectiveDate, policySettings);
+
+        // Times are updated based on calculation, but respect manual overrides for work/break/overtime if provided
+        updateData.totalMinutes = calculation.totalMinutes;
+        updateData.workMinutes = dto.workMinutes !== undefined ? dto.workMinutes : calculation.workMinutes;
+
+        // Apply break override logic: if override is active, use DTO value; otherwise use calculated value
+        if (session.isBreakOverrideActive) {
+            updateData.breakMinutes = dto.breakMinutes ?? session.breakMinutes ?? calculation.breakMinutes;
+        } else {
+            updateData.breakMinutes = calculation.breakMinutes;
+        }
+
+        updateData.overtimeMinutes = dto.overtimeMinutes !== undefined ? dto.overtimeMinutes : calculation.overtimeMinutes;
+
+        // Update shift snapshot if shiftId was changed
         if (dto.shiftId !== undefined) {
-            if (dto.shiftId === null) {
-                // Clear shift snapshots
+            if (dto.shiftId === null || dto.shiftId === "none") {
                 updateData.shiftName = null;
                 updateData.shiftStartTime = null;
                 updateData.shiftEndTime = null;
                 updateData.shiftBreakMinutes = null;
-            } else {
-                // Fetch shift details from effective policy
-                const policy = await this.policiesService.getEffectivePolicy(session.employeeId);
-                const shiftList = policy.shifts?.list || [];
-                const shift = shiftList.find((s: any) => s.id === dto.shiftId);
-
-                if (shift) {
-                    this.logger.log(`Found shift details: ${shift.name}, ${shift.startTime}-${shift.endTime}`);
-                    updateData.shiftName = shift.name;
-                    updateData.shiftStartTime = shift.startTime;
-                    updateData.shiftEndTime = shift.endTime;
-                    updateData.shiftBreakMinutes = shift.breakTime;
-                } else {
-                    this.logger.warn(`Shift ID ${dto.shiftId} not found in employee policy`);
-                }
+                updateData.shiftId = null;
+            } else if (calcShift) {
+                updateData.shiftName = calcShift.name;
+                updateData.shiftStartTime = calcShift.startTime;
+                updateData.shiftEndTime = calcShift.endTime;
+                updateData.shiftBreakMinutes = calcShift.breakTime;
             }
         }
+        // --- Centralized Calculation End ---
 
-        // Re-evaluate Holidays (User Request: "also in time updated this should be rechecked")
-        // We always re-check holidays on manual update to ensure consistency
-        const policy = await this.policiesService.getEffectivePolicy(session.employeeId);
-        const policySettings = policy as any;
-
-        // Use workingDays as primary source for calendars, then fall back
-        const workCalendarId = policySettings.workingDays?.workingCalendar || policySettings.attendance?.calendarId || policySettings.calendarId;
-        const payrollCalendarId = policySettings.workingDays?.payrollCalendar || policySettings.payrollConfiguration?.calendarId || policySettings.calendarId;
-
-        const date = updateData.date || session.date;
-        const startOfDay = new Date(date);
-        startOfDay.setUTCHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setUTCHours(23, 59, 59, 999);
-
-        if (workCalendarId || payrollCalendarId) {
-            // Fetch calendar names for cleaner logging
-            const calendars = await this.prisma.calendar.findMany({
-                where: { id: { in: [workCalendarId, payrollCalendarId].filter(id => !!id) } },
-                select: { id: true, name: true }
-            });
-            const getCalName = (id: string | null) => calendars.find(c => c.id === id)?.name || 'NONE';
-
-            this.logger.log(`[ATTENDANCE_LOGIC] --- Manually Updating Session ---`);
-            this.logger.log(`[ATTENDANCE_LOGIC] Work Calendar: ${getCalName(workCalendarId)} (${workCalendarId || 'MISSING'})`);
-            this.logger.log(`[ATTENDANCE_LOGIC] Payroll Calendar: ${getCalName(payrollCalendarId)} (${payrollCalendarId || 'MISSING'})`);
-            this.logger.log(`[ATTENDANCE_LOGIC] Search Range UTC: ${startOfDay.toISOString()} --- ${endOfDay.toISOString()}`);
-
-            // Reset by default if we are re-evaluating
-            updateData.workHolidayId = null;
-            updateData.payrollHolidayId = null;
-
-            const findHoliday = async (calendarId: string, type: string) => {
-                const holiday = await this.prisma.holiday.findFirst({
-                    where: {
-                        calendarId,
-                        date: {
-                            gte: startOfDay,
-                            lte: endOfDay
-                        }
-                    },
-                    select: { id: true, name: true }
-                });
-
-                if (holiday) {
-                    this.logger.log(`[ATTENDANCE_LOGIC] ✅ Found ${type} Holiday: ${holiday.name}`);
-                } else {
-                    this.logger.log(`[ATTENDANCE_LOGIC] ❌ No ${type} Holiday in ${getCalName(calendarId)}`);
-                }
-                return holiday;
-            };
-
-            if (workCalendarId === payrollCalendarId && workCalendarId) {
-                const holiday = await findHoliday(workCalendarId, 'JOINT');
-                if (holiday) {
-                    updateData.workHolidayId = (holiday as any).id;
-                    updateData.payrollHolidayId = (holiday as any).id;
-                }
-            } else {
-                const [workHoliday, payrollHoliday] = await Promise.all([
-                    workCalendarId ? findHoliday(workCalendarId, 'WORK') : Promise.resolve(null),
-                    payrollCalendarId ? findHoliday(payrollCalendarId, 'PAYROLL') : Promise.resolve(null),
-                ]);
-
-                if (workHoliday) updateData.workHolidayId = (workHoliday as any).id;
-                if (payrollHoliday) updateData.payrollHolidayId = (payrollHoliday as any).id;
-            }
-        }
+        // Re-evaluate Holidays (Centralized)
+        const holidayResults = await this.calculationService.resolveHolidays(
+            effectiveDate,
+            workCalendarId,
+            payrollCalendarId
+        );
+        updateData.workHolidayId = holidayResults.workHolidayId;
+        updateData.payrollHolidayId = holidayResults.payrollHolidayId;
 
         return this.prisma.attendanceSession.update({
             where: { id },
@@ -551,7 +604,7 @@ export class AttendanceService {
     }
 
     /**
-     * Verify API key and return company info
+     * Link an event to a specific session manually
      */
     async verifyApiKey(apiKey: string): Promise<{
         valid: boolean;
@@ -587,9 +640,6 @@ export class AttendanceService {
             return { valid: false };
         }
 
-        // Update last used timestamp
-        // TODO: Implement lastUsedAt update
-
         return {
             valid: true,
             company: {
@@ -603,5 +653,56 @@ export class AttendanceService {
                 lastUsedAt: new Date(),
             },
         };
+    }
+
+    /**
+     * Link an event to a specific session manually
+     */
+    async linkEventToSession(eventId: string, sessionId: string): Promise<void> {
+        const event = await this.prisma.attendanceEvent.findUnique({
+            where: { id: eventId },
+        });
+
+        if (!event) throw new NotFoundException('Event not found');
+
+        const session = await this.prisma.attendanceSession.findUnique({
+            where: { id: sessionId },
+        });
+
+        if (!session) throw new NotFoundException('Session not found');
+
+        // Link event
+        await this.prisma.attendanceEvent.update({
+            where: { id: eventId },
+            data: { sessionId },
+        });
+
+        // Trigger recalculation for the session
+        await this.processingService.processEmployeeDate(session.employeeId, session.date);
+    }
+
+    /**
+     * Unlink an event from its session
+     */
+    async unlinkEventFromSession(eventId: string): Promise<void> {
+        const event = await this.prisma.attendanceEvent.findUnique({
+            where: { id: eventId },
+            include: { session: true },
+        });
+
+        if (!event) throw new NotFoundException('Event not found');
+
+        const oldSession = event.session;
+
+        // Unlink event
+        await this.prisma.attendanceEvent.update({
+            where: { id: eventId },
+            data: { sessionId: null },
+        });
+
+        // Re-process the date to ensure the session reflects the missing event
+        if (oldSession) {
+            await this.processingService.processEmployeeDate(oldSession.employeeId, oldSession.date);
+        }
     }
 }

@@ -14,6 +14,7 @@ const shift_selection_service_1 = require("./services/shift-selection.service");
 const attendance_calculation_service_1 = require("./services/attendance-calculation.service");
 const attendance_processing_service_1 = require("./services/attendance-processing.service");
 const leave_integration_service_1 = require("./services/leave-integration.service");
+const session_grouping_service_1 = require("./services/session-grouping.service");
 const prisma_module_1 = require("../prisma/prisma.module");
 const policies_module_1 = require("../policies/policies.module");
 let AttendanceModule = class AttendanceModule {
@@ -29,6 +30,7 @@ exports.AttendanceModule = AttendanceModule = __decorate([
             attendance_calculation_service_1.AttendanceCalculationService,
             attendance_processing_service_1.AttendanceProcessingService,
             leave_integration_service_1.LeaveIntegrationService,
+            session_grouping_service_1.SessionGroupingService,
         ],
         exports: [attendance_service_1.AttendanceService, attendance_processing_service_1.AttendanceProcessingService],
     })

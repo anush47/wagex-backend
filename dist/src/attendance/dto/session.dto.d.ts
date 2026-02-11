@@ -16,6 +16,7 @@ export declare class UpdateSessionDto {
     breakMinutes?: number;
     workMinutes?: number;
     overtimeMinutes?: number;
+    isBreakOverrideActive?: boolean;
 }
 export declare class SessionQueryDto {
     companyId?: string;

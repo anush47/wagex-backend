@@ -51,6 +51,10 @@ let AttendanceManualController = AttendanceManualController_1 = class Attendance
         this.logger.log(`Fetching session details for ${id}`);
         return this.attendanceService.getSession(id);
     }
+    async getSessionEvents(id) {
+        this.logger.log(`Fetching events for session ${id}`);
+        return this.attendanceService.getSessionEvents(id);
+    }
     async getEvents(query) {
         this.logger.log(`Fetching events with filters: ${JSON.stringify(query)}`);
         return this.attendanceService.getEvents(query);
@@ -62,6 +66,16 @@ let AttendanceManualController = AttendanceManualController_1 = class Attendance
     async deleteSession(id) {
         this.logger.log(`Deleting session ${id}`);
         return this.attendanceService.deleteSession(id);
+    }
+    async linkEventToSession(eventId, sessionId) {
+        this.logger.log(`Linking event ${eventId} to session ${sessionId}`);
+        await this.attendanceService.linkEventToSession(eventId, sessionId);
+        return { success: true };
+    }
+    async unlinkEventFromSession(eventId) {
+        this.logger.log(`Unlinking event ${eventId}`);
+        await this.attendanceService.unlinkEventFromSession(eventId);
+        return { success: true };
     }
 };
 exports.AttendanceManualController = AttendanceManualController;
@@ -97,6 +111,17 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AttendanceManualController.prototype, "getSession", null);
 __decorate([
+    (0, common_1.Get)('sessions/:id/events'),
+    (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Get events for a specific attendance session' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Session events retrieved successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Session not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendanceManualController.prototype, "getSessionEvents", null);
+__decorate([
     (0, common_1.Get)('events'),
     (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
     (0, swagger_1.ApiOperation)({ summary: 'Get attendance events (paginated)' }),
@@ -127,6 +152,25 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AttendanceManualController.prototype, "deleteSession", null);
+__decorate([
+    (0, common_1.Post)('events/:eventId/link/:sessionId'),
+    (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Link an event to a session manually' }),
+    __param(0, (0, common_1.Param)('eventId')),
+    __param(1, (0, common_1.Param)('sessionId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], AttendanceManualController.prototype, "linkEventToSession", null);
+__decorate([
+    (0, common_1.Delete)('events/:eventId/link'),
+    (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Unlink an event from its session' }),
+    __param(0, (0, common_1.Param)('eventId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendanceManualController.prototype, "unlinkEventFromSession", null);
 exports.AttendanceManualController = AttendanceManualController = AttendanceManualController_1 = __decorate([
     (0, swagger_1.ApiTags)('Attendance - Manual'),
     (0, swagger_1.ApiBearerAuth)(),

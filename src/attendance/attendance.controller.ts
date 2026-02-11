@@ -93,6 +93,16 @@ export class AttendanceManualController {
         return this.attendanceService.getSession(id);
     }
 
+    @Get('sessions/:id/events')
+    @Roles(Role.EMPLOYER, Role.ADMIN)
+    @ApiOperation({ summary: 'Get events for a specific attendance session' })
+    @ApiResponse({ status: 200, description: 'Session events retrieved successfully' })
+    @ApiResponse({ status: 404, description: 'Session not found' })
+    async getSessionEvents(@Param('id') id: string) {
+        this.logger.log(`Fetching events for session ${id}`);
+        return this.attendanceService.getSessionEvents(id);
+    }
+
     @Get('events')
     @Roles(Role.EMPLOYER, Role.ADMIN)
     @ApiOperation({ summary: 'Get attendance events (paginated)' })
@@ -121,6 +131,27 @@ export class AttendanceManualController {
     async deleteSession(@Param('id') id: string) {
         this.logger.log(`Deleting session ${id}`);
         return this.attendanceService.deleteSession(id);
+    }
+
+    @Post('events/:eventId/link/:sessionId')
+    @Roles(Role.EMPLOYER, Role.ADMIN)
+    @ApiOperation({ summary: 'Link an event to a session manually' })
+    async linkEventToSession(
+        @Param('eventId') eventId: string,
+        @Param('sessionId') sessionId: string,
+    ) {
+        this.logger.log(`Linking event ${eventId} to session ${sessionId}`);
+        await this.attendanceService.linkEventToSession(eventId, sessionId);
+        return { success: true };
+    }
+
+    @Delete('events/:eventId/link')
+    @Roles(Role.EMPLOYER, Role.ADMIN)
+    @ApiOperation({ summary: 'Unlink an event from its session' })
+    async unlinkEventFromSession(@Param('eventId') eventId: string) {
+        this.logger.log(`Unlinking event ${eventId}`);
+        await this.attendanceService.unlinkEventFromSession(eventId);
+        return { success: true };
     }
 }
 

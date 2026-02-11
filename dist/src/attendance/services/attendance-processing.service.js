@@ -19,64 +19,51 @@ const leave_integration_service_1 = require("./leave-integration.service");
 const client_1 = require("@prisma/client");
 const policies_service_1 = require("../../policies/policies.service");
 const attendance_policy_dto_1 = require("../../policies/dto/attendance-policy.dto");
+const session_grouping_service_1 = require("./session-grouping.service");
 let AttendanceProcessingService = AttendanceProcessingService_1 = class AttendanceProcessingService {
     prisma;
     shiftService;
     calculationService;
     leaveService;
     policiesService;
+    sessionGroupingService;
     logger = new common_1.Logger(AttendanceProcessingService_1.name);
-    constructor(prisma, shiftService, calculationService, leaveService, policiesService) {
+    constructor(prisma, shiftService, calculationService, leaveService, policiesService, sessionGroupingService) {
         this.prisma = prisma;
         this.shiftService = shiftService;
         this.calculationService = calculationService;
         this.leaveService = leaveService;
         this.policiesService = policiesService;
+        this.sessionGroupingService = sessionGroupingService;
     }
     async processEmployeeDate(employeeId, date) {
         this.logger.log(`Processing attendance for employee ${employeeId} on ${date.toISOString()}`);
-        const sessionDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-        const events = await this.getEventsForDate(employeeId, sessionDate);
+        const events = await this.sessionGroupingService.getEventsForSessionGrouping(employeeId, date);
         if (events.length === 0) {
-            this.logger.warn(`No events found for employee ${employeeId} on ${sessionDate.toISOString()}`);
-            return null;
+            this.logger.warn(`No events found for employee ${employeeId} around ${date.toISOString()}`);
+            return [];
         }
-        const shift = await this.shiftService.getEffectiveShift(employeeId, sessionDate, events[0]?.eventTime);
-        const leaves = await this.leaveService.getApprovedLeaves(employeeId, sessionDate);
-        const firstIn = events.find((e) => e.eventType === 'IN');
-        const lastOut = events
-            .slice()
-            .reverse()
-            .find((e) => e.eventType === 'OUT');
-        const times = this.calculationService.calculateWorkTime(events, shift);
-        const flags = this.calculationService.calculateStatusFlags(firstIn?.eventTime || null, lastOut?.eventTime || null, shift, leaves);
-        return this.createOrUpdateSession(employeeId, sessionDate, events, shift, times, flags);
+        const sessionGroups = await this.sessionGroupingService.groupEventsIntoSessions(employeeId, events, date);
+        if (sessionGroups.length === 0) {
+            this.logger.warn(`No session groups created for employee ${employeeId} around ${date.toISOString()}`);
+            return [];
+        }
+        this.logger.log(`[PROCESSING] Found ${sessionGroups.length} session groups for ${employeeId}`);
+        const sessions = [];
+        for (const sessionGroup of sessionGroups) {
+            const shift = await this.shiftService.getEffectiveShift(employeeId, sessionGroup.firstIn || date, sessionGroup.firstIn || date);
+            const leaves = await this.leaveService.getApprovedLeaves(employeeId, sessionGroup.sessionDate);
+            const calculation = this.calculationService.calculate({ sessionGroup }, shift, leaves);
+            const times = calculation;
+            const flags = calculation;
+            const session = await this.createOrUpdateSessionFromGroup(employeeId, sessionGroup, shift, times, flags);
+            if (session) {
+                sessions.push(session);
+            }
+        }
+        return sessions;
     }
-    async getEventsForDate(employeeId, date) {
-        const startOfDay = new Date(date);
-        startOfDay.setUTCHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setUTCHours(23, 59, 59, 999);
-        return this.prisma.attendanceEvent.findMany({
-            where: {
-                employeeId,
-                eventTime: {
-                    gte: startOfDay,
-                    lte: endOfDay,
-                },
-                status: 'ACTIVE',
-            },
-            orderBy: {
-                eventTime: 'asc',
-            },
-        });
-    }
-    async createOrUpdateSession(employeeId, date, events, shift, times, flags) {
-        const firstIn = events.find((e) => e.eventType === 'IN');
-        const lastOut = events
-            .slice()
-            .reverse()
-            .find((e) => e.eventType === 'OUT');
+    async createOrUpdateSessionFromGroup(employeeId, sessionGroup, shift, times, flags) {
         const employee = await this.prisma.employee.findUnique({
             where: { id: employeeId },
             select: { companyId: true },
@@ -93,20 +80,20 @@ let AttendanceProcessingService = AttendanceProcessingService_1 = class Attendan
         });
         const policySrc = effectivePolicyData?.policy ? 'EMPLOYEE_OVERRIDE' : 'COMPANY_DEFAULT';
         this.logger.log(`[ATTENDANCE_LOGIC] Policy Source for ${employeeId}: ${policySrc}`);
-        const policy = await this.policiesService.getEffectivePolicy(employeeId);
-        const approvalConfig = policy?.attendance?.approvalPolicy;
-        const existingSession = await this.prisma.attendanceSession.findUnique({
-            where: {
-                employeeId_date: {
-                    employeeId,
-                    date,
-                },
-            },
+        const policy = await this.prisma.employee.findUnique({
+            where: { id: employeeId },
+            include: {
+                policy: true,
+                company: { include: { policy: true } }
+            }
         });
-        if (existingSession?.manuallyEdited) {
-            this.logger.log(`Session for ${employeeId} on ${date.toISOString()} was manually edited, skipping auto-processing`);
-            return existingSession;
-        }
+        const effectivePolicy = await this.policiesService.getEffectivePolicy(employeeId);
+        const approvalConfig = effectivePolicy?.attendance?.approvalPolicy;
+        const firstInEvent = sessionGroup.events.find((e) => e.eventType === 'IN');
+        const lastOutEvent = sessionGroup.events
+            .slice()
+            .reverse()
+            .find((e) => e.eventType === 'OUT');
         const determineApproval = (event, isLate) => {
             if (!event)
                 return client_1.ApprovalStatus.APPROVED;
@@ -129,100 +116,30 @@ let AttendanceProcessingService = AttendanceProcessingService_1 = class Attendan
                     return client_1.ApprovalStatus.APPROVED;
             }
         };
-        const inApprovalStatus = determineApproval(firstIn, flags.isLate);
-        const outApprovalStatus = determineApproval(lastOut, flags.isEarlyLeave);
-        const workingDaysConfig = policy?.workingDays;
-        let workDayStatus = client_1.SessionWorkDayStatus.FULL;
-        if (workingDaysConfig?.defaultPattern) {
-            const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-            const dayOfWeek = dayNames[date.getDay()];
-            const dayConfig = workingDaysConfig.defaultPattern[dayOfWeek];
-            if (dayConfig) {
-                if (dayConfig.type === 'OFF') {
-                    workDayStatus = client_1.SessionWorkDayStatus.OFF;
-                }
-                else if (dayConfig.type === 'HALF') {
-                    workDayStatus = dayConfig.halfDayShift === 'LAST'
-                        ? client_1.SessionWorkDayStatus.HALF_LAST
-                        : client_1.SessionWorkDayStatus.HALF_FIRST;
-                }
-            }
-        }
-        const policySettings = policy;
+        const inApprovalStatus = determineApproval(firstInEvent, flags.isLate);
+        const outApprovalStatus = determineApproval(lastOutEvent, flags.isEarlyLeave);
+        const workDayStatus = this.calculationService.determineWorkDayStatus(sessionGroup.sessionDate, effectivePolicy);
+        const policySettings = effectivePolicy;
         const workCalendarId = policySettings.workingDays?.workingCalendar || policySettings.attendance?.calendarId || policySettings.calendarId;
         const payrollCalendarId = policySettings.workingDays?.payrollCalendar || policySettings.payrollConfiguration?.calendarId || policySettings.calendarId;
-        const calendars = await this.prisma.calendar.findMany({
-            where: { id: { in: [workCalendarId, payrollCalendarId].filter(id => !!id) } },
-            select: { id: true, name: true }
-        });
-        const getCalName = (id) => calendars.find(c => c.id === id)?.name || 'NONE';
-        this.logger.log(`[ATTENDANCE_LOGIC] --- Processing Session ---`);
-        this.logger.log(`[ATTENDANCE_LOGIC] Employee: ${employeeId} | Date: ${date.toISOString().split('T')[0]}`);
-        this.logger.log(`[ATTENDANCE_LOGIC] Work Calendar: ${getCalName(workCalendarId)} (${workCalendarId || 'MISSING'})`);
-        this.logger.log(`[ATTENDANCE_LOGIC] Payroll Calendar: ${getCalName(payrollCalendarId)} (${payrollCalendarId || 'MISSING'})`);
-        let workHolidayId = null;
-        let payrollHolidayId = null;
-        const findHoliday = async (calendarId, type) => {
-            if (!calendarId)
-                return null;
-            const startOfDay = new Date(date);
-            startOfDay.setUTCHours(0, 0, 0, 0);
-            const endOfDay = new Date(date);
-            endOfDay.setUTCHours(23, 59, 59, 999);
-            const holiday = await this.prisma.holiday.findFirst({
-                where: {
-                    calendarId,
-                    date: {
-                        gte: startOfDay,
-                        lte: endOfDay
-                    }
-                },
-                select: { id: true, name: true }
-            });
-            if (holiday) {
-                this.logger.log(`[ATTENDANCE_LOGIC] ✅ Found ${type} Holiday: ${holiday.name} (Search Range UTC: ${startOfDay.toISOString()} to ${endOfDay.toISOString()})`);
-            }
-            else {
-                this.logger.log(`[ATTENDANCE_LOGIC] ❌ No ${type} Holiday in ${getCalName(calendarId)}`);
-            }
-            return holiday;
-        };
-        if (workCalendarId || payrollCalendarId) {
-            if (workCalendarId === payrollCalendarId && workCalendarId) {
-                const holiday = await findHoliday(workCalendarId, 'JOINT');
-                if (holiday) {
-                    workHolidayId = holiday.id;
-                    payrollHolidayId = holiday.id;
-                }
-            }
-            else {
-                const [workHoliday, payrollHoliday] = await Promise.all([
-                    workCalendarId ? findHoliday(workCalendarId, 'WORK') : Promise.resolve(null),
-                    payrollCalendarId ? findHoliday(payrollCalendarId, 'PAYROLL') : Promise.resolve(null),
-                ]);
-                if (workHoliday)
-                    workHolidayId = workHoliday.id;
-                if (payrollHoliday)
-                    payrollHolidayId = payrollHoliday.id;
-            }
-        }
+        const { workHolidayId, payrollHolidayId } = await this.calculationService.resolveHolidays(sessionGroup.sessionDate, workCalendarId, payrollCalendarId);
         const sessionData = {
             employeeId,
             companyId: employee.companyId,
-            date,
+            date: sessionGroup.sessionDate,
             shiftId: shift?.id || null,
             shiftName: shift?.name || null,
             shiftStartTime: shift?.startTime || null,
             shiftEndTime: shift?.endTime || null,
-            shiftBreakMinutes: shift?.breakMinutes || null,
-            checkInTime: firstIn?.eventTime || null,
-            checkOutTime: lastOut?.eventTime || null,
-            checkInLocation: firstIn?.location || null,
-            checkInLatitude: firstIn?.latitude || null,
-            checkInLongitude: firstIn?.longitude || null,
-            checkOutLocation: lastOut?.location || null,
-            checkOutLatitude: lastOut?.latitude || null,
-            checkOutLongitude: lastOut?.longitude || null,
+            shiftBreakMinutes: shift?.breakTime || null,
+            checkInTime: sessionGroup.firstIn || null,
+            checkOutTime: sessionGroup.lastOut || null,
+            checkInLocation: firstInEvent?.location || null,
+            checkInLatitude: firstInEvent?.latitude || null,
+            checkInLongitude: firstInEvent?.longitude || null,
+            checkOutLocation: lastOutEvent?.location || null,
+            checkOutLatitude: lastOutEvent?.latitude || null,
+            checkOutLongitude: lastOutEvent?.longitude || null,
             totalMinutes: times.totalMinutes,
             breakMinutes: times.breakMinutes,
             workMinutes: times.workMinutes,
@@ -234,17 +151,52 @@ let AttendanceProcessingService = AttendanceProcessingService_1 = class Attendan
             hasShortLeave: flags.hasShortLeave,
             manuallyEdited: false,
             autoCheckout: false,
+            additionalInOutCount: sessionGroup.additionalInOutPairs.length,
             workDayStatus,
             inApprovalStatus,
             outApprovalStatus,
             workHolidayId,
             payrollHolidayId,
         };
-        const session = await this.prisma.attendanceSession.upsert({
+        let session = await this.prisma.attendanceSession.findUnique({
             where: {
                 employeeId_date: {
                     employeeId,
-                    date,
+                    date: sessionGroup.sessionDate,
+                },
+            },
+        });
+        this.logger.log(`[SESSION_LOOKUP] Searching for ${employeeId} on ${sessionGroup.sessionDate.toISOString()}. Found: ${session ? session.id : 'NONE'}`);
+        if (session) {
+            await this.prisma.attendanceEvent.updateMany({
+                where: {
+                    id: { in: sessionGroup.events.map((e) => e.id) },
+                },
+                data: { sessionId: session.id },
+            });
+            if (session.manuallyEdited) {
+                this.logger.log(`[MERGE_MANUAL] Session ${session.id} is manuallyEdited. Merging logs into summary.`);
+                const manualUpdateData = {
+                    ...sessionData,
+                    checkInTime: session.checkInTime || sessionData.checkInTime,
+                    checkOutTime: session.checkOutTime || sessionData.checkOutTime,
+                };
+                delete manualUpdateData.manuallyEdited;
+                session = await this.prisma.attendanceSession.update({
+                    where: { id: session.id },
+                    data: {
+                        ...manualUpdateData,
+                        additionalInOutCount: sessionGroup.additionalInOutPairs.length,
+                    }
+                });
+                return session;
+            }
+        }
+        session = await this.prisma.attendanceSession.upsert({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date: sessionGroup.sessionDate,
                 },
             },
             create: sessionData,
@@ -255,14 +207,14 @@ let AttendanceProcessingService = AttendanceProcessingService_1 = class Attendan
         await this.prisma.attendanceEvent.updateMany({
             where: {
                 id: {
-                    in: events.map((e) => e.id),
+                    in: sessionGroup.events.map((e) => e.id),
                 },
             },
             data: {
                 sessionId: session.id,
             },
         });
-        this.logger.log(`Session ${session.id} created/updated successfully`);
+        this.logger.log(`Session ${session.id} created/updated successfully from ${sessionGroup.events.length} events`);
         return session;
     }
     async processDateRange(companyId, startDate, endDate) {
@@ -288,6 +240,7 @@ exports.AttendanceProcessingService = AttendanceProcessingService = AttendancePr
         shift_selection_service_1.ShiftSelectionService,
         attendance_calculation_service_1.AttendanceCalculationService,
         leave_integration_service_1.LeaveIntegrationService,
-        policies_service_1.PoliciesService])
+        policies_service_1.PoliciesService,
+        session_grouping_service_1.SessionGroupingService])
 ], AttendanceProcessingService);
 //# sourceMappingURL=attendance-processing.service.js.map

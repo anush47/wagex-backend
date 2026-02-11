@@ -83,6 +83,11 @@ export class UpdateSessionDto {
     @IsOptional()
     @IsNumber()
     overtimeMinutes?: number;
+
+    @ApiPropertyOptional({ description: 'Whether break override is active' })
+    @IsOptional()
+    @IsBoolean()
+    isBreakOverrideActive?: boolean;
 }
 
 export class SessionQueryDto {

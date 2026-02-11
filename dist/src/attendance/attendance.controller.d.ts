@@ -79,6 +79,8 @@ export declare class AttendanceManualController {
             hasShortLeave: boolean;
             manuallyEdited: boolean;
             autoCheckout: boolean;
+            additionalInOutCount: number | null;
+            isBreakOverrideActive: boolean;
             workDayStatus: import("@prisma/client").$Enums.SessionWorkDayStatus;
             inApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
             outApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
@@ -126,6 +128,8 @@ export declare class AttendanceManualController {
         hasShortLeave: boolean;
         manuallyEdited: boolean;
         autoCheckout: boolean;
+        additionalInOutCount: number | null;
+        isBreakOverrideActive: boolean;
         workDayStatus: import("@prisma/client").$Enums.SessionWorkDayStatus;
         inApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
         outApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
@@ -135,6 +139,33 @@ export declare class AttendanceManualController {
         workHolidayId: string | null;
         payrollHolidayId: string | null;
     }>;
+    getSessionEvents(id: string): Promise<({
+        employee: {
+            nameWithInitials: string;
+            fullName: string;
+            employeeNo: number;
+            photo: string | null;
+        };
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        status: import("@prisma/client").$Enums.EventStatus;
+        remark: string | null;
+        latitude: number | null;
+        longitude: number | null;
+        employeeId: string;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        eventTime: Date;
+        eventType: import("@prisma/client").$Enums.EventType;
+        source: import("@prisma/client").$Enums.EventSource;
+        apiKeyName: string | null;
+        device: string | null;
+        location: string | null;
+        sessionId: string | null;
+        manualOverride: boolean;
+    })[]>;
     getEvents(query: EventQueryDto): Promise<{
         items: ({
             employee: {
@@ -201,6 +232,8 @@ export declare class AttendanceManualController {
         hasShortLeave: boolean;
         manuallyEdited: boolean;
         autoCheckout: boolean;
+        additionalInOutCount: number | null;
+        isBreakOverrideActive: boolean;
         workDayStatus: import("@prisma/client").$Enums.SessionWorkDayStatus;
         inApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
         outApprovalStatus: import("@prisma/client").$Enums.ApprovalStatus;
@@ -212,6 +245,12 @@ export declare class AttendanceManualController {
     }>;
     deleteSession(id: string): Promise<{
         message: string;
+    }>;
+    linkEventToSession(eventId: string, sessionId: string): Promise<{
+        success: boolean;
+    }>;
+    unlinkEventFromSession(eventId: string): Promise<{
+        success: boolean;
     }>;
 }
 export declare class AttendanceExternalController {

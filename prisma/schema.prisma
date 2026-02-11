@@ -470,6 +470,12 @@ model AttendanceSession {
   manuallyEdited   Boolean  @default(false)
   autoCheckout     Boolean  @default(false)
   
+  // Additional metadata for UI
+  additionalInOutCount Int? @default(0)
+  
+  // Break override functionality
+  isBreakOverrideActive Boolean @default(false)
+  
   // Work Day Status (Calculated from Policy)
   workDayStatus    SessionWorkDayStatus @default(FULL)
   

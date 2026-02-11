@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AttendanceEvent } from '@prisma/client';
+import { AttendanceEvent, SessionWorkDayStatus } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { SessionGroup } from './session-grouping.service';
 
 interface ShiftDto {
     id: string;
@@ -35,9 +37,113 @@ interface StatusFlags {
     hasShortLeave: boolean;
 }
 
+export interface AttendanceCalculationResult extends WorkTimeResult, StatusFlags { }
+
 @Injectable()
 export class AttendanceCalculationService {
     private readonly logger = new Logger(AttendanceCalculationService.name);
+
+    constructor(private readonly prisma: PrismaService) { }
+
+    /**
+     * Centralized calculation function for both auto and manual attendance
+     */
+    calculate(
+        data: {
+            events?: AttendanceEvent[];
+            sessionGroup?: SessionGroup;
+            checkInTime?: Date | null;
+            checkOutTime?: Date | null;
+            shiftBreakMinutes?: number | null;
+        },
+        shift: ShiftDto | null,
+        leaves: LeaveRequest[] = [],
+    ): AttendanceCalculationResult {
+        let workTime: WorkTimeResult;
+
+        if (data.sessionGroup) {
+            // Session group-based calculation (Enhanced with multiple IN/OUT pairs)
+            workTime = this.calculateWorkTimeFromSessionGroup(data.sessionGroup, shift);
+        } else if (data.events && data.events.length > 0) {
+            // Event-based calculation (Auto)
+            workTime = this.calculateWorkTime(data.events, shift);
+        } else {
+            // Explicit time-based calculation (Manual)
+            workTime = this.calculateManualWorkTime(
+                data.checkInTime || null,
+                data.checkOutTime || null,
+                data.shiftBreakMinutes ?? shift?.breakTime ?? 0,
+                shift
+            );
+        }
+
+        // Determine check-in and check-out times for status flags
+        let checkInTime: Date | null = null;
+        let checkOutTime: Date | null = null;
+
+        if (data.sessionGroup) {
+            checkInTime = data.sessionGroup.firstIn;
+            checkOutTime = data.sessionGroup.lastOut;
+        } else {
+            checkInTime = data.checkInTime || (data.events ? this.getFirstIn(data.events) : null);
+            checkOutTime = data.checkOutTime || (data.events ? this.getLastOut(data.events) : null);
+        }
+
+        const flags = this.calculateStatusFlags(
+            checkInTime,
+            checkOutTime,
+            shift,
+            leaves
+        );
+
+        return {
+            ...workTime,
+            ...flags,
+        };
+    }
+
+    private getFirstIn(events: AttendanceEvent[]): Date | null {
+        return events.find(e => e.eventType === 'IN')?.eventTime || null;
+    }
+
+    private getLastOut(events: AttendanceEvent[]): Date | null {
+        return [...events].reverse().find(e => e.eventType === 'OUT')?.eventTime || null;
+    }
+
+    /**
+     * Calculate work time from explicit check-in/out times
+     */
+    calculateManualWorkTime(
+        checkIn: Date | null,
+        checkOut: Date | null,
+        breakMinutes: number,
+        shift: ShiftDto | null,
+    ): WorkTimeResult {
+        if (!checkIn || !checkOut) {
+            return {
+                totalMinutes: 0,
+                breakMinutes: 0,
+                workMinutes: 0,
+                overtimeMinutes: 0,
+            };
+        }
+
+        const totalMinutes = Math.max(0, Math.floor((checkOut.getTime() - checkIn.getTime()) / (1000 * 60)));
+        const workMinutes = Math.max(0, totalMinutes - breakMinutes);
+
+        let overtimeMinutes = 0;
+        if (shift) {
+            const shiftDurationMinutes = this.getShiftDurationMinutes(shift);
+            overtimeMinutes = Math.max(0, workMinutes - shiftDurationMinutes);
+        }
+
+        return {
+            totalMinutes,
+            breakMinutes,
+            workMinutes,
+            overtimeMinutes,
+        };
+    }
 
     /**
      * Calculate work time from multiple IN/OUT pairs
@@ -68,6 +174,64 @@ export class AttendanceCalculationService {
         // Apply automatic break if total time > 6 hours and no break calculated yet
         let breakMinutes = calculatedBreakMinutes;
         if (breakMinutes === 0 && totalMinutes > 360 && shift?.breakTime) {
+            breakMinutes = shift.breakTime;
+        }
+
+        // Work minutes = total - breaks
+        const workMinutes = Math.max(0, totalMinutes - breakMinutes);
+
+        // Calculate overtime if shift is defined
+        let overtimeMinutes = 0;
+        if (shift) {
+            const shiftDurationMinutes = this.getShiftDurationMinutes(shift);
+            overtimeMinutes = Math.max(0, workMinutes - shiftDurationMinutes);
+        }
+
+        return {
+            totalMinutes,
+            breakMinutes,
+            workMinutes,
+            overtimeMinutes,
+        };
+    }
+
+    /**
+     * Calculate work time from session group data (enhanced for multiple IN/OUT pairs)
+     */
+    calculateWorkTimeFromSessionGroup(
+        sessionGroup: SessionGroup,
+        shift: ShiftDto | null,
+    ): WorkTimeResult {
+        if (!sessionGroup.events || sessionGroup.events.length === 0) {
+            return {
+                totalMinutes: 0,
+                breakMinutes: 0,
+                workMinutes: 0,
+                overtimeMinutes: 0,
+            };
+        }
+
+        // Calculate total time from first IN to last OUT
+        if (!sessionGroup.firstIn || !sessionGroup.lastOut) {
+            return {
+                totalMinutes: 0,
+                breakMinutes: 0,
+                workMinutes: 0,
+                overtimeMinutes: 0,
+            };
+        }
+
+        const totalMinutes = Math.max(0, Math.floor((sessionGroup.lastOut.getTime() - sessionGroup.firstIn.getTime()) / (1000 * 60)));
+
+        // Calculate breaks from additional IN/OUT pairs
+        let breakMinutes = 0;
+        for (const pair of sessionGroup.additionalInOutPairs) {
+            const pairBreak = Math.floor((pair.out.getTime() - pair.in.getTime()) / (1000 * 60));
+            breakMinutes += pairBreak;
+        }
+
+        // Apply shift break if no additional breaks were calculated and shift has break time
+        if (breakMinutes === 0 && shift?.breakTime && totalMinutes > 360) {
             breakMinutes = shift.breakTime;
         }
 
@@ -225,6 +389,92 @@ export class AttendanceCalculationService {
         return new Date(
             checkInTime.getTime() + shiftDurationMinutes * 60 * 1000,
         );
+    }
+
+    /**
+     * Determine Work Day Status from policy pattern
+     */
+    determineWorkDayStatus(date: Date, policy: any): SessionWorkDayStatus {
+        const workingDaysConfig = policy?.workingDays;
+        let workDayStatus: SessionWorkDayStatus = SessionWorkDayStatus.FULL;
+
+        if (workingDaysConfig?.defaultPattern) {
+            const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            const dayOfWeek = dayNames[date.getDay()];
+            const dayConfig = (workingDaysConfig.defaultPattern as any)[dayOfWeek];
+
+            if (dayConfig) {
+                if (dayConfig.type === 'OFF') {
+                    workDayStatus = SessionWorkDayStatus.OFF;
+                } else if (dayConfig.type === 'HALF') {
+                    workDayStatus = dayConfig.halfDayShift === 'LAST'
+                        ? SessionWorkDayStatus.HALF_LAST
+                        : SessionWorkDayStatus.HALF_FIRST;
+                }
+            }
+        }
+        return workDayStatus;
+    }
+
+    /**
+     * Resolve holidays for a specific date and calendars
+     */
+    async resolveHolidays(
+        date: Date,
+        workCalendarId?: string | null,
+        payrollCalendarId?: string | null,
+    ): Promise<{ workHolidayId: string | null; payrollHolidayId: string | null }> {
+        let workHolidayId: string | null = null;
+        let payrollHolidayId: string | null = null;
+
+        if (!workCalendarId && !payrollCalendarId) {
+            return { workHolidayId, payrollHolidayId };
+        }
+
+        if (workCalendarId === payrollCalendarId && workCalendarId) {
+            const holiday = await this.findHoliday(date, workCalendarId, 'JOINT');
+            if (holiday) {
+                workHolidayId = holiday.id;
+                payrollHolidayId = holiday.id;
+            }
+        } else {
+            const [workHoliday, payrollHoliday] = await Promise.all([
+                workCalendarId ? this.findHoliday(date, workCalendarId, 'WORK') : Promise.resolve(null),
+                payrollCalendarId ? this.findHoliday(date, payrollCalendarId, 'PAYROLL') : Promise.resolve(null),
+            ]);
+
+            if (workHoliday) workHolidayId = workHoliday.id;
+            if (payrollHoliday) payrollHolidayId = payrollHoliday.id;
+        }
+
+        return { workHolidayId, payrollHolidayId };
+    }
+
+    private async findHoliday(date: Date, calendarId: string, type: string) {
+        if (!calendarId) return null;
+
+        const startOfDay = new Date(date);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setUTCHours(23, 59, 59, 999);
+
+        const holiday = await this.prisma.holiday.findFirst({
+            where: {
+                calendarId,
+                date: {
+                    gte: startOfDay,
+                    lte: endOfDay
+                }
+            },
+            select: { id: true, name: true }
+        });
+
+        if (holiday) {
+            this.logger.log(`[ATTENDANCE_LOGIC] ✅ Found ${type} Holiday: ${holiday.name} on ${date.toISOString().split('T')[0]}`);
+        } else {
+            this.logger.log(`[ATTENDANCE_LOGIC] ❌ No ${type} Holiday on ${date.toISOString().split('T')[0]} in calendar ${calendarId}`);
+        }
+        return holiday;
     }
 
     /**

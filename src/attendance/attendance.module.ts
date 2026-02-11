@@ -8,6 +8,7 @@ import { ShiftSelectionService } from './services/shift-selection.service';
 import { AttendanceCalculationService } from './services/attendance-calculation.service';
 import { AttendanceProcessingService } from './services/attendance-processing.service';
 import { LeaveIntegrationService } from './services/leave-integration.service';
+import { SessionGroupingService } from './services/session-grouping.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PoliciesModule } from '../policies/policies.module';
 
@@ -20,6 +21,7 @@ import { PoliciesModule } from '../policies/policies.module';
         AttendanceCalculationService,
         AttendanceProcessingService,
         LeaveIntegrationService,
+        SessionGroupingService,
     ],
     exports: [AttendanceService, AttendanceProcessingService],
 })
