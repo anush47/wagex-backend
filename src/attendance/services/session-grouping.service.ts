@@ -56,8 +56,30 @@ export class SessionGroupingService {
       const currentEvent = events[i];
 
       const gapMs = currentEvent.eventTime.getTime() - prevEvent.eventTime.getTime();
-      // 24-hour gap between any two events marks a new logical session
-      if (gapMs > 24 * 60 * 60 * 1000) {
+      const gapHours = gapMs / (1000 * 60 * 60);
+
+      let shouldSplit = false;
+
+      // Rule 1: Normal gap between any two events
+      if (gapHours > 24) {
+        shouldSplit = true;
+      }
+      // Rule 2: Gap between an OUT and the next IN (End of shift)
+      else if (prevEvent.eventType === 'OUT' && currentEvent.eventType === 'IN' && gapHours > 10) {
+        shouldSplit = true;
+      }
+      // Rule 3: Gap between two similar events (Duplicate logs or long forgotten clock-out)
+      else if (prevEvent.eventType === currentEvent.eventType && gapHours > 12) {
+        shouldSplit = true;
+      }
+      // Rule 4: Gap between IN and the next OUT (Shift duration)
+      // We allow up to 24h for a single shift duration. 
+      // If it's longer than 24h, it's probably an error or separate days.
+      else if (prevEvent.eventType === 'IN' && currentEvent.eventType === 'OUT' && gapHours > 28) {
+        shouldSplit = true;
+      }
+
+      if (shouldSplit) {
         groups.push(currentGroup);
         currentGroup = [currentEvent];
       } else {
@@ -111,10 +133,14 @@ export class SessionGroupingService {
     employeeId: string,
     referenceDate: Date
   ): Promise<AttendanceEvent[]> {
-    // Get events from 24 hours before to 24 hours after the reference date
-    // This ensures we capture all events that might belong to sessions crossing date boundaries
-    const startDate = new Date(referenceDate.getTime() - 24 * 60 * 60 * 1000);
-    const endDate = new Date(referenceDate.getTime() + 24 * 60 * 60 * 1000);
+    // Get events from start of yesterday to end of tomorrow
+    const startDate = new Date(referenceDate);
+    startDate.setUTCHours(0, 0, 0, 0);
+    startDate.setUTCDate(startDate.getUTCDate() - 1);
+
+    const endDate = new Date(referenceDate);
+    endDate.setUTCHours(23, 59, 59, 999);
+    endDate.setUTCDate(endDate.getUTCDate() + 1);
 
     return this.prisma.attendanceEvent.findMany({
       where: {

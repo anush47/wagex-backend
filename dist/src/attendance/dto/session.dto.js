@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EventQueryDto = exports.SessionQueryDto = exports.UpdateSessionDto = void 0;
+exports.EventQueryDto = exports.SessionQueryDto = exports.CreateSessionDto = exports.UpdateSessionDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
@@ -136,6 +136,25 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], UpdateSessionDto.prototype, "isBreakOverrideActive", void 0);
+class CreateSessionDto {
+    employeeId;
+    date;
+    shiftId;
+}
+exports.CreateSessionDto = CreateSessionDto;
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateSessionDto.prototype, "employeeId", void 0);
+__decorate([
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], CreateSessionDto.prototype, "date", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateSessionDto.prototype, "shiftId", void 0);
 class SessionQueryDto {
     companyId;
     employeeId;

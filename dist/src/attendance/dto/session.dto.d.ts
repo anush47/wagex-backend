@@ -18,6 +18,11 @@ export declare class UpdateSessionDto {
     overtimeMinutes?: number;
     isBreakOverrideActive?: boolean;
 }
+export declare class CreateSessionDto {
+    employeeId: string;
+    date: string;
+    shiftId?: string;
+}
 export declare class SessionQueryDto {
     companyId?: string;
     employeeId?: string;

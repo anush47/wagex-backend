@@ -4,7 +4,7 @@ import { AttendanceCalculationService } from './services/attendance-calculation.
 import { LeaveIntegrationService } from './services/leave-integration.service';
 import { PoliciesService } from '../policies/policies.service';
 import { CreateEventDto, BulkCreateEventsDto } from './dto/event.dto';
-import { UpdateSessionDto, SessionQueryDto, EventQueryDto } from './dto/session.dto';
+import { UpdateSessionDto, SessionQueryDto, EventQueryDto, CreateSessionDto } from './dto/session.dto';
 import { EventSource, AttendanceEvent, AttendanceSession } from '@prisma/client';
 export declare class AttendanceService {
     private readonly prisma;
@@ -30,42 +30,39 @@ export declare class AttendanceService {
     getSessions(query: SessionQueryDto): Promise<{
         items: ({
             employee: {
+                employeeNo: number;
                 nameWithInitials: string;
                 fullName: string;
-                employeeNo: number;
                 photo: string | null;
             };
             workHoliday: {
                 id: string;
+                date: Date;
                 createdAt: Date;
                 updatedAt: Date;
-                isPublic: boolean;
-                description: string | null;
                 name: string;
                 calendarId: string;
-                date: Date;
+                description: string | null;
+                isPublic: boolean;
                 isMercantile: boolean;
                 isBank: boolean;
             } | null;
             payrollHoliday: {
                 id: string;
+                date: Date;
                 createdAt: Date;
                 updatedAt: Date;
-                isPublic: boolean;
-                description: string | null;
                 name: string;
                 calendarId: string;
-                date: Date;
+                description: string | null;
+                isPublic: boolean;
                 isMercantile: boolean;
                 isBank: boolean;
             } | null;
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            companyId: string;
             employeeId: string;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            companyId: string;
             date: Date;
             shiftId: string | null;
             shiftName: string | null;
@@ -99,8 +96,11 @@ export declare class AttendanceService {
             approvedById: string | null;
             approvedAt: Date | null;
             remarks: string | null;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             workHolidayId: string | null;
             payrollHolidayId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
         })[];
         meta: {
             total: number;
@@ -111,56 +111,56 @@ export declare class AttendanceService {
     getSession(id: string): Promise<AttendanceSession>;
     getSessionEvents(sessionId: string): Promise<({
         employee: {
+            employeeNo: number;
             nameWithInitials: string;
             fullName: string;
-            employeeNo: number;
             photo: string | null;
         };
     } & {
         id: string;
+        employeeId: string;
+        companyId: string;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         status: import("@prisma/client").$Enums.EventStatus;
         remark: string | null;
-        latitude: number | null;
-        longitude: number | null;
-        employeeId: string;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         eventTime: Date;
         eventType: import("@prisma/client").$Enums.EventType;
         source: import("@prisma/client").$Enums.EventSource;
         apiKeyName: string | null;
         device: string | null;
         location: string | null;
+        latitude: number | null;
+        longitude: number | null;
         sessionId: string | null;
         manualOverride: boolean;
     })[]>;
     getEvents(query: EventQueryDto): Promise<{
         items: ({
             employee: {
+                employeeNo: number;
                 nameWithInitials: string;
                 fullName: string;
-                employeeNo: number;
                 photo: string | null;
             };
         } & {
             id: string;
+            employeeId: string;
+            companyId: string;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             createdAt: Date;
             updatedAt: Date;
-            companyId: string;
             status: import("@prisma/client").$Enums.EventStatus;
             remark: string | null;
-            latitude: number | null;
-            longitude: number | null;
-            employeeId: string;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             eventTime: Date;
             eventType: import("@prisma/client").$Enums.EventType;
             source: import("@prisma/client").$Enums.EventSource;
             apiKeyName: string | null;
             device: string | null;
             location: string | null;
+            latitude: number | null;
+            longitude: number | null;
             sessionId: string | null;
             manualOverride: boolean;
         })[];
@@ -174,6 +174,7 @@ export declare class AttendanceService {
     deleteSession(id: string): Promise<{
         message: string;
     }>;
+    createManualSession(dto: CreateSessionDto): Promise<AttendanceSession>;
     verifyApiKey(apiKey: string): Promise<{
         valid: boolean;
         company?: any;

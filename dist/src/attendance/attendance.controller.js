@@ -43,6 +43,10 @@ let AttendanceManualController = AttendanceManualController_1 = class Attendance
             },
         };
     }
+    async createSession(dto) {
+        this.logger.log(`Creating manual session for employee ${dto.employeeId} on ${dto.date}`);
+        return this.attendanceService.createManualSession(dto);
+    }
     async getSessions(query) {
         this.logger.log(`Fetching sessions with filters: ${JSON.stringify(query)}`);
         return this.attendanceService.getSessions(query);
@@ -89,6 +93,15 @@ __decorate([
     __metadata("design:paramtypes", [event_dto_1.CreateEventDto]),
     __metadata("design:returntype", Promise)
 ], AttendanceManualController.prototype, "createEvent", null);
+__decorate([
+    (0, common_1.Post)('sessions'),
+    (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Create manual attendance session' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [session_dto_1.CreateSessionDto]),
+    __metadata("design:returntype", Promise)
+], AttendanceManualController.prototype, "createSession", null);
 __decorate([
     (0, common_1.Get)('sessions'),
     (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),

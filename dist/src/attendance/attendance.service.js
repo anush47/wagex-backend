@@ -68,14 +68,13 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             },
         });
         const eventDate = new Date(dto.eventTime);
-        this.processingService
-            .processEmployeeDate(employeeId, eventDate)
-            .then((sessions) => {
+        try {
+            const sessions = await this.processingService.processEmployeeDate(employeeId, eventDate);
             this.logger.log(`Processed ${sessions.length} sessions for employee ${employeeId} on ${eventDate.toISOString()}`);
-        })
-            .catch((error) => {
-            this.logger.error(`Failed to process event: ${error.message}`);
-        });
+        }
+        catch (error) {
+            this.logger.error(`Failed to process event on creation: ${error.message}`);
+        }
         return event;
     }
     async createExternalEvent(dto, companyId, apiKeyName) {
@@ -105,14 +104,13 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             },
         });
         const eventDate = new Date(dto.eventTime);
-        this.processingService
-            .processEmployeeDate(employee.id, eventDate)
-            .then((sessions) => {
+        try {
+            const sessions = await this.processingService.processEmployeeDate(employee.id, eventDate);
             this.logger.log(`Processed ${sessions.length} sessions for employee ${employee.id} on ${eventDate.toISOString()}`);
-        })
-            .catch((error) => {
-            this.logger.error(`Failed to process event: ${error.message}`);
-        });
+        }
+        catch (error) {
+            this.logger.error(`Failed to process external event: ${error.message}`);
+        }
         return event;
     }
     async bulkCreateExternalEvents(dto, companyId, apiKeyName) {
@@ -352,8 +350,9 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             calcShift = policySettings.shifts?.list?.find((s) => s.id === effectiveShiftId);
         }
         const leaves = await this.leaveService.getApprovedLeaves(session.employeeId, effectiveDate);
+        const effectiveBreakOverride = dto.isBreakOverrideActive !== undefined ? dto.isBreakOverrideActive : session.isBreakOverrideActive;
         let breakMinutesToUse;
-        if (session.isBreakOverrideActive) {
+        if (effectiveBreakOverride) {
             breakMinutesToUse = dto.breakMinutes ?? session.breakMinutes ?? 0;
         }
         else {
@@ -383,7 +382,7 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         updateData.workDayStatus = this.calculationService.determineWorkDayStatus(effectiveDate, policySettings);
         updateData.totalMinutes = calculation.totalMinutes;
         updateData.workMinutes = dto.workMinutes !== undefined ? dto.workMinutes : calculation.workMinutes;
-        if (session.isBreakOverrideActive) {
+        if (effectiveBreakOverride) {
             updateData.breakMinutes = dto.breakMinutes ?? session.breakMinutes ?? calculation.breakMinutes;
         }
         else {
@@ -432,6 +431,41 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             where: { id },
         });
         return { message: 'Session deleted successfully' };
+    }
+    async createManualSession(dto) {
+        const { employeeId, date, shiftId } = dto;
+        const sessionDate = new Date(date);
+        sessionDate.setUTCHours(0, 0, 0, 0);
+        const existing = await this.prisma.attendanceSession.findUnique({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date: sessionDate,
+                },
+            },
+        });
+        if (existing) {
+            throw new common_1.BadRequestException('Session already exists for this date');
+        }
+        const employee = await this.prisma.employee.findUnique({
+            where: { id: employeeId },
+            select: { companyId: true },
+        });
+        if (!employee)
+            throw new common_1.NotFoundException('Employee not found');
+        const session = await this.prisma.attendanceSession.create({
+            data: {
+                employeeId,
+                companyId: employee.companyId,
+                date: sessionDate,
+                shiftId,
+                manuallyEdited: true,
+                inApprovalStatus: 'APPROVED',
+                outApprovalStatus: 'APPROVED',
+            },
+        });
+        await this.processingService.processEmployeeDate(employeeId, sessionDate);
+        return this.prisma.attendanceSession.findUniqueOrThrow({ where: { id: session.id } });
     }
     async verifyApiKey(apiKey) {
         const policy = await this.prisma.policy.findFirst({

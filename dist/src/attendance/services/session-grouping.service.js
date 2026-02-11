@@ -37,7 +37,21 @@ let SessionGroupingService = SessionGroupingService_1 = class SessionGroupingSer
             const prevEvent = events[i - 1];
             const currentEvent = events[i];
             const gapMs = currentEvent.eventTime.getTime() - prevEvent.eventTime.getTime();
-            if (gapMs > 24 * 60 * 60 * 1000) {
+            const gapHours = gapMs / (1000 * 60 * 60);
+            let shouldSplit = false;
+            if (gapHours > 24) {
+                shouldSplit = true;
+            }
+            else if (prevEvent.eventType === 'OUT' && currentEvent.eventType === 'IN' && gapHours > 10) {
+                shouldSplit = true;
+            }
+            else if (prevEvent.eventType === currentEvent.eventType && gapHours > 12) {
+                shouldSplit = true;
+            }
+            else if (prevEvent.eventType === 'IN' && currentEvent.eventType === 'OUT' && gapHours > 28) {
+                shouldSplit = true;
+            }
+            if (shouldSplit) {
                 groups.push(currentGroup);
                 currentGroup = [currentEvent];
             }
@@ -72,8 +86,12 @@ let SessionGroupingService = SessionGroupingService_1 = class SessionGroupingSer
         return { events: sortedEvents, firstIn, lastOut, additionalInOutPairs, sessionDate };
     }
     async getEventsForSessionGrouping(employeeId, referenceDate) {
-        const startDate = new Date(referenceDate.getTime() - 24 * 60 * 60 * 1000);
-        const endDate = new Date(referenceDate.getTime() + 24 * 60 * 60 * 1000);
+        const startDate = new Date(referenceDate);
+        startDate.setUTCHours(0, 0, 0, 0);
+        startDate.setUTCDate(startDate.getUTCDate() - 1);
+        const endDate = new Date(referenceDate);
+        endDate.setUTCHours(23, 59, 59, 999);
+        endDate.setUTCDate(endDate.getUTCDate() + 1);
         return this.prisma.attendanceEvent.findMany({
             where: {
                 employeeId,

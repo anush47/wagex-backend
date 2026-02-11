@@ -28,6 +28,7 @@ import {
 } from './dto/event.dto';
 import {
     UpdateSessionDto,
+    CreateSessionDto,
     SessionQueryDto,
     EventQueryDto,
 } from './dto/session.dto';
@@ -72,6 +73,14 @@ export class AttendanceManualController {
                 status: event.status,
             },
         };
+    }
+
+    @Post('sessions')
+    @Roles(Role.EMPLOYER, Role.ADMIN)
+    @ApiOperation({ summary: 'Create manual attendance session' })
+    async createSession(@Body() dto: CreateSessionDto) {
+        this.logger.log(`Creating manual session for employee ${dto.employeeId} on ${dto.date}`);
+        return this.attendanceService.createManualSession(dto);
     }
 
     @Get('sessions')

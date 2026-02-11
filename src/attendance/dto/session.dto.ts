@@ -90,6 +90,18 @@ export class UpdateSessionDto {
     isBreakOverrideActive?: boolean;
 }
 
+export class CreateSessionDto {
+    @IsString()
+    employeeId: string;
+
+    @IsDateString()
+    date: string;
+
+    @IsOptional()
+    @IsUUID()
+    shiftId?: string;
+}
+
 export class SessionQueryDto {
     @ApiPropertyOptional({ description: 'Company ID filter' })
     @IsOptional()

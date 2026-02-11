@@ -15,6 +15,7 @@ import {
     UpdateSessionDto,
     SessionQueryDto,
     EventQueryDto,
+    CreateSessionDto,
 } from './dto/session.dto';
 import { EventSource, AttendanceEvent, AttendanceSession } from '@prisma/client';
 
@@ -81,16 +82,14 @@ export class AttendanceService {
             },
         });
 
-        // Trigger async processing
+        // Process immediately to ensure linking
         const eventDate = new Date(dto.eventTime);
-        this.processingService
-            .processEmployeeDate(employeeId, eventDate)
-            .then((sessions) => {
-                this.logger.log(`Processed ${sessions.length} sessions for employee ${employeeId} on ${eventDate.toISOString()}`);
-            })
-            .catch((error) => {
-                this.logger.error(`Failed to process event: ${error.message}`);
-            });
+        try {
+            const sessions = await this.processingService.processEmployeeDate(employeeId, eventDate);
+            this.logger.log(`Processed ${sessions.length} sessions for employee ${employeeId} on ${eventDate.toISOString()}`);
+        } catch (error) {
+            this.logger.error(`Failed to process event on creation: ${error.message}`);
+        }
 
         return event;
     }
@@ -138,16 +137,14 @@ export class AttendanceService {
             },
         });
 
-        // Trigger async processing
+        // Process immediately to ensure linking
         const eventDate = new Date(dto.eventTime);
-        this.processingService
-            .processEmployeeDate(employee.id, eventDate)
-            .then((sessions) => {
-                this.logger.log(`Processed ${sessions.length} sessions for employee ${employee.id} on ${eventDate.toISOString()}`);
-            })
-            .catch((error) => {
-                this.logger.error(`Failed to process event: ${error.message}`);
-            });
+        try {
+            const sessions = await this.processingService.processEmployeeDate(employee.id, eventDate);
+            this.logger.log(`Processed ${sessions.length} sessions for employee ${employee.id} on ${eventDate.toISOString()}`);
+        } catch (error) {
+            this.logger.error(`Failed to process external event: ${error.message}`);
+        }
 
         return event;
     }
@@ -480,9 +477,11 @@ export class AttendanceService {
         const leaves = await this.leaveService.getApprovedLeaves(session.employeeId, effectiveDate);
 
         // Determine break minutes based on override status
+        const effectiveBreakOverride = dto.isBreakOverrideActive !== undefined ? dto.isBreakOverrideActive : session.isBreakOverrideActive;
+
         let breakMinutesToUse: number;
-        if (session.isBreakOverrideActive) {
-            // If break override is active, use the breakMinutes value from the DTO (manual override)
+        if (effectiveBreakOverride) {
+            // If break override is active, use the breakMinutes value from the DTO (manual override) or existing session value
             breakMinutesToUse = dto.breakMinutes ?? session.breakMinutes ?? 0;
         } else {
             // If break override is not active, calculate break from events or use shift break
@@ -532,7 +531,7 @@ export class AttendanceService {
         updateData.workMinutes = dto.workMinutes !== undefined ? dto.workMinutes : calculation.workMinutes;
 
         // Apply break override logic: if override is active, use DTO value; otherwise use calculated value
-        if (session.isBreakOverrideActive) {
+        if (effectiveBreakOverride) {
             updateData.breakMinutes = dto.breakMinutes ?? session.breakMinutes ?? calculation.breakMinutes;
         } else {
             updateData.breakMinutes = calculation.breakMinutes;
@@ -601,6 +600,51 @@ export class AttendanceService {
         });
 
         return { message: 'Session deleted successfully' };
+    }
+
+    async createManualSession(dto: CreateSessionDto): Promise<AttendanceSession> {
+        const { employeeId, date, shiftId } = dto;
+        const sessionDate = new Date(date);
+        sessionDate.setUTCHours(0, 0, 0, 0);
+
+        // Check if session exists
+        const existing = await this.prisma.attendanceSession.findUnique({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date: sessionDate,
+                },
+            },
+        });
+
+        if (existing) {
+            throw new BadRequestException('Session already exists for this date');
+        }
+
+        const employee = await this.prisma.employee.findUnique({
+            where: { id: employeeId },
+            select: { companyId: true },
+        });
+
+        if (!employee) throw new NotFoundException('Employee not found');
+
+        // Create the session
+        const session = await this.prisma.attendanceSession.create({
+            data: {
+                employeeId,
+                companyId: employee.companyId,
+                date: sessionDate,
+                shiftId,
+                manuallyEdited: true, // Mark as manual since it was empty
+                inApprovalStatus: 'APPROVED',
+                outApprovalStatus: 'APPROVED',
+            },
+        });
+
+        // Trigger processing to fill in shift snapshots and link any existing events
+        await this.processingService.processEmployeeDate(employeeId, sessionDate);
+
+        return this.prisma.attendanceSession.findUniqueOrThrow({ where: { id: session.id } });
     }
 
     /**
