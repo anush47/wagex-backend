@@ -23,9 +23,6 @@ export declare class AttendanceManualController {
         id: string;
         employeeId: string;
         companyId: string;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
-        createdAt: Date;
-        updatedAt: Date;
         date: Date;
         shiftId: string | null;
         shiftName: string | null;
@@ -59,8 +56,11 @@ export declare class AttendanceManualController {
         approvedById: string | null;
         approvedAt: Date | null;
         remarks: string | null;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         workHolidayId: string | null;
         payrollHolidayId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     getSessions(query: SessionQueryDto): Promise<{
         items: ({
@@ -71,25 +71,25 @@ export declare class AttendanceManualController {
                 photo: string | null;
             };
             workHoliday: {
-                name: string;
                 id: string;
+                date: Date;
                 createdAt: Date;
                 updatedAt: Date;
-                date: Date;
-                description: string | null;
+                name: string;
                 calendarId: string;
+                description: string | null;
                 isPublic: boolean;
                 isMercantile: boolean;
                 isBank: boolean;
             } | null;
             payrollHoliday: {
-                name: string;
                 id: string;
+                date: Date;
                 createdAt: Date;
                 updatedAt: Date;
-                date: Date;
-                description: string | null;
+                name: string;
                 calendarId: string;
+                description: string | null;
                 isPublic: boolean;
                 isMercantile: boolean;
                 isBank: boolean;
@@ -98,9 +98,6 @@ export declare class AttendanceManualController {
             id: string;
             employeeId: string;
             companyId: string;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
             date: Date;
             shiftId: string | null;
             shiftName: string | null;
@@ -134,8 +131,11 @@ export declare class AttendanceManualController {
             approvedById: string | null;
             approvedAt: Date | null;
             remarks: string | null;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             workHolidayId: string | null;
             payrollHolidayId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
         })[];
         meta: {
             total: number;
@@ -147,9 +147,6 @@ export declare class AttendanceManualController {
         id: string;
         employeeId: string;
         companyId: string;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
-        createdAt: Date;
-        updatedAt: Date;
         date: Date;
         shiftId: string | null;
         shiftName: string | null;
@@ -183,8 +180,11 @@ export declare class AttendanceManualController {
         approvedById: string | null;
         approvedAt: Date | null;
         remarks: string | null;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         workHolidayId: string | null;
         payrollHolidayId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     getSessionEvents(id: string): Promise<({
         employee: {
@@ -197,6 +197,11 @@ export declare class AttendanceManualController {
         id: string;
         employeeId: string;
         companyId: string;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.EventStatus;
+        remark: string | null;
         eventTime: Date;
         eventType: import("@prisma/client").$Enums.EventType;
         source: import("@prisma/client").$Enums.EventSource;
@@ -205,13 +210,8 @@ export declare class AttendanceManualController {
         location: string | null;
         latitude: number | null;
         longitude: number | null;
-        status: import("@prisma/client").$Enums.EventStatus;
         sessionId: string | null;
         manualOverride: boolean;
-        remark: string | null;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
-        createdAt: Date;
-        updatedAt: Date;
     })[]>;
     getEvents(query: EventQueryDto): Promise<{
         items: ({
@@ -225,6 +225,11 @@ export declare class AttendanceManualController {
             id: string;
             employeeId: string;
             companyId: string;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import("@prisma/client").$Enums.EventStatus;
+            remark: string | null;
             eventTime: Date;
             eventType: import("@prisma/client").$Enums.EventType;
             source: import("@prisma/client").$Enums.EventSource;
@@ -233,13 +238,8 @@ export declare class AttendanceManualController {
             location: string | null;
             latitude: number | null;
             longitude: number | null;
-            status: import("@prisma/client").$Enums.EventStatus;
             sessionId: string | null;
             manualOverride: boolean;
-            remark: string | null;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         })[];
         meta: {
             total: number;
@@ -251,9 +251,6 @@ export declare class AttendanceManualController {
         id: string;
         employeeId: string;
         companyId: string;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
-        createdAt: Date;
-        updatedAt: Date;
         date: Date;
         shiftId: string | null;
         shiftName: string | null;
@@ -287,8 +284,11 @@ export declare class AttendanceManualController {
         approvedById: string | null;
         approvedAt: Date | null;
         remarks: string | null;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         workHolidayId: string | null;
         payrollHolidayId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     deleteSession(id: string): Promise<{
         message: string;

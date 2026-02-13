@@ -218,6 +218,7 @@ class EventQueryDto {
     page;
     limit;
     status;
+    onlyUnlinked;
 }
 exports.EventQueryDto = EventQueryDto;
 __decorate([
@@ -264,4 +265,11 @@ __decorate([
     (0, class_validator_1.IsEnum)(client_1.EventStatus),
     __metadata("design:type", String)
 ], EventQueryDto.prototype, "status", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Filter only events not linked to any session' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    (0, class_transformer_1.Type)(() => Boolean),
+    __metadata("design:type", Boolean)
+], EventQueryDto.prototype, "onlyUnlinked", void 0);
 //# sourceMappingURL=session.dto.js.map

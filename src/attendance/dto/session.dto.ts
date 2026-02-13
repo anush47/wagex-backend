@@ -179,4 +179,10 @@ export class EventQueryDto {
     @IsOptional()
     @IsEnum(EventStatus)
     status?: EventStatus;
+
+    @ApiPropertyOptional({ description: 'Filter only events not linked to any session' })
+    @IsOptional()
+    @IsBoolean()
+    @Type(() => Boolean)
+    onlyUnlinked?: boolean;
 }

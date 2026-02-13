@@ -140,6 +140,7 @@ export class AttendanceQueryService {
         }
 
         if (query.status) where.status = query.status;
+        if (query.onlyUnlinked) where.sessionId = null;
 
         const [items, total] = await Promise.all([
             this.prisma.attendanceEvent.findMany({

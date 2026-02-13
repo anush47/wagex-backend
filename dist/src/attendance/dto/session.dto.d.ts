@@ -40,4 +40,5 @@ export declare class EventQueryDto {
     page?: number;
     limit?: number;
     status?: EventStatus;
+    onlyUnlinked?: boolean;
 }
