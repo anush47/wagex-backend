@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceProcessingService } from './attendance-processing.service';
 import { CreateEventDto, BulkCreateEventsDto } from '../dto/event.dto';
 import { AttendanceEvent } from '@prisma/client';
+import { ShiftSelectionService } from './shift-selection.service';
 
 @Injectable()
 export class AttendanceExternalService {
@@ -11,6 +12,7 @@ export class AttendanceExternalService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly processingService: AttendanceProcessingService,
+        private readonly shiftSelectionService: ShiftSelectionService,
     ) { }
 
     // Simple in-memory cache for API key verification (5-minute TTL)
@@ -179,10 +181,10 @@ export class AttendanceExternalService {
         verification: {
             type: 'COMPANY' | 'EMPLOYEE';
             company: { id: string };
-            employee?: { id: string; employeeNo: number };
+            employee?: { id: string; name: string; employeeNo: number };
             apiKey: { name: string };
         },
-    ): Promise<AttendanceEvent> {
+    ): Promise<AttendanceEvent & { employeeName: string; shiftName: string }> {
         const companyId = verification.company.id;
         const apiKeyName = verification.apiKey.name;
 
@@ -199,21 +201,39 @@ export class AttendanceExternalService {
         }
 
         // Resolve employee
-        let employeeId = (dto as any).employeeId; // Check if employeeId was pre-filled by employee key check
+        let employeeId = (dto as any).employeeId;
+        let employeeName = verification.employee?.name;
+
         if (!employeeId) {
             const employee = await this.prisma.employee.findFirst({
                 where: {
                     companyId,
                     employeeNo: dto.employeeNo,
                 },
-                select: { id: true }
+                select: { id: true, nameWithInitials: true }
             });
 
             if (!employee) {
                 throw new NotFoundException(`Employee #${dto.employeeNo} not found in this company.`);
             }
             employeeId = employee.id;
+            employeeName = employee.nameWithInitials;
+        } else if (!employeeName) {
+            // Need to fetch name if only ID was known (unlikely given employee keys have names cached)
+            const employee = await this.prisma.employee.findUnique({
+                where: { id: employeeId },
+                select: { nameWithInitials: true }
+            });
+            employeeName = employee?.nameWithInitials;
         }
+
+        // 3. Resolve Shift Name
+        const shift = await this.shiftSelectionService.getEffectiveShift(
+            employeeId!,
+            new Date(dto.eventTime),
+            new Date(dto.eventTime)
+        );
+        const shiftName = shift?.name || 'No Shift Assigned';
 
         const event = await this.prisma.attendanceEvent.create({
             data: {
@@ -236,7 +256,11 @@ export class AttendanceExternalService {
         this.processingService.processEmployeeDate(employeeId!, new Date(dto.eventTime))
             .catch(e => this.logger.error(`Processing error: ${e.message}`));
 
-        return event;
+        return {
+            ...event,
+            employeeName: employeeName || 'Unknown',
+            shiftName,
+        };
     }
 
     /**
@@ -247,7 +271,7 @@ export class AttendanceExternalService {
         verification: {
             type: 'COMPANY' | 'EMPLOYEE';
             company: { id: string };
-            employee?: { id: string; employeeNo: number };
+            employee?: { id: string; name: string; employeeNo: number };
             apiKey: { name: string };
         },
     ) {

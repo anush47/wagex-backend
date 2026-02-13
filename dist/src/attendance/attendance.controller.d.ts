@@ -327,6 +327,8 @@ export declare class AttendanceExternalController {
         event: {
             id: string;
             employeeId: string;
+            employeeName: string;
+            shiftName: string;
             eventTime: string;
             eventType: import("@prisma/client").$Enums.EventType;
             status: import("@prisma/client").$Enums.EventStatus;

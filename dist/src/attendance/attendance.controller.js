@@ -207,6 +207,8 @@ let AttendanceExternalController = AttendanceExternalController_1 = class Attend
             event: {
                 id: event.id,
                 employeeId: event.employeeId,
+                employeeName: event.employeeName,
+                shiftName: event.shiftName,
                 eventTime: event.eventTime.toISOString(),
                 eventType: event.eventType,
                 status: event.status,

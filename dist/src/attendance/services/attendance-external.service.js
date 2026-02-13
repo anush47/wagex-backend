@@ -14,13 +14,16 @@ exports.AttendanceExternalService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../prisma/prisma.service");
 const attendance_processing_service_1 = require("./attendance-processing.service");
+const shift_selection_service_1 = require("./shift-selection.service");
 let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceExternalService {
     prisma;
     processingService;
+    shiftSelectionService;
     logger = new common_1.Logger(AttendanceExternalService_1.name);
-    constructor(prisma, processingService) {
+    constructor(prisma, processingService, shiftSelectionService) {
         this.prisma = prisma;
         this.processingService = processingService;
+        this.shiftSelectionService = shiftSelectionService;
     }
     apiKeyCache = new Map();
     CACHE_TTL = 5 * 60 * 1000;
@@ -157,19 +160,30 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
             dto.employeeId = verification.employee.id;
         }
         let employeeId = dto.employeeId;
+        let employeeName = verification.employee?.name;
         if (!employeeId) {
             const employee = await this.prisma.employee.findFirst({
                 where: {
                     companyId,
                     employeeNo: dto.employeeNo,
                 },
-                select: { id: true }
+                select: { id: true, nameWithInitials: true }
             });
             if (!employee) {
                 throw new common_1.NotFoundException(`Employee #${dto.employeeNo} not found in this company.`);
             }
             employeeId = employee.id;
+            employeeName = employee.nameWithInitials;
         }
+        else if (!employeeName) {
+            const employee = await this.prisma.employee.findUnique({
+                where: { id: employeeId },
+                select: { nameWithInitials: true }
+            });
+            employeeName = employee?.nameWithInitials;
+        }
+        const shift = await this.shiftSelectionService.getEffectiveShift(employeeId, new Date(dto.eventTime), new Date(dto.eventTime));
+        const shiftName = shift?.name || 'No Shift Assigned';
         const event = await this.prisma.attendanceEvent.create({
             data: {
                 employeeId: employeeId,
@@ -188,7 +202,11 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
         });
         this.processingService.processEmployeeDate(employeeId, new Date(dto.eventTime))
             .catch(e => this.logger.error(`Processing error: ${e.message}`));
-        return event;
+        return {
+            ...event,
+            employeeName: employeeName || 'Unknown',
+            shiftName,
+        };
     }
     async bulkCreateExternalEvents(dto, verification) {
         const companyId = verification.company.id;
@@ -259,6 +277,7 @@ exports.AttendanceExternalService = AttendanceExternalService;
 exports.AttendanceExternalService = AttendanceExternalService = AttendanceExternalService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        attendance_processing_service_1.AttendanceProcessingService])
+        attendance_processing_service_1.AttendanceProcessingService,
+        shift_selection_service_1.ShiftSelectionService])
 ], AttendanceExternalService);
 //# sourceMappingURL=attendance-external.service.js.map

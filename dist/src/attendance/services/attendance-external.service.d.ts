@@ -2,11 +2,13 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceProcessingService } from './attendance-processing.service';
 import { CreateEventDto, BulkCreateEventsDto } from '../dto/event.dto';
 import { AttendanceEvent } from '@prisma/client';
+import { ShiftSelectionService } from './shift-selection.service';
 export declare class AttendanceExternalService {
     private readonly prisma;
     private readonly processingService;
+    private readonly shiftSelectionService;
     private readonly logger;
-    constructor(prisma: PrismaService, processingService: AttendanceProcessingService);
+    constructor(prisma: PrismaService, processingService: AttendanceProcessingService, shiftSelectionService: ShiftSelectionService);
     private apiKeyCache;
     private readonly CACHE_TTL;
     verifyApiKey(apiKey: string): Promise<{
@@ -37,12 +39,16 @@ export declare class AttendanceExternalService {
         };
         employee?: {
             id: string;
+            name: string;
             employeeNo: number;
         };
         apiKey: {
             name: string;
         };
-    }): Promise<AttendanceEvent>;
+    }): Promise<AttendanceEvent & {
+        employeeName: string;
+        shiftName: string;
+    }>;
     bulkCreateExternalEvents(dto: BulkCreateEventsDto, verification: {
         type: 'COMPANY' | 'EMPLOYEE';
         company: {
@@ -50,6 +56,7 @@ export declare class AttendanceExternalService {
         };
         employee?: {
             id: string;
+            name: string;
             employeeNo: number;
         };
         apiKey: {
