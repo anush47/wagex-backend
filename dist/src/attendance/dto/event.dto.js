@@ -43,7 +43,8 @@ __decorate([
     __metadata("design:type", String)
 ], CreateEventDto.prototype, "eventTime", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ enum: client_1.EventType, description: 'Event type: IN or OUT' }),
+    (0, swagger_1.ApiPropertyOptional)({ enum: client_1.EventType, description: 'Event type: IN or OUT. If omitted, it will be determined intelligently.' }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(client_1.EventType),
     __metadata("design:type", String)
 ], CreateEventDto.prototype, "eventType", void 0);

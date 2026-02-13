@@ -11,6 +11,7 @@ import {
     Logger,
     Headers,
     UnauthorizedException,
+    BadRequestException,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -35,7 +36,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Public } from '../auth/public.decorator';
-import { Role } from '@prisma/client';
+import { Role, EventType } from '@prisma/client';
 
 // ============================================
 // MANUAL ENDPOINTS (Employer Portal - JWT Auth)
@@ -135,6 +136,18 @@ export class AttendanceManualController {
     @ApiOperation({ summary: 'Unlink an event from its session' })
     async unlinkEventFromSession(@Param('eventId') eventId: string) {
         await this.manualService.unlinkEventFromSession(eventId);
+        return { success: true };
+    }
+
+    @Patch('events/:id/type')
+    @Roles(Role.EMPLOYER, Role.ADMIN)
+    @ApiOperation({ summary: 'Update attendance event type (IN/OUT)' })
+    async updateEventType(
+        @Param('id') id: string,
+        @Body('eventType') eventType: EventType,
+    ) {
+        if (!eventType) throw new BadRequestException('eventType is required');
+        await this.manualService.updateEventType(id, eventType);
         return { success: true };
     }
 }

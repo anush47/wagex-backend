@@ -5,7 +5,7 @@ import { LeaveIntegrationService } from './leave-integration.service';
 import { PoliciesService } from '../../policies/policies.service';
 import { CreateEventDto } from '../dto/event.dto';
 import { UpdateSessionDto, CreateSessionDto } from '../dto/session.dto';
-import { EventSource, AttendanceEvent, AttendanceSession } from '@prisma/client';
+import { EventSource, AttendanceEvent, AttendanceSession, EventType } from '@prisma/client';
 export declare class AttendanceManualService {
     private readonly prisma;
     private readonly processingService;
@@ -22,4 +22,5 @@ export declare class AttendanceManualService {
     }>;
     linkEventToSession(eventId: string, sessionId: string): Promise<void>;
     unlinkEventFromSession(eventId: string): Promise<void>;
+    updateEventType(eventId: string, eventType: EventType): Promise<void>;
 }

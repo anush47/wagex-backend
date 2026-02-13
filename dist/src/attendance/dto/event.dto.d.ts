@@ -3,7 +3,7 @@ export declare class CreateEventDto {
     employeeId?: string;
     employeeNo?: number;
     eventTime: string;
-    eventType: EventType;
+    eventType?: EventType;
     device?: string;
     location?: string;
     latitude?: number;

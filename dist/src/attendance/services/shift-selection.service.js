@@ -110,6 +110,7 @@ let ShiftSelectionService = ShiftSelectionService_1 = class ShiftSelectionServic
             breakTime: shift.breakTime || 0,
             gracePeriodLate: shift.gracePeriodLate || 0,
             autoClockOut: shift.autoClockOut || false,
+            maxOutTime: shift.maxOutTime,
         };
     }
 };

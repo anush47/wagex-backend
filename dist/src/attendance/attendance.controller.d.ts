@@ -3,6 +3,7 @@ import { AttendanceQueryService } from './services/attendance-query.service';
 import { AttendanceExternalService } from './services/attendance-external.service';
 import { CreateEventDto, BulkCreateEventsDto } from './dto/event.dto';
 import { UpdateSessionDto, CreateSessionDto, SessionQueryDto, EventQueryDto } from './dto/session.dto';
+import { EventType } from '@prisma/client';
 export declare class AttendanceManualController {
     private readonly manualService;
     private readonly queryService;
@@ -75,8 +76,8 @@ export declare class AttendanceManualController {
                 createdAt: Date;
                 updatedAt: Date;
                 date: Date;
-                calendarId: string;
                 description: string | null;
+                calendarId: string;
                 isPublic: boolean;
                 isMercantile: boolean;
                 isBank: boolean;
@@ -87,8 +88,8 @@ export declare class AttendanceManualController {
                 createdAt: Date;
                 updatedAt: Date;
                 date: Date;
-                calendarId: string;
                 description: string | null;
+                calendarId: string;
                 isPublic: boolean;
                 isMercantile: boolean;
                 isBank: boolean;
@@ -296,6 +297,9 @@ export declare class AttendanceManualController {
         success: boolean;
     }>;
     unlinkEventFromSession(eventId: string): Promise<{
+        success: boolean;
+    }>;
+    updateEventType(id: string, eventType: EventType): Promise<{
         success: boolean;
     }>;
 }

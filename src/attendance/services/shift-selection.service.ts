@@ -9,6 +9,7 @@ interface ShiftDto {
     breakTime: number;
     gracePeriodLate?: number;
     autoClockOut?: boolean;
+    maxOutTime?: string;
 }
 
 @Injectable()
@@ -155,6 +156,7 @@ export class ShiftSelectionService {
             breakTime: shift.breakTime || 0,
             gracePeriodLate: shift.gracePeriodLate || 0,
             autoClockOut: shift.autoClockOut || false,
+            maxOutTime: shift.maxOutTime,
         };
     }
 }

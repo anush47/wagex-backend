@@ -7,6 +7,7 @@ interface ShiftDto {
     breakTime: number;
     gracePeriodLate?: number;
     autoClockOut?: boolean;
+    maxOutTime?: string;
 }
 export declare class ShiftSelectionService {
     private prisma;

@@ -17,9 +17,10 @@ export class CreateEventDto {
     @IsDateString()
     eventTime: string;
 
-    @ApiProperty({ enum: EventType, description: 'Event type: IN or OUT' })
+    @ApiPropertyOptional({ enum: EventType, description: 'Event type: IN or OUT. If omitted, it will be determined intelligently.' })
+    @IsOptional()
     @IsEnum(EventType)
-    eventType: EventType;
+    eventType?: EventType;
 
     @ApiPropertyOptional({ description: 'Device name/identifier' })
     @IsOptional()

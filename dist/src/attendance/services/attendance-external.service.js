@@ -182,14 +182,19 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
             });
             employeeName = employee?.nameWithInitials;
         }
-        const shift = await this.shiftSelectionService.getEffectiveShift(employeeId, new Date(dto.eventTime), new Date(dto.eventTime));
+        const eventTime = new Date(dto.eventTime);
+        let eventType = dto.eventType;
+        if (!eventType) {
+            eventType = await this.determineEventType(employeeId, eventTime);
+        }
+        const shift = await this.shiftSelectionService.getEffectiveShift(employeeId, eventTime, eventTime);
         const shiftName = shift?.name || 'No Shift Assigned';
         const event = await this.prisma.attendanceEvent.create({
             data: {
                 employeeId: employeeId,
                 companyId,
-                eventTime: new Date(dto.eventTime),
-                eventType: dto.eventType,
+                eventTime,
+                eventType: eventType,
                 source: 'API_KEY',
                 apiKeyName,
                 device: dto.device,
@@ -200,13 +205,39 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
                 status: 'ACTIVE',
             },
         });
-        this.processingService.processEmployeeDate(employeeId, new Date(dto.eventTime))
+        this.processingService.processEmployeeDate(employeeId, eventTime)
             .catch(e => this.logger.error(`Processing error: ${e.message}`));
         return {
             ...event,
             employeeName: employeeName || 'Unknown',
             shiftName,
         };
+    }
+    async determineEventType(employeeId, eventTime) {
+        const lastEvent = await this.prisma.attendanceEvent.findFirst({
+            where: { employeeId, status: 'ACTIVE' },
+            orderBy: { eventTime: 'desc' },
+        });
+        if (!lastEvent) {
+            return 'IN';
+        }
+        const lastEventTime = new Date(lastEvent.eventTime);
+        const diffMs = eventTime.getTime() - lastEventTime.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+        if (diffHours >= 24) {
+            return 'IN';
+        }
+        const lastShift = await this.shiftSelectionService.getEffectiveShift(employeeId, lastEventTime);
+        if (lastShift?.maxOutTime) {
+            const [maxH, maxM] = lastShift.maxOutTime.split(':').map(Number);
+            const maxOutDate = new Date(lastEventTime);
+            maxOutDate.setHours(maxH, maxM, 0, 0);
+            if (maxOutDate < lastEventTime) {
+                maxOutDate.setDate(maxOutDate.getDate() + 1);
+            }
+            return eventTime <= maxOutDate ? 'OUT' : 'IN';
+        }
+        return 'OUT';
     }
     async bulkCreateExternalEvents(dto, verification) {
         const companyId = verification.company.id;

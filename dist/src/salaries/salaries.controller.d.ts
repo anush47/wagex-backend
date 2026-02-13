@@ -8,17 +8,16 @@ export declare class SalariesController {
     findAll(query: SalaryQueryDto): Promise<{
         items: ({
             employee: {
-                fullName: string;
                 employeeNo: number;
+                fullName: string;
             };
         } & {
             id: string;
+            basicSalary: number;
+            status: import("@prisma/client").$Enums.SalaryStatus;
+            companyId: string;
             createdAt: Date;
             updatedAt: Date;
-            companyId: string;
-            status: import("@prisma/client").$Enums.SalaryStatus;
-            basicSalary: number;
-            components: import("@prisma/client/runtime/client").JsonValue | null;
             employeeId: string;
             remarks: string | null;
             periodStartDate: Date;
@@ -29,6 +28,7 @@ export declare class SalariesController {
             noPayAmount: number;
             noPayBreakdown: import("@prisma/client/runtime/client").JsonValue | null;
             taxAmount: number;
+            components: import("@prisma/client/runtime/client").JsonValue | null;
             advanceDeduction: number;
             netSalary: number;
         })[];
@@ -39,52 +39,51 @@ export declare class SalariesController {
     findOne(id: string): Promise<{
         employee: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            userId: string | null;
-            companyId: string;
             email: string | null;
-            nameWithInitials: string;
-            fullName: string;
-            address: string | null;
-            phone: string | null;
-            files: import("@prisma/client/runtime/client").JsonValue | null;
-            status: string;
             employeeNo: number;
             nic: string | null;
+            nameWithInitials: string;
+            fullName: string;
             designation: string | null;
+            address: string | null;
+            phone: string | null;
             basicSalary: number;
+            status: string;
             gender: import("@prisma/client").$Enums.Gender;
             employmentType: import("@prisma/client").$Enums.EmploymentType;
             joinedDate: Date;
             resignedDate: Date | null;
             remark: string | null;
+            companyId: string;
+            userId: string | null;
             managerId: string | null;
             canSelfEdit: boolean;
             photo: string | null;
+            files: import("@prisma/client/runtime/client").JsonValue | null;
             departmentId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
         };
         payments: {
             id: string;
+            companyId: string;
             createdAt: Date;
             updatedAt: Date;
-            companyId: string;
             date: Date;
             remarks: string | null;
-            amount: number;
             salaryId: string | null;
             advanceId: string | null;
+            amount: number;
             paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
             referenceNo: string | null;
         }[];
     } & {
         id: string;
+        basicSalary: number;
+        status: import("@prisma/client").$Enums.SalaryStatus;
+        companyId: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
-        status: import("@prisma/client").$Enums.SalaryStatus;
-        basicSalary: number;
-        components: import("@prisma/client/runtime/client").JsonValue | null;
         employeeId: string;
         remarks: string | null;
         periodStartDate: Date;
@@ -95,6 +94,7 @@ export declare class SalariesController {
         noPayAmount: number;
         noPayBreakdown: import("@prisma/client/runtime/client").JsonValue | null;
         taxAmount: number;
+        components: import("@prisma/client/runtime/client").JsonValue | null;
         advanceDeduction: number;
         netSalary: number;
     }>;

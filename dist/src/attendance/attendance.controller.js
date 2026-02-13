@@ -77,6 +77,12 @@ let AttendanceManualController = AttendanceManualController_1 = class Attendance
         await this.manualService.unlinkEventFromSession(eventId);
         return { success: true };
     }
+    async updateEventType(id, eventType) {
+        if (!eventType)
+            throw new common_1.BadRequestException('eventType is required');
+        await this.manualService.updateEventType(id, eventType);
+        return { success: true };
+    }
 };
 exports.AttendanceManualController = AttendanceManualController;
 __decorate([
@@ -172,6 +178,16 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AttendanceManualController.prototype, "unlinkEventFromSession", null);
+__decorate([
+    (0, common_1.Patch)('events/:id/type'),
+    (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Update attendance event type (IN/OUT)' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('eventType')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], AttendanceManualController.prototype, "updateEventType", null);
 exports.AttendanceManualController = AttendanceManualController = AttendanceManualController_1 = __decorate([
     (0, swagger_1.ApiTags)('Attendance - Manual'),
     (0, swagger_1.ApiBearerAuth)(),

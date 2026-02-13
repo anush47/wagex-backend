@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@n
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceProcessingService } from './attendance-processing.service';
 import { CreateEventDto, BulkCreateEventsDto } from '../dto/event.dto';
-import { AttendanceEvent } from '@prisma/client';
+import { AttendanceEvent, EventType, Role } from '@prisma/client';
 import { ShiftSelectionService } from './shift-selection.service';
 
 @Injectable()
@@ -219,7 +219,6 @@ export class AttendanceExternalService {
             employeeId = employee.id;
             employeeName = employee.nameWithInitials;
         } else if (!employeeName) {
-            // Need to fetch name if only ID was known (unlikely given employee keys have names cached)
             const employee = await this.prisma.employee.findUnique({
                 where: { id: employeeId },
                 select: { nameWithInitials: true }
@@ -227,11 +226,19 @@ export class AttendanceExternalService {
             employeeName = employee?.nameWithInitials;
         }
 
+        const eventTime = new Date(dto.eventTime);
+        let eventType = dto.eventType;
+
+        // Intelligent Type Detection
+        if (!eventType) {
+            eventType = await this.determineEventType(employeeId, eventTime);
+        }
+
         // 3. Resolve Shift Name
         const shift = await this.shiftSelectionService.getEffectiveShift(
             employeeId!,
-            new Date(dto.eventTime),
-            new Date(dto.eventTime)
+            eventTime,
+            eventTime
         );
         const shiftName = shift?.name || 'No Shift Assigned';
 
@@ -239,8 +246,8 @@ export class AttendanceExternalService {
             data: {
                 employeeId: employeeId!,
                 companyId,
-                eventTime: new Date(dto.eventTime),
-                eventType: dto.eventType,
+                eventTime,
+                eventType: eventType!,
                 source: 'API_KEY',
                 apiKeyName,
                 device: dto.device,
@@ -253,7 +260,7 @@ export class AttendanceExternalService {
         });
 
         // Trigger processing
-        this.processingService.processEmployeeDate(employeeId!, new Date(dto.eventTime))
+        this.processingService.processEmployeeDate(employeeId!, eventTime)
             .catch(e => this.logger.error(`Processing error: ${e.message}`));
 
         return {
@@ -261,6 +268,50 @@ export class AttendanceExternalService {
             employeeName: employeeName || 'Unknown',
             shiftName,
         };
+    }
+
+    /**
+     * Intelligently determine if an event is IN or OUT 
+     */
+    private async determineEventType(employeeId: string, eventTime: Date): Promise<EventType> {
+        const lastEvent = await this.prisma.attendanceEvent.findFirst({
+            where: { employeeId, status: 'ACTIVE' },
+            orderBy: { eventTime: 'desc' },
+        });
+
+        if (!lastEvent) {
+            return 'IN';
+        }
+
+        const lastEventTime = new Date(lastEvent.eventTime);
+        const diffMs = eventTime.getTime() - lastEventTime.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        // If last record was > 24hrs ago, it's always an IN
+        if (diffHours >= 24) {
+            return 'IN';
+        }
+
+        // Check for shift specific maxOutTime
+        const lastShift = await this.shiftSelectionService.getEffectiveShift(employeeId, lastEventTime);
+
+        if (lastShift?.maxOutTime) {
+            const [maxH, maxM] = lastShift.maxOutTime.split(':').map(Number);
+            const maxOutDate = new Date(lastEventTime);
+            maxOutDate.setHours(maxH, maxM, 0, 0);
+
+            // If maxOutTime is "before" lastEventTime in day cycle, it belongs to next day
+            if (maxOutDate < lastEventTime) {
+                maxOutDate.setDate(maxOutDate.getDate() + 1);
+            }
+
+            // If within shift's max end time, it is an OUT. Otherwise start new IN.
+            return eventTime <= maxOutDate ? 'OUT' : 'IN';
+        }
+
+        // If no maxOutTime is defined, 24hrs is the default window (already checked if > 24)
+        // Since we are < 24hrs, we treat it as an OUT to complete the session.
+        return 'OUT';
     }
 
     /**

@@ -11,7 +11,7 @@ import {
     EventQueryDto,
     CreateSessionDto,
 } from '../dto/session.dto';
-import { EventSource, AttendanceEvent, AttendanceSession } from '@prisma/client';
+import { EventSource, AttendanceEvent, AttendanceSession, EventType } from '@prisma/client';
 
 @Injectable()
 export class AttendanceManualService {
@@ -64,7 +64,7 @@ export class AttendanceManualService {
                 employeeId,
                 companyId,
                 eventTime: new Date(dto.eventTime),
-                eventType: dto.eventType,
+                eventType: dto.eventType || 'IN',
                 source,
                 device: dto.device || 'Manual Entry',
                 location: dto.location,
@@ -267,6 +267,28 @@ export class AttendanceManualService {
 
         if (oldSession) {
             await this.processingService.processEmployeeDate(oldSession.employeeId, oldSession.date);
+        }
+    }
+
+    async updateEventType(eventId: string, eventType: EventType): Promise<void> {
+        const event = await this.prisma.attendanceEvent.findUnique({
+            where: { id: eventId },
+            include: { session: true }
+        });
+
+        if (!event) throw new NotFoundException('Event not found');
+
+        await this.prisma.attendanceEvent.update({
+            where: { id: eventId },
+            data: { eventType }
+        });
+
+        // Trigger recalculation for the date of the event
+        await this.processingService.processEmployeeDate(event.employeeId, new Date(event.eventTime));
+
+        // If it was linked to a session that is NOT on the event's date (due to shift cross-overs), process that too
+        if (event.session && event.session.date.getTime() !== new Date(event.eventTime).setUTCHours(0, 0, 0, 0)) {
+            await this.processingService.processEmployeeDate(event.employeeId, event.session.date);
         }
     }
 }

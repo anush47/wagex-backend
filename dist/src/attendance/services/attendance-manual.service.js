@@ -57,7 +57,7 @@ let AttendanceManualService = AttendanceManualService_1 = class AttendanceManual
                 employeeId,
                 companyId,
                 eventTime: new Date(dto.eventTime),
-                eventType: dto.eventType,
+                eventType: dto.eventType || 'IN',
                 source,
                 device: dto.device || 'Manual Entry',
                 location: dto.location,
@@ -215,6 +215,22 @@ let AttendanceManualService = AttendanceManualService_1 = class AttendanceManual
         await this.prisma.attendanceEvent.update({ where: { id: eventId }, data: { sessionId: null } });
         if (oldSession) {
             await this.processingService.processEmployeeDate(oldSession.employeeId, oldSession.date);
+        }
+    }
+    async updateEventType(eventId, eventType) {
+        const event = await this.prisma.attendanceEvent.findUnique({
+            where: { id: eventId },
+            include: { session: true }
+        });
+        if (!event)
+            throw new common_1.NotFoundException('Event not found');
+        await this.prisma.attendanceEvent.update({
+            where: { id: eventId },
+            data: { eventType }
+        });
+        await this.processingService.processEmployeeDate(event.employeeId, new Date(event.eventTime));
+        if (event.session && event.session.date.getTime() !== new Date(event.eventTime).setUTCHours(0, 0, 0, 0)) {
+            await this.processingService.processEmployeeDate(event.employeeId, event.session.date);
         }
     }
 };

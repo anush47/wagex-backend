@@ -49,6 +49,7 @@ export declare class AttendanceExternalService {
         employeeName: string;
         shiftName: string;
     }>;
+    private determineEventType;
     bulkCreateExternalEvents(dto: BulkCreateEventsDto, verification: {
         type: 'COMPANY' | 'EMPLOYEE';
         company: {
