@@ -73,9 +73,9 @@ export declare class SalariesService {
             companyId: string;
             date: Date;
             remarks: string | null;
+            amount: number;
             salaryId: string | null;
             advanceId: string | null;
-            amount: number;
             paymentMethod: import("@prisma/client").$Enums.PaymentMethod;
             referenceNo: string | null;
         }[];
