@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BulkEventResponseDto = exports.BulkEventResultDto = exports.EventResponseDto = exports.BulkCreateEventsDto = exports.CreateEventDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
 const client_1 = require("@prisma/client");
 class CreateEventDto {
@@ -84,6 +85,10 @@ class BulkCreateEventsDto {
 exports.BulkCreateEventsDto = BulkCreateEventsDto;
 __decorate([
     (0, swagger_1.ApiProperty)({ type: [CreateEventDto], description: 'Array of events to insert' }),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMinSize)(1),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => CreateEventDto),
     __metadata("design:type", Array)
 ], BulkCreateEventsDto.prototype, "events", void 0);
 class EventResponseDto {

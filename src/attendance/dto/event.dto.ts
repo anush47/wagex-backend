@@ -1,4 +1,5 @@
-import { IsEnum, IsOptional, IsString, IsNumber, IsBoolean, IsDateString, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsNumber, IsBoolean, IsDateString, IsUUID, IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EventType, EventSource } from '@prisma/client';
 
@@ -50,6 +51,10 @@ export class CreateEventDto {
 
 export class BulkCreateEventsDto {
     @ApiProperty({ type: [CreateEventDto], description: 'Array of events to insert' })
+    @IsArray()
+    @ArrayMinSize(1)
+    @ValidateNested({ each: true })
+    @Type(() => CreateEventDto)
     events: CreateEventDto[];
 }
 

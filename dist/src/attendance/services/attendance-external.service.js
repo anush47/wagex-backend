@@ -185,7 +185,25 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
         const eventTime = new Date(dto.eventTime);
         let eventType = dto.eventType;
         if (!eventType) {
-            eventType = await this.determineEventType(employeeId, eventTime);
+            const decision = await this.determineEventType(employeeId, eventTime);
+            if (decision.autoCheckoutAt) {
+                await this.prisma.attendanceEvent.create({
+                    data: {
+                        employeeId: employeeId,
+                        companyId,
+                        eventTime: decision.autoCheckoutAt,
+                        eventType: 'OUT',
+                        source: 'MANUAL',
+                        remark: 'Auto checkout on shift end',
+                        status: 'ACTIVE',
+                        sessionId: decision.sessionId,
+                    },
+                });
+                eventType = 'IN';
+            }
+            else {
+                eventType = decision.type;
+            }
         }
         const shift = await this.shiftSelectionService.getEffectiveShift(employeeId, eventTime, eventTime);
         const shiftName = shift?.name || 'No Shift Assigned';
@@ -213,36 +231,65 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
             shiftName,
         };
     }
-    async determineEventType(employeeId, eventTime) {
-        const lastEvent = await this.prisma.attendanceEvent.findFirst({
-            where: { employeeId, status: 'ACTIVE' },
-            orderBy: { eventTime: 'desc' },
-        });
+    async determineEventType(employeeId, eventTime, lastEventContext) {
+        let lastEvent = lastEventContext;
         if (!lastEvent) {
-            return 'IN';
+            const dbLastEvent = await this.prisma.attendanceEvent.findFirst({
+                where: { employeeId, status: 'ACTIVE' },
+                orderBy: { eventTime: 'desc' },
+                select: { eventTime: true, eventType: true, sessionId: true }
+            });
+            if (dbLastEvent) {
+                lastEvent = {
+                    eventTime: new Date(dbLastEvent.eventTime),
+                    eventType: dbLastEvent.eventType,
+                    sessionId: dbLastEvent.sessionId
+                };
+            }
         }
-        const lastEventTime = new Date(lastEvent.eventTime);
+        if (!lastEvent || lastEvent.eventType === 'OUT') {
+            return { type: 'IN' };
+        }
+        const lastEventTime = lastEvent.eventTime;
         const diffMs = eventTime.getTime() - lastEventTime.getTime();
         const diffHours = diffMs / (1000 * 60 * 60);
-        if (diffHours >= 24) {
-            return 'IN';
-        }
         const lastShift = await this.shiftSelectionService.getEffectiveShift(employeeId, lastEventTime);
+        let maxOutDate = null;
         if (lastShift?.maxOutTime) {
             const [maxH, maxM] = lastShift.maxOutTime.split(':').map(Number);
-            const maxOutDate = new Date(lastEventTime);
+            maxOutDate = new Date(lastEventTime);
             maxOutDate.setHours(maxH, maxM, 0, 0);
             if (maxOutDate < lastEventTime) {
                 maxOutDate.setDate(maxOutDate.getDate() + 1);
             }
-            return eventTime <= maxOutDate ? 'OUT' : 'IN';
         }
-        return 'OUT';
+        const isPast24h = diffHours >= 24;
+        const isPastMaxOut = lastShift && maxOutDate && eventTime > maxOutDate;
+        if (lastShift && (isPast24h || isPastMaxOut)) {
+            if (lastShift.autoClockOut && lastShift.endTime) {
+                let autoCheckoutAt = new Date(lastEventTime);
+                const [h, m] = lastShift.endTime.split(':').map(Number);
+                autoCheckoutAt.setHours(h, m, 0, 0);
+                if (autoCheckoutAt < lastEventTime) {
+                    autoCheckoutAt.setDate(autoCheckoutAt.getDate() + 1);
+                }
+                if (autoCheckoutAt >= eventTime) {
+                    autoCheckoutAt = new Date(eventTime.getTime() - 1000);
+                }
+                return { type: 'IN', autoCheckoutAt, sessionId: lastEvent.sessionId };
+            }
+            return { type: 'IN' };
+        }
+        if (isPast24h) {
+            return { type: 'IN' };
+        }
+        return { type: 'OUT' };
     }
     async bulkCreateExternalEvents(dto, verification) {
         const companyId = verification.company.id;
         const apiKeyName = verification.apiKey.name;
-        const uniqueEmployeeNos = [...new Set(dto.events.map(e => e.employeeNo).filter(Boolean))];
+        const sortedEvents = [...dto.events].sort((a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime());
+        const uniqueEmployeeNos = [...new Set(sortedEvents.map(e => e.employeeNo).filter(Boolean))];
         const employees = await this.prisma.employee.findMany({
             where: { companyId, employeeNo: { in: uniqueEmployeeNos } },
             select: { id: true, employeeNo: true }
@@ -251,7 +298,9 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
         const results = [];
         const validEvents = [];
         const processQueue = new Set();
-        for (const eventDto of dto.events) {
+        const lastStateMap = new Map();
+        for (const eventDto of sortedEvents) {
+            let decision;
             if (verification.type === 'EMPLOYEE' && verification.employee) {
                 if (eventDto.employeeNo !== undefined && eventDto.employeeNo !== verification.employee.employeeNo) {
                     results.push({
@@ -268,11 +317,43 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
                 continue;
             }
             const eventTime = new Date(eventDto.eventTime);
+            let eventType = eventDto.eventType;
+            if (!eventType) {
+                const lastInBatch = lastStateMap.get(employeeId);
+                decision = await this.determineEventType(employeeId, eventTime, lastInBatch);
+                if (decision.autoCheckoutAt) {
+                    const autoOut = {
+                        employeeId,
+                        companyId,
+                        eventTime: decision.autoCheckoutAt,
+                        eventType: 'OUT',
+                        source: 'MANUAL',
+                        remark: 'Auto checkout on shift end',
+                        status: 'ACTIVE',
+                        sessionId: decision.sessionId,
+                    };
+                    validEvents.push(autoOut);
+                    lastStateMap.set(employeeId, {
+                        eventTime: decision.autoCheckoutAt,
+                        eventType: 'OUT',
+                        sessionId: decision.sessionId
+                    });
+                    eventType = 'IN';
+                }
+                else {
+                    eventType = decision.type;
+                }
+            }
+            lastStateMap.set(employeeId, {
+                eventTime,
+                eventType: eventType,
+                sessionId: eventType === 'IN' ? null : decision?.sessionId
+            });
             validEvents.push({
                 employeeId,
                 companyId,
                 eventTime,
-                eventType: eventDto.eventType,
+                eventType: eventType,
                 source: 'API_KEY',
                 apiKeyName,
                 device: eventDto.device,
@@ -297,10 +378,13 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
             success: true,
             inserted: validEvents.length,
             failed: results.filter(r => r.status === 'failed').length,
-            results: [...results, ...validEvents.map(e => ({
+            results: [
+                ...results,
+                ...validEvents.map(e => ({
                     employeeNo: employees.find(emp => emp.id === e.employeeId)?.employeeNo,
                     status: 'success'
-                }))]
+                }))
+            ]
         };
     }
 };

@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@n
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceProcessingService } from './attendance-processing.service';
 import { CreateEventDto, BulkCreateEventsDto } from '../dto/event.dto';
-import { AttendanceEvent, EventType, Role } from '@prisma/client';
+import { AttendanceEvent, EventType, Role, EventSource, EventStatus } from '@prisma/client';
 import { ShiftSelectionService } from './shift-selection.service';
 
 @Injectable()
@@ -231,7 +231,27 @@ export class AttendanceExternalService {
 
         // Intelligent Type Detection
         if (!eventType) {
-            eventType = await this.determineEventType(employeeId, eventTime);
+            const decision = await this.determineEventType(employeeId, eventTime);
+
+            // If the system detected a missing checkout, insert it first
+            if (decision.autoCheckoutAt) {
+                await this.prisma.attendanceEvent.create({
+                    data: {
+                        employeeId: employeeId!,
+                        companyId,
+                        eventTime: decision.autoCheckoutAt,
+                        eventType: 'OUT',
+                        source: 'MANUAL',
+                        remark: 'Auto checkout on shift end',
+                        status: 'ACTIVE',
+                        sessionId: decision.sessionId, // Link to previous unclosed session
+                    },
+                });
+                // After auto-checkout, the current event is definitely an IN
+                eventType = 'IN';
+            } else {
+                eventType = decision.type;
+            }
         }
 
         // 3. Resolve Shift Name
@@ -271,51 +291,97 @@ export class AttendanceExternalService {
     }
 
     /**
-     * Intelligently determine if an event is IN or OUT 
+     * Intelligently determine if an event is IN or OUT.
+     * Can optionally accept a 'lastEvent' context to avoid DB lookups (useful for bulk).
+     * Now returns an object to indicate if an auto-checkout for the previous IN is needed.
      */
-    private async determineEventType(employeeId: string, eventTime: Date): Promise<EventType> {
-        const lastEvent = await this.prisma.attendanceEvent.findFirst({
-            where: { employeeId, status: 'ACTIVE' },
-            orderBy: { eventTime: 'desc' },
-        });
+    private async determineEventType(
+        employeeId: string,
+        eventTime: Date,
+        lastEventContext?: { eventTime: Date; eventType: EventType; sessionId?: string | null }
+    ): Promise<{ type: EventType; autoCheckoutAt?: Date; sessionId?: string | null }> {
+        let lastEvent = lastEventContext;
 
         if (!lastEvent) {
-            return 'IN';
+            const dbLastEvent = await this.prisma.attendanceEvent.findFirst({
+                where: { employeeId, status: 'ACTIVE' },
+                orderBy: { eventTime: 'desc' },
+                select: { eventTime: true, eventType: true, sessionId: true }
+            });
+            if (dbLastEvent) {
+                lastEvent = {
+                    eventTime: new Date(dbLastEvent.eventTime),
+                    eventType: dbLastEvent.eventType as EventType,
+                    sessionId: dbLastEvent.sessionId
+                };
+            }
         }
 
-        const lastEventTime = new Date(lastEvent.eventTime);
+        // If no last event or last event was OUT, this is definitely an IN
+        if (!lastEvent || lastEvent.eventType === 'OUT') {
+            return { type: 'IN' };
+        }
+
+        // Previous event was an IN. We are either closing it (OUT) or starting a new session (IN).
+        const lastEventTime = lastEvent.eventTime;
         const diffMs = eventTime.getTime() - lastEventTime.getTime();
         const diffHours = diffMs / (1000 * 60 * 60);
 
-        // If last record was > 24hrs ago, it's always an IN
-        if (diffHours >= 24) {
-            return 'IN';
-        }
-
         // Check for shift specific maxOutTime
         const lastShift = await this.shiftSelectionService.getEffectiveShift(employeeId, lastEventTime);
+        let maxOutDate: Date | null = null;
 
         if (lastShift?.maxOutTime) {
             const [maxH, maxM] = lastShift.maxOutTime.split(':').map(Number);
-            const maxOutDate = new Date(lastEventTime);
+            maxOutDate = new Date(lastEventTime);
             maxOutDate.setHours(maxH, maxM, 0, 0);
 
-            // If maxOutTime is "before" lastEventTime in day cycle, it belongs to next day
+            // Handle cross-day shifts
             if (maxOutDate < lastEventTime) {
                 maxOutDate.setDate(maxOutDate.getDate() + 1);
             }
-
-            // If within shift's max end time, it is an OUT. Otherwise start new IN.
-            return eventTime <= maxOutDate ? 'OUT' : 'IN';
         }
 
-        // If no maxOutTime is defined, 24hrs is the default window (already checked if > 24)
-        // Since we are < 24hrs, we treat it as an OUT to complete the session.
-        return 'OUT';
+        // Logic check:
+        // 1. If we have shift info, check if we are past 24h OR past the maxOutTime
+        // 2. If no shift info, just do the standard 24h window check
+        const isPast24h = diffHours >= 24;
+        const isPastMaxOut = lastShift && maxOutDate && eventTime > maxOutDate;
+
+        if (lastShift && (isPast24h || isPastMaxOut)) {
+            // If the shift policy enables auto-checkout, provide the timestamp
+            if (lastShift.autoClockOut && lastShift.endTime) {
+                let autoCheckoutAt = new Date(lastEventTime);
+                const [h, m] = lastShift.endTime.split(':').map(Number);
+                autoCheckoutAt.setHours(h, m, 0, 0);
+
+                if (autoCheckoutAt < lastEventTime) {
+                    autoCheckoutAt.setDate(autoCheckoutAt.getDate() + 1);
+                }
+
+                if (autoCheckoutAt >= eventTime) {
+                    autoCheckoutAt = new Date(eventTime.getTime() - 1000);
+                }
+
+                return { type: 'IN', autoCheckoutAt, sessionId: lastEvent.sessionId };
+            }
+
+            // If auto-checkout is DISABLED (or no end time), we still start a new IN, 
+            // but we don't inject an auto-OUT record.
+            return { type: 'IN' };
+        }
+
+        // If no shift metadata, or we are within the shift window
+        if (isPast24h) {
+            return { type: 'IN' };
+        }
+
+        // Normal case: within 24h window and no reason to auto-checkout
+        return { type: 'OUT' };
     }
 
     /**
-     * Optimized Bulk creation
+     * Optimized Bulk creation with intelligent type detection
      */
     async bulkCreateExternalEvents(
         dto: BulkCreateEventsDto,
@@ -329,9 +395,14 @@ export class AttendanceExternalService {
         const companyId = verification.company.id;
         const apiKeyName = verification.apiKey.name;
 
-        const uniqueEmployeeNos = [...new Set(dto.events.map(e => e.employeeNo).filter(Boolean) as number[])];
+        // 1. Sort all events chronologically to ensure proper type detection
+        const sortedEvents = [...dto.events].sort(
+            (a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime()
+        );
 
-        // 1. Bulk Resolve Employees
+        const uniqueEmployeeNos = [...new Set(sortedEvents.map(e => e.employeeNo).filter(Boolean) as number[])];
+
+        // 2. Bulk Resolve Employees
         const employees = await this.prisma.employee.findMany({
             where: { companyId, employeeNo: { in: uniqueEmployeeNos } },
             select: { id: true, employeeNo: true }
@@ -340,11 +411,14 @@ export class AttendanceExternalService {
         const empMap = new Map(employees.map(e => [e.employeeNo, e.id]));
         const results: any[] = [];
         const validEvents: any[] = [];
-        const processQueue = new Set<string>(); // Set of "employeeId:date"
+        const processQueue = new Set<string>();
 
-        // 2. Prepare Data
-        for (const eventDto of dto.events) {
-            // Security Check: If it's an employee-level key, they can ONLY mark their own attendance
+        const lastStateMap = new Map<string, { eventTime: Date; eventType: EventType; sessionId?: string | null }>();
+
+        // 4. Process events
+        for (const eventDto of sortedEvents) {
+            let decision: { type: EventType; autoCheckoutAt?: Date; sessionId?: string | null } | undefined;
+            // Security Check
             if (verification.type === 'EMPLOYEE' && verification.employee) {
                 if (eventDto.employeeNo !== undefined && eventDto.employeeNo !== verification.employee.employeeNo) {
                     results.push({
@@ -363,32 +437,74 @@ export class AttendanceExternalService {
             }
 
             const eventTime = new Date(eventDto.eventTime);
+            let eventType = eventDto.eventType;
+
+            // Intelligent Type Detection for Bulk
+            if (!eventType) {
+                // Determine type using batch context if available
+                const lastInBatch = lastStateMap.get(employeeId);
+                decision = await this.determineEventType(employeeId, eventTime, lastInBatch);
+
+                if (decision.autoCheckoutAt) {
+                    // Create the missing OUT event in the list
+                    const autoOut = {
+                        employeeId,
+                        companyId,
+                        eventTime: decision.autoCheckoutAt,
+                        eventType: 'OUT' as EventType,
+                        source: 'MANUAL' as const,
+                        remark: 'Auto checkout on shift end',
+                        status: 'ACTIVE' as const,
+                        sessionId: decision.sessionId, // Link to previous unclosed session
+                    };
+                    validEvents.push(autoOut);
+
+                    // Update state to reflect this auto-checkout
+                    lastStateMap.set(employeeId, {
+                        eventTime: decision.autoCheckoutAt,
+                        eventType: 'OUT',
+                        sessionId: decision.sessionId
+                    });
+
+                    // The current event now becomes an IN
+                    eventType = 'IN';
+                } else {
+                    eventType = decision.type;
+                }
+            }
+
+            // Update state for next event in batch
+            lastStateMap.set(employeeId, {
+                eventTime,
+                eventType: eventType!,
+                sessionId: eventType === 'IN' ? null : decision?.sessionId
+            });
+
             validEvents.push({
                 employeeId,
                 companyId,
                 eventTime,
-                eventType: eventDto.eventType,
-                source: 'API_KEY',
+                eventType: eventType!, // Now guaranteed to be set
+                source: 'API_KEY' as const,
                 apiKeyName,
                 device: eventDto.device,
                 location: eventDto.location,
                 latitude: eventDto.latitude,
                 longitude: eventDto.longitude,
                 remark: eventDto.remark,
-                status: 'ACTIVE',
+                status: 'ACTIVE' as const,
             });
 
-            // Mark for processing (one per unique employee/day)
             const dateStr = eventTime.toISOString().split('T')[0];
             processQueue.add(`${employeeId}:${dateStr}`);
         }
 
-        // 3. Bulk Insert
+        // 5. Bulk Insert
         if (validEvents.length > 0) {
             await this.prisma.attendanceEvent.createMany({ data: validEvents });
         }
 
-        // 4. Async Processing (Triggered once per employee-day)
+        // 6. Async Processing
         processQueue.forEach(item => {
             const [empId, dateStr] = item.split(':');
             this.processingService.processEmployeeDate(empId, new Date(dateStr))
@@ -399,10 +515,14 @@ export class AttendanceExternalService {
             success: true,
             inserted: validEvents.length,
             failed: results.filter(r => r.status === 'failed').length,
-            results: [...results, ...validEvents.map(e => ({
-                employeeNo: employees.find(emp => emp.id === e.employeeId)?.employeeNo,
-                status: 'success'
-            }))]
+            results: [
+                ...results,
+                ...validEvents.map(e => ({
+                    employeeNo: employees.find(emp => emp.id === e.employeeId)?.employeeNo,
+                    status: 'success'
+                }))
+            ]
         };
     }
+
 }
