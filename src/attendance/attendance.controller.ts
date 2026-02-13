@@ -171,7 +171,7 @@ export class AttendanceExternalController {
             throw new UnauthorizedException('Invalid API key');
         }
 
-        const event = await this.externalService.createExternalEvent(dto, verification.company.id, verification.apiKey.name);
+        const event = await this.externalService.createExternalEvent(dto, verification as any);
         return {
             success: true,
             event: {
@@ -193,6 +193,6 @@ export class AttendanceExternalController {
             throw new UnauthorizedException('Invalid API key');
         }
 
-        return this.externalService.bulkCreateExternalEvents(dto, verification.company.id, verification.apiKey.name);
+        return this.externalService.bulkCreateExternalEvents(dto, verification as any);
     }
 }

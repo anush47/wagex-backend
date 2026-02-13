@@ -201,7 +201,7 @@ let AttendanceExternalController = AttendanceExternalController_1 = class Attend
         if (!verification.valid || !verification.company || !verification.apiKey) {
             throw new common_1.UnauthorizedException('Invalid API key');
         }
-        const event = await this.externalService.createExternalEvent(dto, verification.company.id, verification.apiKey.name);
+        const event = await this.externalService.createExternalEvent(dto, verification);
         return {
             success: true,
             event: {
@@ -220,7 +220,7 @@ let AttendanceExternalController = AttendanceExternalController_1 = class Attend
         if (!verification.valid || !verification.company || !verification.apiKey) {
             throw new common_1.UnauthorizedException('Invalid API key');
         }
-        return this.externalService.bulkCreateExternalEvents(dto, verification.company.id, verification.apiKey.name);
+        return this.externalService.bulkCreateExternalEvents(dto, verification);
     }
 };
 exports.AttendanceExternalController = AttendanceExternalController;

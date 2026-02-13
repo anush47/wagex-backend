@@ -147,19 +147,32 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
             this.logger.error(`Failed to update lastUsedAt for key: ${e.message}`);
         }
     }
-    async createExternalEvent(dto, companyId, apiKeyName) {
-        const employee = await this.prisma.employee.findFirst({
-            where: {
-                companyId,
-                employeeNo: dto.employeeNo,
-            },
-        });
-        if (!employee) {
-            throw new common_1.NotFoundException(`Employee ${dto.employeeNo} not found`);
+    async createExternalEvent(dto, verification) {
+        const companyId = verification.company.id;
+        const apiKeyName = verification.apiKey.name;
+        if (verification.type === 'EMPLOYEE' && verification.employee) {
+            if (dto.employeeNo !== undefined && dto.employeeNo !== verification.employee.employeeNo) {
+                throw new common_1.UnauthorizedException(`This API key is restricted to Employee #${verification.employee.employeeNo}. Cannot mark attendance for #${dto.employeeNo}.`);
+            }
+            dto.employeeId = verification.employee.id;
+        }
+        let employeeId = dto.employeeId;
+        if (!employeeId) {
+            const employee = await this.prisma.employee.findFirst({
+                where: {
+                    companyId,
+                    employeeNo: dto.employeeNo,
+                },
+                select: { id: true }
+            });
+            if (!employee) {
+                throw new common_1.NotFoundException(`Employee #${dto.employeeNo} not found in this company.`);
+            }
+            employeeId = employee.id;
         }
         const event = await this.prisma.attendanceEvent.create({
             data: {
-                employeeId: employee.id,
+                employeeId: employeeId,
                 companyId,
                 eventTime: new Date(dto.eventTime),
                 eventType: dto.eventType,
@@ -169,14 +182,17 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
                 location: dto.location,
                 latitude: dto.latitude,
                 longitude: dto.longitude,
+                remark: dto.remark,
                 status: 'ACTIVE',
             },
         });
-        this.processingService.processEmployeeDate(employee.id, new Date(dto.eventTime))
+        this.processingService.processEmployeeDate(employeeId, new Date(dto.eventTime))
             .catch(e => this.logger.error(`Processing error: ${e.message}`));
         return event;
     }
-    async bulkCreateExternalEvents(dto, companyId, apiKeyName) {
+    async bulkCreateExternalEvents(dto, verification) {
+        const companyId = verification.company.id;
+        const apiKeyName = verification.apiKey.name;
         const uniqueEmployeeNos = [...new Set(dto.events.map(e => e.employeeNo).filter(Boolean))];
         const employees = await this.prisma.employee.findMany({
             where: { companyId, employeeNo: { in: uniqueEmployeeNos } },
@@ -187,6 +203,16 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
         const validEvents = [];
         const processQueue = new Set();
         for (const eventDto of dto.events) {
+            if (verification.type === 'EMPLOYEE' && verification.employee) {
+                if (eventDto.employeeNo !== undefined && eventDto.employeeNo !== verification.employee.employeeNo) {
+                    results.push({
+                        employeeNo: eventDto.employeeNo,
+                        status: 'failed',
+                        error: `This API key is restricted to Employee #${verification.employee.employeeNo}.`
+                    });
+                    continue;
+                }
+            }
             const employeeId = empMap.get(eventDto.employeeNo);
             if (!employeeId) {
                 results.push({ employeeNo: eventDto.employeeNo, status: 'failed', error: 'Employee not found' });
@@ -204,6 +230,7 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
                 location: eventDto.location,
                 latitude: eventDto.latitude,
                 longitude: eventDto.longitude,
+                remark: eventDto.remark,
                 status: 'ACTIVE',
             });
             const dateStr = eventTime.toISOString().split('T')[0];
@@ -221,7 +248,10 @@ let AttendanceExternalService = AttendanceExternalService_1 = class AttendanceEx
             success: true,
             inserted: validEvents.length,
             failed: results.filter(r => r.status === 'failed').length,
-            results: [...results, ...validEvents.map(e => ({ employeeNo: employees.find(emp => emp.id === e.employeeId)?.employeeNo, status: 'success' }))]
+            results: [...results, ...validEvents.map(e => ({
+                    employeeNo: employees.find(emp => emp.id === e.employeeId)?.employeeNo,
+                    status: 'success'
+                }))]
         };
     }
 };

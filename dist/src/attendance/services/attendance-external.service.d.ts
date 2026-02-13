@@ -30,8 +30,32 @@ export declare class AttendanceExternalService {
     }>;
     private lastUpdateMap;
     private throttleLastUsedUpdate;
-    createExternalEvent(dto: CreateEventDto, companyId: string, apiKeyName: string): Promise<AttendanceEvent>;
-    bulkCreateExternalEvents(dto: BulkCreateEventsDto, companyId: string, apiKeyName: string): Promise<{
+    createExternalEvent(dto: CreateEventDto, verification: {
+        type: 'COMPANY' | 'EMPLOYEE';
+        company: {
+            id: string;
+        };
+        employee?: {
+            id: string;
+            employeeNo: number;
+        };
+        apiKey: {
+            name: string;
+        };
+    }): Promise<AttendanceEvent>;
+    bulkCreateExternalEvents(dto: BulkCreateEventsDto, verification: {
+        type: 'COMPANY' | 'EMPLOYEE';
+        company: {
+            id: string;
+        };
+        employee?: {
+            id: string;
+            employeeNo: number;
+        };
+        apiKey: {
+            name: string;
+        };
+    }): Promise<{
         success: boolean;
         inserted: number;
         failed: number;
