@@ -31,6 +31,9 @@ const departments_module_1 = require("./departments/departments.module");
 const leaves_module_1 = require("./leaves/leaves.module");
 const attendance_module_1 = require("./attendance/attendance.module");
 const calendars_module_1 = require("./calendars/calendars.module");
+const salaries_module_1 = require("./salaries/salaries.module");
+const advances_module_1 = require("./advances/advances.module");
+const payments_module_1 = require("./payments/payments.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -55,6 +58,9 @@ exports.AppModule = AppModule = __decorate([
             leaves_module_1.LeavesModule,
             attendance_module_1.AttendanceModule,
             calendars_module_1.CalendarsModule,
+            salaries_module_1.SalariesModule,
+            advances_module_1.AdvancesModule,
+            payments_module_1.PaymentsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

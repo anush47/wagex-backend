@@ -36,33 +36,35 @@ export declare class AttendanceService {
                 photo: string | null;
             };
             workHoliday: {
+                description: string | null;
+                calendarId: string;
+                name: string;
                 id: string;
-                date: Date;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
-                calendarId: string;
-                description: string | null;
+                date: Date;
                 isPublic: boolean;
                 isMercantile: boolean;
                 isBank: boolean;
             } | null;
             payrollHoliday: {
+                description: string | null;
+                calendarId: string;
+                name: string;
                 id: string;
-                date: Date;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
-                calendarId: string;
-                description: string | null;
+                date: Date;
                 isPublic: boolean;
                 isMercantile: boolean;
                 isBank: boolean;
             } | null;
         } & {
-            id: string;
-            employeeId: string;
             companyId: string;
+            employeeId: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             date: Date;
             shiftId: string | null;
             shiftName: string | null;
@@ -99,8 +101,6 @@ export declare class AttendanceService {
             metadata: import("@prisma/client/runtime/client").JsonValue | null;
             workHolidayId: string | null;
             payrollHolidayId: string | null;
-            createdAt: Date;
-            updatedAt: Date;
         })[];
         meta: {
             total: number;
@@ -117,14 +117,14 @@ export declare class AttendanceService {
             photo: string | null;
         };
     } & {
-        id: string;
-        employeeId: string;
         companyId: string;
-        metadata: import("@prisma/client/runtime/client").JsonValue | null;
+        employeeId: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         status: import("@prisma/client").$Enums.EventStatus;
         remark: string | null;
+        metadata: import("@prisma/client/runtime/client").JsonValue | null;
         eventTime: Date;
         eventType: import("@prisma/client").$Enums.EventType;
         source: import("@prisma/client").$Enums.EventSource;
@@ -145,14 +145,14 @@ export declare class AttendanceService {
                 photo: string | null;
             };
         } & {
-            id: string;
-            employeeId: string;
             companyId: string;
-            metadata: import("@prisma/client/runtime/client").JsonValue | null;
+            employeeId: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             status: import("@prisma/client").$Enums.EventStatus;
             remark: string | null;
+            metadata: import("@prisma/client/runtime/client").JsonValue | null;
             eventTime: Date;
             eventType: import("@prisma/client").$Enums.EventType;
             source: import("@prisma/client").$Enums.EventSource;

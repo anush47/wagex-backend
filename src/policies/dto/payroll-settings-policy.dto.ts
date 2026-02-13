@@ -27,6 +27,12 @@ export enum LateDeductionType {
     FIXED_AMOUNT = 'FIXED_AMOUNT'
 }
 
+export enum OvertimeCalculationMethod {
+    BASIC_DIVISOR = 'BASIC_DIVISOR',
+    GROSS_DIVISOR = 'GROSS_DIVISOR',
+    FIXED_HOURLY = 'FIXED_HOURLY'
+}
+
 export class PayrollSettingsConfigDto {
     @ApiProperty({ enum: PayCycleFrequency, example: PayCycleFrequency.MONTHLY })
     @IsEnum(PayCycleFrequency)
@@ -68,6 +74,32 @@ export class PayrollSettingsConfigDto {
     @ApiProperty({ example: 8, description: 'Divisor (e.g. 8 hours) or Fixed Amount' })
     @IsNumber()
     lateDeductionValue: number;
+
+    // Overtime Settings
+    @ApiPropertyOptional({ enum: OvertimeCalculationMethod })
+    @IsOptional()
+    @IsEnum(OvertimeCalculationMethod)
+    otCalculationMethod?: OvertimeCalculationMethod = OvertimeCalculationMethod.BASIC_DIVISOR;
+
+    @ApiPropertyOptional({ example: 200 })
+    @IsOptional()
+    @IsNumber()
+    otDivisor?: number = 200;
+
+    @ApiPropertyOptional({ example: 1.5 })
+    @IsOptional()
+    @IsNumber()
+    otNormalRate?: number = 1.5;
+
+    @ApiPropertyOptional({ example: 2.0 })
+    @IsOptional()
+    @IsNumber()
+    otDoubleRate?: number = 2.0;
+
+    @ApiPropertyOptional({ example: 3.0 })
+    @IsOptional()
+    @IsNumber()
+    otTripleRate?: number = 3.0;
 
     @ApiPropertyOptional({ example: 'uuid-calendar', description: 'Override Calendar ID for Payroll' })
     @IsOptional()

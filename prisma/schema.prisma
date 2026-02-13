@@ -45,6 +45,10 @@ model Company {
   attendanceEvents AttendanceEvent[]
   attendanceSessions AttendanceSession[]
   
+  salaries           Salary[]
+  salaryAdvances     SalaryAdvance[]
+  payments           Payment[]
+  
 
   @@map("companies")
 }
@@ -189,6 +193,9 @@ model Employee {
   leaveRequests LeaveRequest[]
   attendanceEvents AttendanceEvent[]
   attendanceSessions AttendanceSession[]
+
+  salaries           Salary[]
+  salaryAdvances     SalaryAdvance[]
 
 
   createdAt  DateTime @default(now())
@@ -558,4 +565,123 @@ model Holiday {
   @@unique([calendarId, date])
   @@index([date])
   @@map("holidays")
+}
+
+// ============================================
+// SALARY & PAYROLL SYSTEM
+// ============================================
+
+enum SalaryStatus {
+  DRAFT
+  APPROVED
+  PARTIALLY_PAID
+  PAID
+}
+
+enum AdvanceStatus {
+  PENDING
+  APPROVED
+  PAID
+  RECOVERED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  OTHER
+}
+
+model Salary {
+  id               String   @id @default(uuid())
+  employeeId       String
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  companyId        String
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  periodStartDate  DateTime
+  periodEndDate    DateTime
+  payDate          DateTime
+
+  basicSalary      Float    @default(0.0)
+  otAmount         Float    @default(0.0)
+  otBreakdown      Json?    @default("[]") // [{ type: string, hours: number, amount: number }]
+  
+  noPayAmount      Float    @default(0.0)
+  noPayBreakdown   Json?    @default("[]") // [{ type: string, count: number, amount: number }]
+  
+  taxAmount        Float    @default(0.0)
+  
+  components       Json?    @default("[]") // [{ id, name, category, type, value, amount }]
+  
+  advanceDeduction Float    @default(0.0)
+  netSalary        Float    @default(0.0) // Final payable amount
+
+  status           SalaryStatus @default(DRAFT)
+  remarks          String?      @db.Text
+
+  payments         Payment[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([employeeId, periodStartDate, periodEndDate])
+  @@index([companyId, periodStartDate, periodEndDate])
+  @@index([status])
+  @@map("salaries")
+}
+
+model SalaryAdvance {
+  id               String   @id @default(uuid())
+  employeeId       String
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  companyId        String
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  totalAmount      Float
+  date             DateTime @default(now())
+  reason           String?  @db.Text
+  
+  deductionSchedule Json?    @default("[]") // [{ periodStartDate, periodEndDate, amount, isDeducted }]
+  remainingAmount   Float
+
+  status           AdvanceStatus @default(PENDING)
+  remarks          String?       @db.Text
+
+  payments         Payment[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([companyId])
+  @@index([status])
+  @@map("salary_advances")
+}
+
+model Payment {
+  id               String   @id @default(uuid())
+  companyId        String
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  salaryId         String?
+  salary           Salary?  @relation(fields: [salaryId], references: [id])
+  
+  advanceId        String?
+  advance          SalaryAdvance? @relation(fields: [advanceId], references: [id])
+
+  amount           Float
+  date             DateTime @default(now())
+  paymentMethod    PaymentMethod @default(CASH)
+  referenceNo      String?
+  
+  remarks          String?  @db.Text
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([salaryId])
+  @@index([advanceId])
+  @@map("payments")
 }

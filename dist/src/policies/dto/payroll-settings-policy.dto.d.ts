@@ -20,6 +20,11 @@ export declare enum LateDeductionType {
     DIVISOR_BASED = "DIVISOR_BASED",
     FIXED_AMOUNT = "FIXED_AMOUNT"
 }
+export declare enum OvertimeCalculationMethod {
+    BASIC_DIVISOR = "BASIC_DIVISOR",
+    GROSS_DIVISOR = "GROSS_DIVISOR",
+    FIXED_HOURLY = "FIXED_HOURLY"
+}
 export declare class PayrollSettingsConfigDto {
     frequency: PayCycleFrequency;
     runDay: string;
@@ -31,5 +36,10 @@ export declare class PayrollSettingsConfigDto {
     unpaidLeaveAction: UnpaidLeaveAction;
     lateDeductionType: LateDeductionType;
     lateDeductionValue: number;
+    otCalculationMethod?: OvertimeCalculationMethod;
+    otDivisor?: number;
+    otNormalRate?: number;
+    otDoubleRate?: number;
+    otTripleRate?: number;
     calendarId?: string;
 }

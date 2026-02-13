@@ -22,6 +22,9 @@ import { DepartmentsModule } from './departments/departments.module';
 import { LeavesModule } from './leaves/leaves.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { CalendarsModule } from './calendars/calendars.module';
+import { SalariesModule } from './salaries/salaries.module';
+import { AdvancesModule } from './advances/advances.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -43,6 +46,9 @@ import { CalendarsModule } from './calendars/calendars.module';
     LeavesModule,
     AttendanceModule,
     CalendarsModule,
+    SalariesModule,
+    AdvancesModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [

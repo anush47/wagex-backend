@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PayrollSettingsConfigDto = exports.LateDeductionType = exports.UnpaidLeaveAction = exports.PayrollCalculationMethod = exports.PayCycleFrequency = void 0;
+exports.PayrollSettingsConfigDto = exports.OvertimeCalculationMethod = exports.LateDeductionType = exports.UnpaidLeaveAction = exports.PayrollCalculationMethod = exports.PayCycleFrequency = void 0;
 const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 var PayCycleFrequency;
@@ -38,6 +38,12 @@ var LateDeductionType;
     LateDeductionType["DIVISOR_BASED"] = "DIVISOR_BASED";
     LateDeductionType["FIXED_AMOUNT"] = "FIXED_AMOUNT";
 })(LateDeductionType || (exports.LateDeductionType = LateDeductionType = {}));
+var OvertimeCalculationMethod;
+(function (OvertimeCalculationMethod) {
+    OvertimeCalculationMethod["BASIC_DIVISOR"] = "BASIC_DIVISOR";
+    OvertimeCalculationMethod["GROSS_DIVISOR"] = "GROSS_DIVISOR";
+    OvertimeCalculationMethod["FIXED_HOURLY"] = "FIXED_HOURLY";
+})(OvertimeCalculationMethod || (exports.OvertimeCalculationMethod = OvertimeCalculationMethod = {}));
 class PayrollSettingsConfigDto {
     frequency;
     runDay;
@@ -49,6 +55,11 @@ class PayrollSettingsConfigDto {
     unpaidLeaveAction;
     lateDeductionType;
     lateDeductionValue;
+    otCalculationMethod = OvertimeCalculationMethod.BASIC_DIVISOR;
+    otDivisor = 200;
+    otNormalRate = 1.5;
+    otDoubleRate = 2.0;
+    otTripleRate = 3.0;
     calendarId;
 }
 exports.PayrollSettingsConfigDto = PayrollSettingsConfigDto;
@@ -103,6 +114,36 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], PayrollSettingsConfigDto.prototype, "lateDeductionValue", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: OvertimeCalculationMethod }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(OvertimeCalculationMethod),
+    __metadata("design:type", String)
+], PayrollSettingsConfigDto.prototype, "otCalculationMethod", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 200 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], PayrollSettingsConfigDto.prototype, "otDivisor", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 1.5 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], PayrollSettingsConfigDto.prototype, "otNormalRate", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 2.0 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], PayrollSettingsConfigDto.prototype, "otDoubleRate", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 3.0 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], PayrollSettingsConfigDto.prototype, "otTripleRate", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: 'uuid-calendar', description: 'Override Calendar ID for Payroll' }),
     (0, class_validator_1.IsOptional)(),
