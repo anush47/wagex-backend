@@ -468,39 +468,81 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         return this.prisma.attendanceSession.findUniqueOrThrow({ where: { id: session.id } });
     }
     async verifyApiKey(apiKey) {
-        const policy = await this.prisma.policy.findFirst({
-            where: {
-                companyId: { not: null },
-            },
-            include: {
-                company: true,
-            },
-        });
-        if (!policy || !policy.settings || !policy.company) {
+        this.logger.log(`[DEBUG] verifyApiKey called with: "${apiKey}"`);
+        const queryJson = JSON.stringify([{ key: apiKey }]);
+        this.logger.log(`[DEBUG] queryJson: ${queryJson}`);
+        const results = await this.prisma.$queryRaw `
+            SELECT 
+                p.id as "policyId",
+                p.settings,
+                p."companyId",
+                p."employeeId",
+                c.name as "companyName",
+                c."employerNumber",
+                e.id as "empRecordId",
+                e."nameWithInitials" as "empName",
+                e."employeeNo",
+                e."companyId" as "empCompanyId",
+                ec.name as "empCompanyName",
+                ec."employerNumber" as "empCompanyNumber"
+            FROM public.policies p
+            LEFT JOIN public.companies c ON p."companyId" = c.id
+            LEFT JOIN public.employees e ON p."employeeId" = e.id
+            LEFT JOIN public.companies ec ON e."companyId" = ec.id
+            WHERE p.settings -> 'attendance' -> 'apiKeys' @> ${queryJson}::jsonb
+            LIMIT 1
+        `;
+        this.logger.log(`[DEBUG] query results count: ${results?.length || 0}`);
+        if (!results || results.length === 0) {
+            this.logger.warn(`[DEBUG] No policy found for API key: ${apiKey}`);
             return { valid: false };
         }
+        const policy = results[0];
         const settings = policy.settings;
-        const attendanceConfig = settings.attendance;
-        if (!attendanceConfig || !attendanceConfig.apiKeys) {
+        const keyConfig = settings.attendance?.apiKeys?.find((k) => k.key === apiKey);
+        this.logger.log(`[DEBUG] keyConfig found: ${JSON.stringify(keyConfig)}`);
+        if (!keyConfig || (keyConfig.enabled === false)) {
+            this.logger.warn(`[DEBUG] Key found but invalid. keyConfig.enabled: ${keyConfig?.enabled}`);
             return { valid: false };
         }
-        const keyConfig = attendanceConfig.apiKeys.find((k) => k.key === apiKey && k.enabled);
-        if (!keyConfig) {
-            return { valid: false };
+        if (policy.companyId) {
+            return {
+                valid: true,
+                type: 'COMPANY',
+                company: {
+                    id: policy.companyId,
+                    name: policy.companyName,
+                    employerNumber: policy.employerNumber,
+                },
+                apiKey: {
+                    id: keyConfig.id,
+                    name: keyConfig.name,
+                    lastUsedAt: new Date(),
+                },
+            };
         }
-        return {
-            valid: true,
-            company: {
-                id: policy.company.id,
-                name: policy.company.name,
-                employerNumber: policy.company.employerNumber,
-            },
-            apiKey: {
-                id: keyConfig.id,
-                name: keyConfig.name,
-                lastUsedAt: new Date(),
-            },
-        };
+        else if (policy.employeeId) {
+            return {
+                valid: true,
+                type: 'EMPLOYEE',
+                company: {
+                    id: policy.empCompanyId,
+                    name: policy.empCompanyName,
+                    employerNumber: policy.empCompanyNumber,
+                },
+                employee: {
+                    id: policy.empRecordId,
+                    name: policy.empName,
+                    employeeNo: policy.employeeNo,
+                },
+                apiKey: {
+                    id: keyConfig.id,
+                    name: keyConfig.name,
+                    lastUsedAt: new Date(),
+                },
+            };
+        }
+        return { valid: false };
     }
     async linkEventToSession(eventId, sessionId) {
         const event = await this.prisma.attendanceEvent.findUnique({

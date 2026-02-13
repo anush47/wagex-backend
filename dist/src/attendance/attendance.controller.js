@@ -16,22 +16,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceExternalController = exports.AttendanceManualController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
-const attendance_service_1 = require("./attendance.service");
+const attendance_manual_service_1 = require("./services/attendance-manual.service");
+const attendance_query_service_1 = require("./services/attendance-query.service");
+const attendance_external_service_1 = require("./services/attendance-external.service");
 const event_dto_1 = require("./dto/event.dto");
 const session_dto_1 = require("./dto/session.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../auth/roles.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
+const public_decorator_1 = require("../auth/public.decorator");
 const client_1 = require("@prisma/client");
 let AttendanceManualController = AttendanceManualController_1 = class AttendanceManualController {
-    attendanceService;
+    manualService;
+    queryService;
     logger = new common_1.Logger(AttendanceManualController_1.name);
-    constructor(attendanceService) {
-        this.attendanceService = attendanceService;
+    constructor(manualService, queryService) {
+        this.manualService = manualService;
+        this.queryService = queryService;
     }
     async createEvent(createEventDto) {
         this.logger.log(`Creating manual event for employee ${createEventDto.employeeId}`);
-        const event = await this.attendanceService.createManualEvent(createEventDto, 'MANUAL');
+        const event = await this.manualService.createManualEvent(createEventDto, 'MANUAL');
         return {
             success: true,
             event: {
@@ -44,41 +49,32 @@ let AttendanceManualController = AttendanceManualController_1 = class Attendance
         };
     }
     async createSession(dto) {
-        this.logger.log(`Creating manual session for employee ${dto.employeeId} on ${dto.date}`);
-        return this.attendanceService.createManualSession(dto);
+        return this.manualService.createManualSession(dto);
     }
     async getSessions(query) {
-        this.logger.log(`Fetching sessions with filters: ${JSON.stringify(query)}`);
-        return this.attendanceService.getSessions(query);
+        return this.queryService.getSessions(query);
     }
     async getSession(id) {
-        this.logger.log(`Fetching session details for ${id}`);
-        return this.attendanceService.getSession(id);
+        return this.queryService.getSession(id);
     }
     async getSessionEvents(id) {
-        this.logger.log(`Fetching events for session ${id}`);
-        return this.attendanceService.getSessionEvents(id);
+        return this.queryService.getSessionEvents(id);
     }
     async getEvents(query) {
-        this.logger.log(`Fetching events with filters: ${JSON.stringify(query)}`);
-        return this.attendanceService.getEvents(query);
+        return this.queryService.getEvents(query);
     }
-    async updateSession(id, updateSessionDto) {
-        this.logger.log(`Updating session ${id}`);
-        return this.attendanceService.updateSession(id, updateSessionDto);
+    async updateSession(id, dto) {
+        return this.manualService.updateSession(id, dto);
     }
     async deleteSession(id) {
-        this.logger.log(`Deleting session ${id}`);
-        return this.attendanceService.deleteSession(id);
+        return this.manualService.deleteSession(id);
     }
     async linkEventToSession(eventId, sessionId) {
-        this.logger.log(`Linking event ${eventId} to session ${sessionId}`);
-        await this.attendanceService.linkEventToSession(eventId, sessionId);
+        await this.manualService.linkEventToSession(eventId, sessionId);
         return { success: true };
     }
     async unlinkEventFromSession(eventId) {
-        this.logger.log(`Unlinking event ${eventId}`);
-        await this.attendanceService.unlinkEventFromSession(eventId);
+        await this.manualService.unlinkEventFromSession(eventId);
         return { success: true };
     }
 };
@@ -106,7 +102,6 @@ __decorate([
     (0, common_1.Get)('sessions'),
     (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
     (0, swagger_1.ApiOperation)({ summary: 'Get attendance sessions (paginated)' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Sessions retrieved successfully' }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [session_dto_1.SessionQueryDto]),
@@ -116,8 +111,6 @@ __decorate([
     (0, common_1.Get)('sessions/:id'),
     (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
     (0, swagger_1.ApiOperation)({ summary: 'Get single attendance session by ID' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Session retrieved successfully' }),
-    (0, swagger_1.ApiResponse)({ status: 404, description: 'Session not found' }),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -127,8 +120,6 @@ __decorate([
     (0, common_1.Get)('sessions/:id/events'),
     (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
     (0, swagger_1.ApiOperation)({ summary: 'Get events for a specific attendance session' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Session events retrieved successfully' }),
-    (0, swagger_1.ApiResponse)({ status: 404, description: 'Session not found' }),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -138,7 +129,6 @@ __decorate([
     (0, common_1.Get)('events'),
     (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
     (0, swagger_1.ApiOperation)({ summary: 'Get attendance events (paginated)' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Events retrieved successfully' }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [session_dto_1.EventQueryDto]),
@@ -148,7 +138,6 @@ __decorate([
     (0, common_1.Patch)('sessions/:id'),
     (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
     (0, swagger_1.ApiOperation)({ summary: 'Update attendance session' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Session updated successfully' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -159,7 +148,6 @@ __decorate([
     (0, common_1.Delete)('sessions/:id'),
     (0, roles_decorator_1.Roles)(client_1.Role.EMPLOYER, client_1.Role.ADMIN),
     (0, swagger_1.ApiOperation)({ summary: 'Delete attendance session' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Session deleted successfully' }),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -189,35 +177,31 @@ exports.AttendanceManualController = AttendanceManualController = AttendanceManu
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, common_1.Controller)('attendance/manual'),
-    __metadata("design:paramtypes", [attendance_service_1.AttendanceService])
+    __metadata("design:paramtypes", [attendance_manual_service_1.AttendanceManualService,
+        attendance_query_service_1.AttendanceQueryService])
 ], AttendanceManualController);
 let AttendanceExternalController = AttendanceExternalController_1 = class AttendanceExternalController {
-    attendanceService;
+    externalService;
     logger = new common_1.Logger(AttendanceExternalController_1.name);
-    constructor(attendanceService) {
-        this.attendanceService = attendanceService;
+    constructor(externalService) {
+        this.externalService = externalService;
     }
     async verifyApiKey(apiKey) {
-        this.logger.log('Verifying API key');
-        if (!apiKey) {
+        if (!apiKey)
             throw new common_1.UnauthorizedException('API key required');
-        }
-        const result = await this.attendanceService.verifyApiKey(apiKey);
-        if (!result.valid) {
+        const result = await this.externalService.verifyApiKey(apiKey);
+        if (!result.valid)
             throw new common_1.UnauthorizedException('Invalid API key');
-        }
         return result;
     }
-    async createEvent(apiKey, createEventDto) {
-        this.logger.log(`Creating external event via API key`);
-        if (!apiKey) {
+    async createEvent(apiKey, dto) {
+        if (!apiKey)
             throw new common_1.UnauthorizedException('API key required');
-        }
-        const verification = await this.attendanceService.verifyApiKey(apiKey);
-        if (!verification.valid) {
+        const verification = await this.externalService.verifyApiKey(apiKey);
+        if (!verification.valid || !verification.company || !verification.apiKey) {
             throw new common_1.UnauthorizedException('Invalid API key');
         }
-        const event = await this.attendanceService.createExternalEvent(createEventDto, verification.company.id, verification.apiKey.name);
+        const event = await this.externalService.createExternalEvent(dto, verification.company.id, verification.apiKey.name);
         return {
             success: true,
             event: {
@@ -229,22 +213,19 @@ let AttendanceExternalController = AttendanceExternalController_1 = class Attend
             },
         };
     }
-    async bulkCreateEvents(apiKey, bulkCreateDto) {
-        this.logger.log(`Bulk creating ${bulkCreateDto.events.length} events via API key`);
-        if (!apiKey) {
+    async bulkCreateEvents(apiKey, dto) {
+        if (!apiKey)
             throw new common_1.UnauthorizedException('API key required');
-        }
-        const verification = await this.attendanceService.verifyApiKey(apiKey);
-        if (!verification.valid) {
+        const verification = await this.externalService.verifyApiKey(apiKey);
+        if (!verification.valid || !verification.company || !verification.apiKey) {
             throw new common_1.UnauthorizedException('Invalid API key');
         }
-        return this.attendanceService.bulkCreateExternalEvents(bulkCreateDto, verification.company.id, verification.apiKey.name);
+        return this.externalService.bulkCreateExternalEvents(dto, verification.company.id, verification.apiKey.name);
     }
 };
 exports.AttendanceExternalController = AttendanceExternalController;
 __decorate([
     (0, common_1.Get)('verify'),
-    (0, swagger_1.ApiHeader)({ name: 'X-API-Key', required: true }),
     (0, swagger_1.ApiOperation)({ summary: 'Verify API key' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'API key is valid' }),
     (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid API key' }),
@@ -255,10 +236,7 @@ __decorate([
 ], AttendanceExternalController.prototype, "verifyApiKey", null);
 __decorate([
     (0, common_1.Post)('event'),
-    (0, swagger_1.ApiHeader)({ name: 'X-API-Key', required: true }),
     (0, swagger_1.ApiOperation)({ summary: 'Insert single attendance event' }),
-    (0, swagger_1.ApiResponse)({ status: 201, description: 'Event created successfully' }),
-    (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid API key' }),
     __param(0, (0, common_1.Headers)('x-api-key')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -267,10 +245,7 @@ __decorate([
 ], AttendanceExternalController.prototype, "createEvent", null);
 __decorate([
     (0, common_1.Post)('events/bulk'),
-    (0, swagger_1.ApiHeader)({ name: 'X-API-Key', required: true }),
     (0, swagger_1.ApiOperation)({ summary: 'Bulk insert attendance events' }),
-    (0, swagger_1.ApiResponse)({ status: 201, description: 'Events processed' }),
-    (0, swagger_1.ApiResponse)({ status: 401, description: 'Invalid API key' }),
     __param(0, (0, common_1.Headers)('x-api-key')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -279,7 +254,8 @@ __decorate([
 ], AttendanceExternalController.prototype, "bulkCreateEvents", null);
 exports.AttendanceExternalController = AttendanceExternalController = AttendanceExternalController_1 = __decorate([
     (0, swagger_1.ApiTags)('Attendance - External API'),
+    (0, public_decorator_1.Public)(),
     (0, common_1.Controller)('attendance/external'),
-    __metadata("design:paramtypes", [attendance_service_1.AttendanceService])
+    __metadata("design:paramtypes", [attendance_external_service_1.AttendanceExternalService])
 ], AttendanceExternalController);
 //# sourceMappingURL=attendance.controller.js.map

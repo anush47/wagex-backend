@@ -1,32 +1,10 @@
-import { PrismaService } from '../prisma/prisma.service';
-import { AttendanceProcessingService } from './services/attendance-processing.service';
-import { AttendanceCalculationService } from './services/attendance-calculation.service';
-import { LeaveIntegrationService } from './services/leave-integration.service';
-import { PoliciesService } from '../policies/policies.service';
-import { CreateEventDto, BulkCreateEventsDto } from './dto/event.dto';
-import { UpdateSessionDto, SessionQueryDto, EventQueryDto, CreateSessionDto } from './dto/session.dto';
-import { EventSource, AttendanceEvent, AttendanceSession } from '@prisma/client';
-export declare class AttendanceService {
+import { PrismaService } from '../../prisma/prisma.service';
+import { SessionQueryDto, EventQueryDto } from '../dto/session.dto';
+import { AttendanceSession } from '@prisma/client';
+export declare class AttendanceQueryService {
     private readonly prisma;
-    private readonly processingService;
-    private readonly policiesService;
-    private readonly calculationService;
-    private readonly leaveService;
     private readonly logger;
-    constructor(prisma: PrismaService, processingService: AttendanceProcessingService, policiesService: PoliciesService, calculationService: AttendanceCalculationService, leaveService: LeaveIntegrationService);
-    createManualEvent(dto: CreateEventDto, source?: EventSource): Promise<AttendanceEvent>;
-    createExternalEvent(dto: CreateEventDto, companyId: string, apiKeyName: string): Promise<AttendanceEvent>;
-    bulkCreateExternalEvents(dto: BulkCreateEventsDto, companyId: string, apiKeyName: string): Promise<{
-        success: boolean;
-        inserted: number;
-        failed: number;
-        results: {
-            employeeNo: number;
-            status: "success" | "failed";
-            eventId?: string;
-            error?: string;
-        }[];
-    }>;
+    constructor(prisma: PrismaService);
     getSessions(query: SessionQueryDto): Promise<{
         items: ({
             employee: {
@@ -170,30 +148,4 @@ export declare class AttendanceService {
             lastPage: number;
         };
     }>;
-    updateSession(id: string, dto: UpdateSessionDto): Promise<AttendanceSession>;
-    deleteSession(id: string): Promise<{
-        message: string;
-    }>;
-    createManualSession(dto: CreateSessionDto): Promise<AttendanceSession>;
-    verifyApiKey(apiKey: string): Promise<{
-        valid: boolean;
-        type?: 'COMPANY' | 'EMPLOYEE';
-        company?: {
-            id: string;
-            name: string;
-            employerNumber?: string;
-        };
-        employee?: {
-            id: string;
-            name: string;
-            employeeNo: number;
-        };
-        apiKey?: {
-            id: string;
-            name: string;
-            lastUsedAt: Date;
-        };
-    }>;
-    linkEventToSession(eventId: string, sessionId: string): Promise<void>;
-    unlinkEventFromSession(eventId: string): Promise<void>;
 }
