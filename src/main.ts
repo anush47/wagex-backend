@@ -48,6 +48,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 8000;
+  await app.listen(port, '0.0.0.0'); // <-- bind to all IPv4 interfaces
+  console.log(`Server running on port ${port}`);
 }
 bootstrap();
