@@ -13,6 +13,15 @@ export enum PayrollComponentCategory {
     DEDUCTION = 'DEDUCTION'
 }
 
+export enum PayrollComponentSystemType {
+    NONE = 'NONE',
+    EPF_EMPLOYEE = 'EPF_EMPLOYEE',       // Employee Share (8%)
+    EPF_EMPLOYER = 'EPF_EMPLOYER',       // Employer Share (12%) - Informational/Accounting
+    ETF_EMPLOYER = 'ETF_EMPLOYER',       // Employer Share (3%) - Informational/Accounting
+    HOLIDAY_PAY = 'HOLIDAY_PAY',         // Pay for working on holidays
+    NO_PAY_DEDUCTION = 'NO_PAY_DEDUCTION' // Deduction for unpaid absences/leaves
+}
+
 export class PayrollComponentDto {
     @ApiProperty({ example: 'comp-1' })
     @IsString()
@@ -53,6 +62,11 @@ export class PayrollComponentDto {
     @IsOptional()
     @IsNumber()
     maxCap?: number;
+
+    @ApiPropertyOptional({ enum: PayrollComponentSystemType, description: 'If this component is system-calculated (like EPF or Holiday Pay)' })
+    @IsOptional()
+    @IsEnum(PayrollComponentSystemType)
+    systemType?: PayrollComponentSystemType = PayrollComponentSystemType.NONE;
 }
 
 export class SalaryComponentsConfigDto {

@@ -128,35 +128,123 @@ export class SalaryEngineService {
         }
 
         // 7. Salary Components (Additions / Deductions)
+        // 7. Salary Components - Multi-Phase Processing
         const components = policy.salaryComponents?.components || [];
-        const componentResults = components.map(comp => {
+
+        // Phase 1: Separating Components
+        const systemAdditions = components.filter(c => c.category === 'ADDITION' && c.systemType && c.systemType !== PayrollComponentSystemType.NONE);
+        const standardAdditions = components.filter(c => c.category === 'ADDITION' && (!c.systemType || c.systemType === PayrollComponentSystemType.NONE));
+        const systemDeductions = components.filter(c => c.category === 'DEDUCTION' && c.systemType && c.systemType !== PayrollComponentSystemType.NONE);
+        const standardDeductions = components.filter(c => c.category === 'DEDUCTION' && (!c.systemType || c.systemType === PayrollComponentSystemType.NONE));
+
+        let processedComponents: any[] = [];
+        let currentTotalEarnings = basicSalary + totalOtAmount; // Start with Basic + OT
+
+        // Phase 2: System Additions (e.g. Holiday Pay)
+        // These often inject extra earnings based on attendance, affecting Total Earnings for EPF
+        systemAdditions.forEach(comp => {
+            let amount = 0;
+            if (comp.systemType === PayrollComponentSystemType.HOLIDAY_PAY) {
+                // Logic: Find sessions on holidays, calculate extra pay
+                // For simplified MVP: We'll take the TRIPLE rate OT amount calculated earlier as roughly equivalent if untracked
+                // But ideally, we re-scan sessions for `workHolidayId` and apply specific rates.
+                // Let's use the explicit holiday OT bucket from previous step if available.
+                const holidayOt = otBreakdown.find(b => b.type === 'TRIPLE');
+                if (holidayOt) {
+                    amount = holidayOt.amount;
+                    // Note: If we use this, we should remove it from `totalOtAmount` to avoid double counting?
+                    // Strategy: If HOLIDAY_PAY component exists, we assume OT logic handled it separately or we override it.
+                    // For now, let's assume this component *is* the mechanism for rewarding holiday work, so we might want to deduct from OT breakdown or just treat it as additive bonus.
+                    // Let's treat it as *additive* to existing OT for safety unless configured otherwise.
+                }
+            }
+
+            processedComponents.push({
+                ...comp,
+                amount
+            });
+
+            if (comp.affectsTotalEarnings) {
+                currentTotalEarnings += amount;
+            }
+        });
+
+        // Phase 3: Standard Additions
+        // Fixed amounts or % of Basic
+        standardAdditions.forEach(comp => {
+            let amount = 0;
+            if (comp.type === PayrollComponentType.FLAT_AMOUNT) {
+                amount = comp.value;
+            } else if (comp.type === PayrollComponentType.PERCENTAGE_BASIC) {
+                amount = (basicSalary * comp.value) / 100;
+            }
+
+            processedComponents.push({
+                ...comp,
+                amount
+            });
+
+            if (comp.affectsTotalEarnings) {
+                currentTotalEarnings += amount;
+            }
+        });
+
+        // Phase 4: System Deductions (No-Pay)
+        // If NO_PAY_DEDUCTION component exists, we use its value instead of generic `totalNoPayAmount` logic, or align them.
+        let explicitNoPayDeduction = 0;
+        systemDeductions.forEach(comp => {
+            let amount = 0;
+            if (comp.systemType === PayrollComponentSystemType.NO_PAY_DEDUCTION) {
+                // Use the calculated no-pay amount from Step 6
+                amount = totalNoPayAmount;
+                explicitNoPayDeduction += amount;
+            } else if (comp.systemType === PayrollComponentSystemType.EPF_EMPLOYEE) {
+                // EPF is calculated on "Total Earnings for EPF" (Liable Earnings)
+                // EPF Base usually = Basic + Statutory Additions
+                // But simplified: use `currentTotalEarnings` (which includes basic + OT + flagged additions)
+                amount = (currentTotalEarnings * comp.value) / 100;
+            }
+
+            processedComponents.push({
+                ...comp,
+                amount
+            });
+        });
+
+        // Phase 5: Standard Deductions (including those dependent on Total Earnings)
+        standardDeductions.forEach(comp => {
             let amount = 0;
             if (comp.type === PayrollComponentType.FLAT_AMOUNT) {
                 amount = comp.value;
             } else if (comp.type === PayrollComponentType.PERCENTAGE_BASIC) {
                 amount = (basicSalary * comp.value) / 100;
             } else if (comp.type === PayrollComponentType.PERCENTAGE_TOTAL_EARNINGS) {
-                // Total Earnings = Basic + OT + Additions (but usually excluding the one being calculated)
-                // For simplicity, we use (Basic + OT) as the base for PERCENTAGE_TOTAL_EARNINGS here
-                amount = ((basicSalary + totalOtAmount) * comp.value) / 100;
+                amount = (currentTotalEarnings * comp.value) / 100;
             }
-            return {
-                id: comp.id,
-                name: comp.name,
-                category: comp.category,
-                type: comp.type,
-                value: comp.value,
-                amount: amount,
-            };
+
+            processedComponents.push({
+                ...comp,
+                amount
+            });
         });
 
-        const totalAdditions = componentResults
+        // Summarize
+        const totalAdditions = processedComponents
             .filter(c => c.category === 'ADDITION')
             .reduce((sum, c) => sum + c.amount, 0);
 
-        const totalDeductions = componentResults
+        const totalComponentDeductions = processedComponents
             .filter(c => c.category === 'DEDUCTION')
             .reduce((sum, c) => sum + c.amount, 0);
+
+        // If we used a component for No-Pay, we shouldn't double deduct it via `totalNoPayAmount` variable in net calc.
+        // If a NO_PAY component exists, we zero out the separate variable so it's only deducted via components.
+        const hasNoPayComponent = processedComponents.some(c => c.systemType === PayrollComponentSystemType.NO_PAY_DEDUCTION);
+        const finalNoPayDeductionForNet = hasNoPayComponent ? 0 : totalNoPayAmount;
+
+        // However, standard logic line 196 uses `totalDeductions` (from components) + `totalNoPayAmount`.
+        // So if component exists, it's inside `totalDeductions`. `totalNoPayAmount` should be 0.
+
 
         // 8. Tax Deduction (Placeholder)
         const taxAmount = 0;
@@ -193,7 +281,7 @@ export class SalaryEngineService {
         }
 
         // 10. Final Calculation
-        const netSalary = (basicSalary + totalAdditions + totalOtAmount) - (totalDeductions + totalNoPayAmount + taxAmount + totalAdvanceDeduction);
+        const netSalary = (basicSalary + totalAdditions + totalOtAmount) - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction);
 
         return {
             employeeId,
@@ -203,10 +291,10 @@ export class SalaryEngineService {
             basicSalary,
             otAmount: totalOtAmount,
             otBreakdown,
-            noPayAmount: totalNoPayAmount,
+            noPayAmount: totalNoPayAmount, // Keep original calculation for display breakdown
             noPayBreakdown,
             taxAmount,
-            components: componentResults,
+            components: processedComponents,
             advanceDeduction: totalAdvanceDeduction,
             netSalary,
             advanceAdjustments,
