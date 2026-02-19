@@ -135,9 +135,9 @@ export class SalaryEngineService {
                 amount = comp.value;
             } else if (comp.type === PayrollComponentType.PERCENTAGE_BASIC) {
                 amount = (basicSalary * comp.value) / 100;
-            } else if (comp.type === PayrollComponentType.PERCENTAGE_GROSS) {
-                // Gross = Basic + OT + Additions (but usually excluding the one being calculated)
-                // For simplicity, we use (Basic + OT) as the base for PERCENTAGE_GROSS here
+            } else if (comp.type === PayrollComponentType.PERCENTAGE_TOTAL_EARNINGS) {
+                // Total Earnings = Basic + OT + Additions (but usually excluding the one being calculated)
+                // For simplicity, we use (Basic + OT) as the base for PERCENTAGE_TOTAL_EARNINGS here
                 amount = ((basicSalary + totalOtAmount) * comp.value) / 100;
             }
             return {
