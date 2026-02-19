@@ -76,6 +76,11 @@ export class LeaveTypeDto {
     @IsNumber()
     maxDurationMinutes?: number;
 
+    // Payment Status
+    @ApiProperty({ default: true, description: 'Whether this leave type is paid' })
+    @IsBoolean()
+    isPaid: boolean = true;
+
     // Accrual
     @ApiProperty({ example: 14 })
     @IsNumber()
