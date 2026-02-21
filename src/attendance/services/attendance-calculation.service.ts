@@ -3,15 +3,7 @@ import { AttendanceEvent, SessionWorkDayStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SessionGroup } from './session-grouping.service';
 
-interface ShiftDto {
-    id: string;
-    name: string;
-    startTime: string;
-    endTime: string;
-    breakTime: number;
-    gracePeriodLate?: number;
-    autoClockOut?: boolean;
-}
+import { ShiftDto } from '../../policies/dto/shifts-policy.dto';
 
 interface LeaveRequest {
     id: string;

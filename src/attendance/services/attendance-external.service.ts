@@ -4,6 +4,7 @@ import { AttendanceProcessingService } from './attendance-processing.service';
 import { CreateEventDto, BulkCreateEventsDto } from '../dto/event.dto';
 import { AttendanceEvent, EventType, Role, EventSource, EventStatus } from '@prisma/client';
 import { ShiftSelectionService } from './shift-selection.service';
+import { PoliciesService } from '../../policies/policies.service';
 
 @Injectable()
 export class AttendanceExternalService {
@@ -41,24 +42,16 @@ export class AttendanceExternalService {
             // Match the GIN index expression exactly: (settings -> 'attendance' -> 'apiKeys')
             const queryValue = JSON.stringify([{ key: apiKey }]);
             const results = await this.prisma.$queryRaw<any[]>`
-                SELECT 
-                    p.id as "policyId",
-                    p.settings,
-                    p."companyId",
-                    p."employeeId",
-                    c.name as "companyName",
-                    c."employerNumber",
-                    e.id as "empRecordId",
-                    e."nameWithInitials" as "empName",
-                    e."employeeNo",
-                    e."companyId" as "empCompanyId",
-                    ec.name as "empCompanyName",
-                    ec."employerNumber" as "empCompanyNumber"
+SELECT
+p.id as "policyId",
+    p.settings,
+    p."companyId",
+        p."isDefault",
+            c.name as "companyName",
+            c."employerNumber"
                 FROM public.policies p
                 LEFT JOIN public.companies c ON p."companyId" = c.id
-                LEFT JOIN public.employees e ON p."employeeId" = e.id
-                LEFT JOIN public.companies ec ON e."companyId" = ec.id
-                WHERE (p.settings -> 'attendance' -> 'apiKeys') @> ${queryValue}::jsonb
+WHERE(p.settings -> 'attendance' -> 'apiKeys') @> ${queryValue}:: jsonb
                 LIMIT 1
             `;
 
@@ -76,46 +69,41 @@ export class AttendanceExternalService {
                 return { valid: false };
             }
 
-            let result: any = { valid: false };
+            // Determine if this is a "Personal" key by checking if exactly one employee is assigned to this policy
+            let employeeInfo: { id: string; name: string; employeeNo: number } | null = null;
+            if (!policy.isDefault) {
+                const assignedEmployees = await this.prisma.employee.findMany({
+                    where: { policyId: policy.policyId },
+                    select: { id: true, nameWithInitials: true, employeeNo: true }
+                });
 
-            if (policy.companyId) {
-                result = {
-                    valid: true,
-                    type: 'COMPANY',
-                    policyId: policy.policyId,
-                    company: {
-                        id: policy.companyId,
-                        name: policy.companyName,
-                        employerNumber: policy.employerNumber,
-                    },
-                    apiKey: {
-                        id: keyConfig.id,
-                        name: keyConfig.name,
-                        lastUsedAt: new Date(),
-                    },
-                };
-            } else if (policy.employeeId) {
-                result = {
-                    valid: true,
-                    type: 'EMPLOYEE',
-                    policyId: policy.policyId,
-                    company: {
-                        id: policy.empCompanyId,
-                        name: policy.empCompanyName,
-                        employerNumber: policy.empCompanyNumber,
-                    },
-                    employee: {
-                        id: policy.empRecordId,
-                        name: policy.empName,
-                        employeeNo: policy.employeeNo,
-                    },
-                    apiKey: {
-                        id: keyConfig.id,
-                        name: keyConfig.name,
-                        lastUsedAt: new Date(),
-                    },
-                };
+                if (assignedEmployees.length === 1) {
+                    employeeInfo = {
+                        id: assignedEmployees[0].id,
+                        name: assignedEmployees[0].nameWithInitials,
+                        employeeNo: assignedEmployees[0].employeeNo
+                    };
+                }
             }
+
+            let result: any = {
+                valid: true,
+                type: policy.isDefault ? 'COMPANY' : (employeeInfo ? 'EMPLOYEE' : 'TEMPLATE'),
+                policyId: policy.policyId,
+                company: {
+                    id: policy.companyId,
+                    name: policy.companyName,
+                    employerNumber: policy.employerNumber,
+                },
+                apiKey: {
+                    id: keyConfig.id,
+                    name: keyConfig.name,
+                    lastUsedAt: new Date(),
+                },
+                employee: employeeInfo,
+                // Add policyId to help filter in createExternalEvent
+                restrictedToPolicyId: policy.isDefault ? null : policy.policyId
+            };
 
             // 2. Save to Cache
             if (result.valid) {
@@ -128,7 +116,7 @@ export class AttendanceExternalService {
 
             return result;
         } catch (error) {
-            this.logger.error(`Database error during API key verification: ${error.message}`);
+            this.logger.error(`Database error during API key verification: ${error.message} `);
         }
 
         return { valid: false };
@@ -153,23 +141,23 @@ export class AttendanceExternalService {
             await this.prisma.$executeRaw`
                 UPDATE public.policies
                 SET settings = jsonb_set(
-                    settings,
-                    '{attendance,apiKeys}',
-                    (
-                        SELECT jsonb_agg(
-                            CASE 
-                                WHEN elem->>'key' = ${apiKey} 
-                                THEN jsonb_set(elem, '{lastUsedAt}', to_jsonb(${new Date().toISOString()}::text))
+    settings,
+    '{attendance,apiKeys}',
+    (
+        SELECT jsonb_agg(
+            CASE 
+                                WHEN elem ->> 'key' = ${apiKey} 
+                                THEN jsonb_set(elem, '{lastUsedAt}', to_jsonb(${new Date().toISOString()}:: text))
                                 ELSE elem 
                             END
-                        )
-                        FROM jsonb_array_elements(settings->'attendance'->'apiKeys') AS elem
-                    )
+        )
+                        FROM jsonb_array_elements(settings -> 'attendance' -> 'apiKeys') AS elem
+)
                 )
                 WHERE id = ${policyId}
-            `;
+`;
         } catch (e) {
-            this.logger.error(`Failed to update lastUsedAt for key: ${e.message}`);
+            this.logger.error(`Failed to update lastUsedAt for key: ${e.message} `);
         }
     }
 
@@ -183,24 +171,13 @@ export class AttendanceExternalService {
             company: { id: string };
             employee?: { id: string; name: string; employeeNo: number };
             apiKey: { name: string };
+            restrictedToPolicyId?: string | null;
         },
     ): Promise<AttendanceEvent & { employeeName: string; shiftName: string }> {
         const companyId = verification.company.id;
         const apiKeyName = verification.apiKey.name;
 
-        // Security Check: If it's an employee-level key, they can ONLY mark their own attendance
-        if (verification.type === 'EMPLOYEE' && verification.employee) {
-            if (dto.employeeNo !== undefined && dto.employeeNo !== verification.employee.employeeNo) {
-                throw new UnauthorizedException(
-                    `This API key is restricted to Employee #${verification.employee.employeeNo}. Cannot mark attendance for #${dto.employeeNo}.`,
-                );
-            }
-            // Use the verified employee ID directly for maximum security
-            // Assuming CreateEventDto can accept employeeId
-            (dto as any).employeeId = verification.employee.id;
-        }
-
-        // Resolve employee
+        // 1. Resolve employee
         let employeeId = (dto as any).employeeId;
         let employeeName = verification.employee?.name;
 
@@ -210,20 +187,49 @@ export class AttendanceExternalService {
                     companyId,
                     employeeNo: dto.employeeNo,
                 },
-                select: { id: true, nameWithInitials: true }
+                select: { id: true, nameWithInitials: true, policyId: true }
             });
 
             if (!employee) {
                 throw new NotFoundException(`Employee #${dto.employeeNo} not found in this company.`);
             }
+
+            // Security Check: If the API key is restricted to a specific policy, ensure employee has that policy
+            if (verification.restrictedToPolicyId && employee.policyId !== verification.restrictedToPolicyId) {
+                throw new UnauthorizedException(
+                    `This API key is restricted to employees assigned to a specific policy.Employee #${dto.employeeNo} is not covered.`,
+                );
+            }
+
             employeeId = employee.id;
             employeeName = employee.nameWithInitials;
-        } else if (!employeeName) {
+        } else {
             const employee = await this.prisma.employee.findUnique({
                 where: { id: employeeId },
-                select: { nameWithInitials: true }
+                select: { id: true, nameWithInitials: true, policyId: true }
             });
-            employeeName = employee?.nameWithInitials;
+
+            if (!employee) {
+                throw new NotFoundException(`Employee not found.`);
+            }
+
+            // Security Check
+            if (verification.restrictedToPolicyId && employee.policyId !== verification.restrictedToPolicyId) {
+                throw new UnauthorizedException(
+                    `This API key is restricted to employees assigned to a specific policy.`,
+                );
+            }
+
+            employeeName = employee.nameWithInitials;
+        }
+
+        // Security Check: If it's an employee-level key, they can ONLY mark their own attendance
+        if (verification.type === 'EMPLOYEE' && verification.employee) {
+            if (employeeId !== verification.employee.id) {
+                throw new UnauthorizedException(
+                    `This API key is restricted to its owner only.`,
+                );
+            }
         }
 
         const eventTime = new Date(dto.eventTime);
@@ -281,7 +287,7 @@ export class AttendanceExternalService {
 
         // Trigger processing
         this.processingService.processEmployeeDate(employeeId!, eventTime)
-            .catch(e => this.logger.error(`Processing error: ${e.message}`));
+            .catch(e => this.logger.error(`Processing error: ${e.message} `));
 
         return {
             ...event,
@@ -390,6 +396,7 @@ export class AttendanceExternalService {
             company: { id: string };
             employee?: { id: string; name: string; employeeNo: number };
             apiKey: { name: string };
+            restrictedToPolicyId?: string | null;
         },
     ) {
         const companyId = verification.company.id;
@@ -405,10 +412,10 @@ export class AttendanceExternalService {
         // 2. Bulk Resolve Employees
         const employees = await this.prisma.employee.findMany({
             where: { companyId, employeeNo: { in: uniqueEmployeeNos } },
-            select: { id: true, employeeNo: true }
+            select: { id: true, employeeNo: true, policyId: true }
         });
 
-        const empMap = new Map(employees.map(e => [e.employeeNo, e.id]));
+        const empMap = new Map(employees.map(e => [e.employeeNo, e]));
         const results: any[] = [];
         const validEvents: any[] = [];
         const processQueue = new Set<string>();
@@ -418,22 +425,34 @@ export class AttendanceExternalService {
         // 4. Process events
         for (const eventDto of sortedEvents) {
             let decision: { type: EventType; autoCheckoutAt?: Date; sessionId?: string | null } | undefined;
-            // Security Check
-            if (verification.type === 'EMPLOYEE' && verification.employee) {
-                if (eventDto.employeeNo !== undefined && eventDto.employeeNo !== verification.employee.employeeNo) {
-                    results.push({
-                        employeeNo: eventDto.employeeNo,
-                        status: 'failed',
-                        error: `This API key is restricted to Employee #${verification.employee.employeeNo}.`
-                    });
-                    continue;
-                }
-            }
+            const employee = empMap.get(eventDto.employeeNo!);
+            const employeeId = employee?.id;
 
-            const employeeId = empMap.get(eventDto.employeeNo!);
             if (!employeeId) {
                 results.push({ employeeNo: eventDto.employeeNo, status: 'failed', error: 'Employee not found' });
                 continue;
+            }
+
+            // Security Check: Policy scoping
+            if (verification.restrictedToPolicyId && employee.policyId !== verification.restrictedToPolicyId) {
+                results.push({
+                    employeeNo: eventDto.employeeNo,
+                    status: 'failed',
+                    error: 'Policy mismatch: API key not valid for this employee'
+                });
+                continue;
+            }
+
+            // Security Check: Personal key
+            if (verification.type === 'EMPLOYEE' && verification.employee) {
+                if (employeeId !== verification.employee.id) {
+                    results.push({
+                        employeeNo: eventDto.employeeNo,
+                        status: 'failed',
+                        error: `This API key is restricted to its owner only.`
+                    });
+                    continue;
+                }
             }
 
             const eventTime = new Date(eventDto.eventTime);
@@ -496,7 +515,7 @@ export class AttendanceExternalService {
             });
 
             const dateStr = eventTime.toISOString().split('T')[0];
-            processQueue.add(`${employeeId}:${dateStr}`);
+            processQueue.add(`${employeeId}:${dateStr} `);
         }
 
         // 5. Bulk Insert
@@ -508,7 +527,7 @@ export class AttendanceExternalService {
         processQueue.forEach(item => {
             const [empId, dateStr] = item.split(':');
             this.processingService.processEmployeeDate(empId, new Date(dateStr))
-                .catch(e => this.logger.error(`Bulk processing error: ${e.message}`));
+                .catch(e => this.logger.error(`Bulk processing error: ${e.message} `));
         });
 
         return {

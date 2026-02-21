@@ -1,13 +1,427 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
-
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model Company {
+  id                 String              @id @default(uuid())
+  name               String
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  employerNumber     String?
+  address            String?
+  startedDate        DateTime?
+  logo               String?
+  files              Json?               @default("[]")
+  attendanceEvents   AttendanceEvent[]
+  attendanceSessions AttendanceSession[]
+  departments        Department[]
+  employees          Employee[]
+  leaveRequests      LeaveRequest[]
+  payments           Payment[]
+  policies           Policy[]
+  salaries           Salary[]
+  salaryAdvances     SalaryAdvance[]
+  memberships        UserCompany[]
+
+  @@map("companies")
+}
+
+model User {
+  id               String         @id @default(uuid())
+  email            String         @unique
+  nameWithInitials String?
+  fullName         String?
+  address          String?
+  phone            String?
+  role             Role           @default(EMPLOYEE)
+  active           Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  employees        Employee[]
+  notifications    Notification[]
+  memberships      UserCompany[]
+
+  @@map("users")
+}
+
+model UserCompany {
+  id          String   @id @default(uuid())
+  userId      String
+  companyId   String
+  role        Role     @default(EMPLOYEE)
+  permissions Json?    @default("{}")
+  active      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, companyId])
+  @@map("user_companies")
+}
+
+model Department {
+  id          String       @id @default(uuid())
+  name        String
+  companyId   String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  headId      String?
+  description String?
+  parentId    String?
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  head        Employee?    @relation("DepartmentHead", fields: [headId], references: [id])
+  parent      Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children    Department[] @relation("DepartmentHierarchy")
+  employees   Employee[]   @relation("DepartmentMembers")
+
+  @@map("departments")
+}
+
+model Employee {
+  id                 String              @id @default(uuid())
+  employeeNo         Int
+  nic                String?
+  nameWithInitials   String
+  fullName           String
+  designation        String?
+  address            String?
+  phone              String?
+  email              String?             @unique
+  employmentType     EmploymentType      @default(PERMANENT)
+  joinedDate         DateTime            @default(now())
+  companyId          String
+  userId             String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  departmentId       String?
+  basicSalary        Float               @default(0.0)
+  canSelfEdit        Boolean             @default(true)
+  files              Json?               @default("[]")
+  gender             Gender              @default(MALE)
+  managerId          String?
+  photo              String?
+  remark             String?
+  resignedDate       DateTime?
+  status             String              @default("ACTIVE")
+  policyId           String?
+  attendanceEvents   AttendanceEvent[]
+  attendanceSessions AttendanceSession[]
+  headOfDepartments  Department[]        @relation("DepartmentHead")
+  details            EmployeeDetail?
+  company            Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department         Department?         @relation("DepartmentMembers", fields: [departmentId], references: [id])
+  manager            Employee?           @relation("EmployeeManager", fields: [managerId], references: [id])
+  reports            Employee[]          @relation("EmployeeManager")
+  policy             Policy?             @relation(fields: [policyId], references: [id])
+  user               User?               @relation(fields: [userId], references: [id])
+  leaveRequests      LeaveRequest[]
+  salaries           Salary[]
+  salaryAdvances     SalaryAdvance[]
+
+  @@unique([companyId, employeeNo])
+  @@index([companyId])
+  @@index([userId])
+  @@map("employees")
+}
+
+model EmployeeDetail {
+  id                    String        @id @default(uuid())
+  employeeId            String        @unique
+  bankName              String?
+  bankBranch            String?
+  accountNumber         String?
+  mothersName           String?
+  fathersName           String?
+  maritalStatus         MaritalStatus @default(SINGLE)
+  spouseName            String?
+  nationality           String?       @default("Sri Lankan")
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  employee              Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("employee_details")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  resourceId String?
+  userId     String?
+  ipAddress  String?
+  userAgent  String?
+  details    Json?
+  createdAt  DateTime @default(now())
+  companyId  String?
+  entity     String?
+
+  @@map("audit_logs")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Policy {
+  id          String     @id @default(uuid())
+  settings    Json       @default("{}")
+  companyId   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  description String?
+  isDefault   Boolean    @default(false)
+  name        String     @default("Default")
+  employees   Employee[]
+  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("policies")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  metadata  Json?            @default("{}")
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model LeaveRequest {
+  id             String           @id @default(uuid())
+  employeeId     String
+  companyId      String
+  leaveTypeId    String
+  leaveTypeName  String?
+  type           LeaveRequestType @default(FULL_DAY)
+  startDate      DateTime
+  endDate        DateTime
+  days           Float
+  minutes        Int?
+  leaveNumber    Int?
+  status         LeaveStatus      @default(PENDING)
+  reason         String?
+  managerId      String?
+  responseReason String?
+  documents      Json?            @default("[]")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  holidayId      String?
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee       Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  holiday        Holiday?         @relation(fields: [holidayId], references: [id])
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([leaveTypeId])
+  @@index([holidayId])
+  @@map("leave_requests")
+}
+
+model AttendanceEvent {
+  id             String             @id @default(uuid())
+  employeeId     String
+  companyId      String
+  eventTime      DateTime
+  eventType      EventType
+  source         EventSource
+  apiKeyName     String?
+  device         String?
+  location       String?
+  latitude       Float?
+  longitude      Float?
+  status         EventStatus        @default(ACTIVE)
+  sessionId      String?
+  manualOverride Boolean            @default(false)
+  remark         String?
+  metadata       Json?              @default("{}")
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee       Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  session        AttendanceSession? @relation(fields: [sessionId], references: [id])
+
+  @@index([employeeId, eventTime])
+  @@index([companyId, eventTime])
+  @@index([sessionId])
+  @@index([status])
+  @@map("attendance_events")
+}
+
+model AttendanceSession {
+  id                    String               @id @default(uuid())
+  employeeId            String
+  companyId             String
+  date                  DateTime             @db.Date
+  shiftId               String?
+  shiftName             String?
+  shiftStartTime        String?
+  shiftEndTime          String?
+  shiftBreakMinutes     Int?
+  checkInTime           DateTime?
+  checkOutTime          DateTime?
+  checkInLocation       String?
+  checkInLatitude       Float?
+  checkInLongitude      Float?
+  checkOutLocation      String?
+  checkOutLatitude      Float?
+  checkOutLongitude     Float?
+  totalMinutes          Int?
+  breakMinutes          Int?
+  workMinutes           Int?
+  overtimeMinutes       Int?
+  isLate                Boolean              @default(false)
+  isEarlyLeave          Boolean              @default(false)
+  isOnLeave             Boolean              @default(false)
+  isHalfDay             Boolean              @default(false)
+  hasShortLeave         Boolean              @default(false)
+  manuallyEdited        Boolean              @default(false)
+  autoCheckout          Boolean              @default(false)
+  inApprovalStatus      ApprovalStatus       @default(PENDING)
+  outApprovalStatus     ApprovalStatus       @default(PENDING)
+  approvedById          String?
+  approvedAt            DateTime?
+  remarks               String?
+  metadata              Json?                @default("{}")
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  workDayStatus         SessionWorkDayStatus @default(FULL)
+  payrollHolidayId      String?
+  workHolidayId         String?
+  additionalInOutCount  Int?                 @default(0)
+  isBreakOverrideActive Boolean              @default(false)
+  events                AttendanceEvent[]
+  company               Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee              Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payrollHoliday        Holiday?             @relation("PayrollHoliday", fields: [payrollHolidayId], references: [id])
+  workHoliday           Holiday?             @relation("WorkHoliday", fields: [workHolidayId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([companyId, date])
+  @@index([inApprovalStatus])
+  @@index([outApprovalStatus])
+  @@map("attendance_sessions")
+}
+
+model Calendar {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  isGlobal    Boolean   @default(false)
+  companyId   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  holidays    Holiday[]
+
+  @@index([companyId])
+  @@map("calendars")
+}
+
+model Holiday {
+  id              String              @id @default(uuid())
+  calendarId      String
+  date            DateTime            @db.Date
+  name            String
+  description     String?
+  isPublic        Boolean             @default(false)
+  isMercantile    Boolean             @default(false)
+  isBank          Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  payrollSessions AttendanceSession[] @relation("PayrollHoliday")
+  workSessions    AttendanceSession[] @relation("WorkHoliday")
+  calendar        Calendar            @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  leaveRequests   LeaveRequest[]
+
+  @@unique([calendarId, date])
+  @@index([date])
+  @@map("holidays")
+}
+
+model Salary {
+  id               String       @id @default(uuid())
+  employeeId       String
+  companyId        String
+  periodStartDate  DateTime
+  periodEndDate    DateTime
+  payDate          DateTime
+  basicSalary      Float        @default(0.0)
+  otAmount         Float        @default(0.0)
+  otBreakdown      Json?        @default("[]")
+  noPayAmount      Float        @default(0.0)
+  noPayBreakdown   Json?        @default("[]")
+  taxAmount        Float        @default(0.0)
+  components       Json?        @default("[]")
+  advanceDeduction Float        @default(0.0)
+  netSalary        Float        @default(0.0)
+  status           SalaryStatus @default(DRAFT)
+  remarks          String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  payments         Payment[]
+  company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee         Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, periodStartDate, periodEndDate])
+  @@index([companyId, periodStartDate, periodEndDate])
+  @@index([status])
+  @@map("salaries")
+}
+
+model SalaryAdvance {
+  id                String        @id @default(uuid())
+  employeeId        String
+  companyId         String
+  totalAmount       Float
+  date              DateTime      @default(now())
+  reason            String?
+  deductionSchedule Json?         @default("[]")
+  remainingAmount   Float
+  status            AdvanceStatus @default(PENDING)
+  remarks           String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  payments          Payment[]
+  company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee          Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([companyId])
+  @@index([status])
+  @@map("salary_advances")
+}
+
+model Payment {
+  id            String         @id @default(uuid())
+  companyId     String
+  salaryId      String?
+  advanceId     String?
+  amount        Float
+  date          DateTime       @default(now())
+  paymentMethod PaymentMethod  @default(CASH)
+  referenceNo   String?
+  remarks       String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  advance       SalaryAdvance? @relation(fields: [advanceId], references: [id])
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salary        Salary?        @relation(fields: [salaryId], references: [id])
+
+  @@index([companyId])
+  @@index([salaryId])
+  @@index([advanceId])
+  @@map("payments")
 }
 
 enum Role {
@@ -21,84 +435,6 @@ enum NotificationType {
   SUCCESS
   WARNING
   ERROR
-}
-
-model Company {
-  id        String   @id @default(uuid())
-  name      String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  employerNumber String?
-  address        String?
-  startedDate    DateTime?
-  logo           String?
-  files          Json?     @default("[]") // [{ key: string, name: string, url: string }]
-
-  // Relationships
-  memberships UserCompany[]
-  employees   Employee[]
-  departments Department[]
-  policies    Policy[]
-  leaveRequests LeaveRequest[]
-  attendanceEvents AttendanceEvent[]
-  attendanceSessions AttendanceSession[]
-  
-  salaries           Salary[]
-  salaryAdvances     SalaryAdvance[]
-  payments           Payment[]
-  
-
-  @@map("companies")
-}
-
-model User {
-  id        String   @id @default(uuid()) // Maps to Supabase Auth UID
-  email     String   @unique
-  
-  nameWithInitials String?
-  fullName         String?
-  address          String?
-  phone            String?
-
-  role      Role     @default(EMPLOYEE) // Global role
-  active    Boolean  @default(false)
-
-  
-  // Relationships
-  memberships   UserCompany[]
-  notifications Notification[]
-  employees     Employee[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("users")
-}
-
-model UserCompany {
-  id        String   @id @default(uuid())
-  userId    String
-  companyId String
-  
-  // Specific role within this company
-  role      Role     @default(EMPLOYEE)
-  
-  // Granular permissions for this company
-  // Example: { "can_edit_payroll": true, "can_view_audit": false }
-  permissions Json?    @default("{}")
-  
-  active    Boolean    @default(false) // Whether user has active portal access to this company
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user    User    @relation(fields: [userId], references: [id])
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, companyId])
-  @@map("user_companies")
 }
 
 enum EmploymentType {
@@ -119,181 +455,6 @@ enum MaritalStatus {
   MARRIED
 }
 
-model Department {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  
-  companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  // Hierarchy
-  parentId    String?
-  parent      Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
-  children    Department[] @relation("DepartmentHierarchy")
-
-  // Department Head
-  headId    String?
-  head      Employee? @relation("DepartmentHead", fields: [headId], references: [id])
-  
-  // Department Members
-  employees Employee[] @relation("DepartmentMembers")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("departments")
-}
-
-model Employee {
-  id         String   @id @default(uuid())
-  employeeNo Int
-  nic        String?
-  nameWithInitials String
-  fullName   String
-  designation String?
-  address    String?
-  phone      String?
-  email      String?  @unique
-  
-  basicSalary Float   @default(0.0)
-  status      String  @default("ACTIVE")
-  gender      Gender  @default(MALE)
-  employmentType EmploymentType @default(PERMANENT)
-
-  joinedDate   DateTime @default(now())
-  resignedDate DateTime?
-  remark       String?   @db.Text
-  
-  details      EmployeeDetail?
-
-  // Relationships
-  companyId  String
-  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  userId     String?
-  user       User?   @relation(fields: [userId], references: [id])
-
-  // Manager Self-Relation
-  managerId  String?
-  manager    Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
-  reports    Employee[] @relation("EmployeeManager")
-  
-  canSelfEdit Boolean   @default(true)
-  photo       String?
-  files       Json?     @default("[]")
-
-  // Department Relations
-  departmentId String?
-  department   Department? @relation("DepartmentMembers", fields: [departmentId], references: [id])
-  
-  headOfDepartments Department[] @relation("DepartmentHead")
-
-  policyId   String?
-  policy     Policy?  @relation(fields: [policyId], references: [id])
-
-  leaveRequests LeaveRequest[]
-  attendanceEvents AttendanceEvent[]
-  attendanceSessions AttendanceSession[]
-
-  salaries           Salary[]
-  salaryAdvances     SalaryAdvance[]
-
-
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@unique([companyId, employeeNo])
-  @@index([companyId])
-  @@index([userId])
-  @@map("employees")
-}
-
-model EmployeeDetail {
-  id                    String        @id @default(uuid())
-  employeeId            String        @unique
-  employee              Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-
-  // Bank Details
-  bankName              String?
-  bankBranch            String?
-  accountNumber         String?
-
-  // Personal & Family Details
-  mothersName           String?
-  fathersName           String?
-  maritalStatus         MaritalStatus @default(SINGLE)
-  spouseName            String?
-  nationality           String?       @default("Sri Lankan")
-  
-  // Emergency Contact
-  emergencyContactName  String?
-  emergencyContactPhone String?
-
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-
-  @@map("employee_details")
-}
-
-model AuditLog {
-  id         String   @id @default(uuid())
-  
-  companyId  String?
-  action     String   // e.g., "CREATE_EMPLOYEE", "UPDATE_SALARY"
-  entity     String?   // e.g., "Employee", "Payroll"
-  resourceId String?  // ID of affected resource
-  
-  userId     String?  // Who performed the action
-  ipAddress  String?
-  userAgent  String?
-
-  details    Json?    // Store old/new values
-
-  createdAt  DateTime @default(now())
-
-  @@map("audit_logs")
-}
-
-model Policy {
-  id        String   @id @default(uuid())
-  
-  name        String   @default("Default")
-  description String?
-  isDefault   Boolean  @default(false)
-
-  // The JSON structure for configuration
-  // stores { shifts: [], attendance: {}, payroll: {} }
-  settings  Json     @default("{}")
-
-  // Relationships
-  companyId String
-  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  employees Employee[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([companyId])
-  @@map("policies")
-}
-
-model Notification {
-  id        String           @id @default(uuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id])
-  title     String
-  message   String
-  type      NotificationType @default(INFO)
-  isRead    Boolean          @default(false)
-  metadata  Json?            @default("{}")
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  @@map("notifications")
-}
-
 enum LeaveStatus {
   PENDING
   APPROVED
@@ -308,61 +469,6 @@ enum LeaveRequestType {
   SHORT_LEAVE
 }
 
-model LeaveRequest {
-  id        String      @id @default(uuid())
-  
-  employeeId String
-  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
-  companyId  String
-  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  // Leave Type (from Policy JSON)
-  leaveTypeId   String    
-  leaveTypeName String?
-
-  // Request Type
-  type LeaveRequestType @default(FULL_DAY)
-
-  // Date Range (for Full/Half: date only, for Short Leave: date + time)
-  startDate DateTime 
-  endDate   DateTime 
-
-  // Calculation Fields (for easy summing and validation)
-  days    Float  // Deduction amount (e.g., 0.5 for half day, 1.0 for full day)
-  minutes Int?   // Duration in minutes for short leaves
-
-  // Frequency Tracking
-  leaveNumber Int? // Tracks which number leave this is in the current period (1st, 2nd, 3rd, etc.)
-  
-  // Status & Response
-  status         LeaveStatus @default(PENDING)
-  reason         String?     @db.Text
-  managerId      String?     
-  responseReason String?     @db.Text // For approval/rejection notes
-
-  // Attachments
-  documents Json? @default("[]") // [{ key: string, name: string, url: string }]
-
-  // Linked Holiday (for substitute/earned leaves)
-  holidayId String?
-  holiday   Holiday? @relation(fields: [holidayId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@index([companyId])
-  @@index([employeeId])
-  @@index([status])
-  @@index([leaveTypeId])
-  @@index([holidayId])
-  @@map("leave_requests")
-}
-
-// ============================================
-// ATTENDANCE SYSTEM
-// ============================================
-
 enum EventType {
   IN
   OUT
@@ -375,52 +481,9 @@ enum EventSource {
 }
 
 enum EventStatus {
-  ACTIVE      // Used in calculations
-  REJECTED    // Rejected by manager/HR
-  IGNORED     // Ignored by processing logic (duplicate, invalid)
-}
-
-model AttendanceEvent {
-  id               String   @id @default(uuid())
-  employeeId       String
-  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  companyId        String
-  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  // Core Event Data (IMMUTABLE)
-  eventTime        DateTime // Raw timestamp from source
-  eventType        EventType // IN, OUT
-  
-  // Source Tracking
-  source           EventSource // WEB, API_KEY, MANUAL
-  apiKeyName       String?  // Snapshot of key name for API_KEY source
-  
-  // Device & Location (Optional)
-  device           String?  // Device name/identifier
-  location         String?  // Address/description
-  latitude         Float?
-  longitude        Float?
-  
-  // Processing Status
-  status           EventStatus @default(ACTIVE) // ACTIVE, REJECTED, IGNORED
-  
-  // Session Linkage
-  sessionId        String?
-  session          AttendanceSession? @relation(fields: [sessionId], references: [id])
-  
-  // Metadata
-  manualOverride   Boolean  @default(false)
-  remark           String?  @db.Text
-  metadata         Json?    @default("{}")
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
-  @@index([employeeId, eventTime])
-  @@index([companyId, eventTime])
-  @@index([sessionId])
-  @@index([status])
-  @@map("attendance_events")
+  ACTIVE
+  REJECTED
+  IGNORED
 }
 
 enum ApprovalStatus {
@@ -435,147 +498,6 @@ enum SessionWorkDayStatus {
   HALF_LAST
   OFF
 }
-
-model AttendanceSession {
-  id               String   @id @default(uuid())
-  employeeId       String
-  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  companyId        String
-  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  // Session Identification
-  date             DateTime @db.Date // Session date (local date)
-  
-  // Shift Information (Snapshot at processing time)
-  shiftId          String?
-  shiftName        String?
-  shiftStartTime   String?  // "08:00"
-  shiftEndTime     String?  // "17:00"
-  shiftBreakMinutes Int?
-  
-  // Calculated Times (from events or manual override)
-  checkInTime      DateTime?
-  checkOutTime     DateTime?
-  
-  // Location Snapshots
-  checkInLocation  String?
-  checkInLatitude  Float?
-  checkInLongitude Float?
-  checkOutLocation String?
-  checkOutLatitude Float?
-  checkOutLongitude Float?
-  
-  // Calculations
-  totalMinutes     Int?
-  breakMinutes     Int?
-  workMinutes      Int?     // totalMinutes - breakMinutes
-  overtimeMinutes  Int?
-  
-  // Status Flags (Multiple can be true)
-  // Note: Session exists = employee was present, so no isPresent flag needed
-  isLate           Boolean  @default(false)
-  isEarlyLeave     Boolean  @default(false)
-  isOnLeave        Boolean  @default(false)  // Full day leave
-  isHalfDay        Boolean  @default(false)  // Half day leave
-  hasShortLeave    Boolean  @default(false)  // Short leave deducted
-  
-  // Additional Flags
-  manuallyEdited   Boolean  @default(false)
-  autoCheckout     Boolean  @default(false)
-  
-  // Additional metadata for UI
-  additionalInOutCount Int? @default(0)
-  
-  // Break override functionality
-  isBreakOverrideActive Boolean @default(false)
-  
-  // Work Day Status (Calculated from Policy)
-  workDayStatus    SessionWorkDayStatus @default(FULL)
-  
-  // Approval
-  inApprovalStatus  ApprovalStatus @default(PENDING)
-  outApprovalStatus ApprovalStatus @default(PENDING)
-  approvedById      String?
-  approvedAt        DateTime?
-  
-  // Notes
-  remarks          String?  @db.Text
-  metadata         Json?    @default("{}")
-  
-  // Linked Holidays
-  workHolidayId String?
-  workHoliday   Holiday? @relation("WorkHoliday", fields: [workHolidayId], references: [id])
-
-  payrollHolidayId String?
-  payrollHoliday   Holiday? @relation("PayrollHoliday", fields: [payrollHolidayId], references: [id])
-
-  // Relations
-  events           AttendanceEvent[]
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
-  @@unique([employeeId, date])
-  @@index([companyId, date])
-  @@index([inApprovalStatus])
-  @@index([outApprovalStatus])
-  @@map("attendance_sessions")
-}
-
-// ============================================
-// CALENDARS & HOLIDAYS
-// ============================================
-
-model Calendar {
-  id          String    @id @default(uuid())
-  name        String
-  description String?
-  isGlobal    Boolean   @default(false)
-  
-  // Customization
-  companyId   String?
-  
-  // Relations
-  holidays    Holiday[]
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([companyId])
-  @@map("calendars")
-}
-
-model Holiday {
-  id           String      @id @default(uuid())
-  calendarId   String
-  calendar     Calendar    @relation(fields: [calendarId], references: [id], onDelete: Cascade)
-  
-  date         DateTime    @db.Date
-  name         String
-  description  String?
-  
-  // Boolean flags for multi-category support
-  isPublic     Boolean     @default(false)
-  isMercantile Boolean     @default(false)
-  isBank       Boolean     @default(false)
-
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  leaveRequests LeaveRequest[]
-  
-  // Reverse relations for AttendanceSession
-  workSessions    AttendanceSession[] @relation("WorkHoliday")
-  payrollSessions AttendanceSession[] @relation("PayrollHoliday")
-
-  @@unique([calendarId, date])
-  @@index([date])
-  @@map("holidays")
-}
-
-// ============================================
-// SALARY & PAYROLL SYSTEM
-// ============================================
 
 enum SalaryStatus {
   DRAFT
@@ -596,98 +518,4 @@ enum PaymentMethod {
   BANK_TRANSFER
   CHEQUE
   OTHER
-}
-
-model Salary {
-  id               String   @id @default(uuid())
-  employeeId       String
-  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  companyId        String
-  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  periodStartDate  DateTime
-  periodEndDate    DateTime
-  payDate          DateTime
-
-  basicSalary      Float    @default(0.0)
-  otAmount         Float    @default(0.0)
-  otBreakdown      Json?    @default("[]") // [{ type: string, hours: number, amount: number }]
-  
-  noPayAmount      Float    @default(0.0)
-  noPayBreakdown   Json?    @default("[]") // [{ type: string, count: number, amount: number }]
-  
-  taxAmount        Float    @default(0.0)
-  
-  components       Json?    @default("[]") // [{ id, name, category, type, value, amount }]
-  
-  advanceDeduction Float    @default(0.0)
-  netSalary        Float    @default(0.0) // Final payable amount
-
-  status           SalaryStatus @default(DRAFT)
-  remarks          String?      @db.Text
-
-  payments         Payment[]
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@unique([employeeId, periodStartDate, periodEndDate])
-  @@index([companyId, periodStartDate, periodEndDate])
-  @@index([status])
-  @@map("salaries")
-}
-
-model SalaryAdvance {
-  id               String   @id @default(uuid())
-  employeeId       String
-  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  companyId        String
-  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  totalAmount      Float
-  date             DateTime @default(now())
-  reason           String?  @db.Text
-  
-  deductionSchedule Json?    @default("[]") // [{ periodStartDate, periodEndDate, amount, isDeducted }]
-  remainingAmount   Float
-
-  status           AdvanceStatus @default(PENDING)
-  remarks          String?       @db.Text
-
-  payments         Payment[]
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@index([employeeId])
-  @@index([companyId])
-  @@index([status])
-  @@map("salary_advances")
-}
-
-model Payment {
-  id               String   @id @default(uuid())
-  companyId        String
-  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  salaryId         String?
-  salary           Salary?  @relation(fields: [salaryId], references: [id])
-  
-  advanceId        String?
-  advance          SalaryAdvance? @relation(fields: [advanceId], references: [id])
-
-  amount           Float
-  date             DateTime @default(now())
-  paymentMethod    PaymentMethod @default(CASH)
-  referenceNo      String?
-  
-  remarks          String?  @db.Text
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@index([companyId])
-  @@index([salaryId])
-  @@index([advanceId])
-  @@map("payments")
 }
