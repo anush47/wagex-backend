@@ -82,11 +82,16 @@ export class EmployeesService {
       search,
       sortBy = 'employeeNo',
       sortOrder = 'asc',
+      status,
     } = queryDto || {};
     const skip = (page - 1) * limit;
 
     // Build where clause
     const where: any = {};
+
+    if (status && status !== 'ALL') {
+      where.status = status;
+    }
 
     if (companyId) {
       // If specific company requested, filter by it

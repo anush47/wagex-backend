@@ -4,7 +4,7 @@ import { PoliciesService } from '../../policies/policies.service';
 import { AttendanceProcessingService } from '../../attendance/services/attendance-processing.service';
 import { GenerateSalaryDto } from '../dto/salary.dto';
 import { PayCycleFrequency } from '../../policies/dto/payroll-settings-policy.dto';
-import { PayrollComponentType } from '../../policies/dto/salary-components-policy.dto';
+import { PayrollComponentType, PayrollComponentSystemType } from '../../policies/dto/salary-components-policy.dto';
 import { SalaryStatus } from '@prisma/client';
 import { merge } from 'lodash';
 
