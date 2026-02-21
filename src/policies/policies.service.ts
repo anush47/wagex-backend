@@ -13,56 +13,22 @@ export class PoliciesService {
     constructor(private readonly prisma: PrismaService) { }
 
     async create(createPolicyDto: CreatePolicyDto): Promise<Policy> {
-        const { companyId, employeeId, settings } = createPolicyDto;
+        const { companyId, name, description, isDefault, settings } = createPolicyDto;
 
-        // Safety check: Needs either company or employee context
-        if (!companyId && !employeeId) {
-            throw new Error('Policy must be attached to either a Company or an Employee');
-        }
-
-        /**
-         * SCENARIO 1: Employee Override Policy
-         * If employeeId is present, we are creating an override.
-         * We MUST NOT save 'companyId' to the DB in this record, because 'companyId' in the Policy table
-         * implies "This is the Default Policy for Company X", and that is unique.
-         * The 'companyId' passed in the DTO is purely for Permission Guard validation.
-         */
-        if (employeeId) {
-            // If settings are empty, we should remove the override record entirely
-            const isEmpty = !settings || Object.keys(settings).length === 0;
-
-            if (isEmpty) {
-                // Return null or success if record deleted/not found
-                try {
-                    await this.prisma.policy.delete({ where: { employeeId } });
-                } catch (e) {
-                    // Ignore if already doesn't exist
-                }
-                return null as any;
-            }
-
-            // Check if override already exists, if so, update it (Upsert logic)
-            return this.prisma.policy.upsert({
-                where: { employeeId },
-                update: { settings: settings as any },
-                create: {
-                    employeeId,
-                    settings: settings as any,
-                    // Do NOT set companyId here
-                }
+        // If this is set as default, we need to unset any existing default for this company
+        if (isDefault) {
+            await this.prisma.policy.updateMany({
+                where: { companyId, isDefault: true },
+                data: { isDefault: false }
             });
         }
 
-        /**
-         * SCENARIO 2: Company Default Policy
-         * If no employeeId, we are strictly defining the Company Default.
-         * We use upsert here too, so "Create" acts as "Create or Update".
-         */
-        return this.prisma.policy.upsert({
-            where: { companyId }, // Unique constraint
-            update: { settings: settings as any },
-            create: {
+        return this.prisma.policy.create({
+            data: {
                 companyId,
+                name,
+                description,
+                isDefault: !!isDefault,
                 settings: settings as any,
             }
         });
@@ -79,118 +45,163 @@ export class PoliciesService {
     }
 
     async findByCompany(companyId: string) {
-        return this.prisma.policy.findUnique({ where: { companyId } });
+        let policies = await this.prisma.policy.findMany({
+            where: { companyId },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        if (policies.length === 0) {
+            // Create initial default policy
+            const defaultPolicy = await this.create({
+                companyId,
+                name: 'Company Default',
+                isDefault: true,
+                settings: {} as any
+            });
+            return [defaultPolicy];
+        }
+
+        return policies;
     }
 
-    async findByEmployee(employeeId: string) {
-        return this.prisma.policy.findUnique({ where: { employeeId } });
+    async getDefaultPolicy(companyId: string) {
+        const policy = await this.prisma.policy.findFirst({
+            where: { companyId, isDefault: true }
+        });
+
+        if (!policy) {
+            // Ensure at least one exists and is default
+            const existingAny = await this.prisma.policy.findFirst({
+                where: { companyId }
+            });
+
+            if (existingAny) {
+                // Mark the first one as default if none is default
+                return this.prisma.policy.update({
+                    where: { id: existingAny.id },
+                    data: { isDefault: true }
+                });
+            }
+
+            // Create new default
+            return this.create({
+                companyId,
+                name: 'Company Default',
+                isDefault: true,
+                settings: {} as any
+            });
+        }
+
+        return policy;
     }
 
     async update(id: string, updatePolicyDto: UpdatePolicyDto) {
+        const { isDefault, companyId } = updatePolicyDto;
+
+        if (isDefault && companyId) {
+            await this.prisma.policy.updateMany({
+                where: { companyId, isDefault: true, id: { not: id } },
+                data: { isDefault: false }
+            });
+        }
+
         return this.prisma.policy.update({
             where: { id },
             data: {
+                name: updatePolicyDto.name,
+                description: updatePolicyDto.description,
+                isDefault: updatePolicyDto.isDefault,
                 settings: updatePolicyDto.settings as any,
             },
         });
     }
 
     async remove(id: string) {
+        const policy = await this.prisma.policy.findUnique({ where: { id } });
+        if (!policy) throw new NotFoundException(`Policy ${id} not found`);
+
+        if (policy.isDefault) {
+            // Check if there are other policies that could become default? 
+            // Better to prevent deletion of the last default or require a replacement.
+            const count = await this.prisma.policy.count({ where: { companyId: policy.companyId } });
+            if (count > 1) {
+                // Not ideal, but we let it happen or prompt user in frontend to set another as default.
+            }
+        }
+
         return this.prisma.policy.delete({ where: { id } });
     }
 
     /**
-     * The Core Logic: Calculates the effective policy for an employee
-     * by merging Company Defaults with Employee Overrides.
+     * Resolves the effective policy for an employee.
+     * Logic: Default Company Policy <- (Merged with) Assigned Policy Template.
      */
     async getEffectivePolicy(employeeId: string): Promise<PolicySettingsDto> {
-        // 1. Fetch Employee and their Company
         const employee = await this.prisma.employee.findUnique({
             where: { id: employeeId },
             include: {
-                policy: true,  // Employee Override
-                company: {
-                    include: {
-                        policy: true // Company Default
-                    }
-                }
+                policy: true, // Assigned template
+                company: true
             }
         });
 
         if (!employee) throw new NotFoundException(`Employee ${employeeId} not found`);
 
-        // 2. Extract Policies
-        const companyPolicy = (employee.company?.policy?.settings as unknown as PolicySettingsDto) || {};
-        const employeeOverride = (employee.policy?.settings as unknown as PolicySettingsDto) || {};
+        // 1. Get Company Default
+        const defaultPolicy = await this.getDefaultPolicy(employee.companyId);
+        const companySettings = (defaultPolicy?.settings as unknown as PolicySettingsDto) || {};
 
-        // 3. Deep Merge: Company Defaults <- Employee Overrides
-        // Using lodash.merge for deep merging (arrays are concatenated or replaced depending on strategy, here we assume replacement for arrays if needed, but lodash merges objects deeply)
-        // For shifts array, usually we want the employee's shifts to replace the company's if defined, or append?
-        // In this "Pure JSON Setup", if an employee has 'shifts' defined, it should probably REPLACE the company list entirely to avoid confusion.
-        // Lodash merge merges properties.
+        // 2. Get Assigned Template
+        const assignedSettings = (employee.policy?.settings as unknown as PolicySettingsDto) || {};
 
-        const effectivePolicy = merge({}, companyPolicy, employeeOverride);
+        // 3. Merge: Default <- Assigned
+        const effectivePolicy = merge({}, companySettings, assignedSettings);
 
-        // Special handling: If employee overrides 'shifts.list', we want to REPLACE the entire list,
-        // not merge individual items by index (which lodash.merge does for arrays).
-        if (employeeOverride.shifts?.list) {
-            if (!effectivePolicy.shifts) effectivePolicy.shifts = {} as any;
-            if (effectivePolicy.shifts) {
-                effectivePolicy.shifts.list = employeeOverride.shifts.list;
-            }
+        // Special handling for shifts.list (replace rather than merge by index)
+        if (assignedSettings.shifts?.list) {
+            (effectivePolicy as any).shifts = {
+                ...(effectivePolicy.shifts || {}),
+                list: assignedSettings.shifts.list
+            };
         }
 
         return effectivePolicy;
     }
 
     /**
-     * Enhanced version that returns metadata about what was overridden.
+     * Detail view of effective policy resolution
      */
     async getEffectivePolicyDetail(employeeId: string) {
         const employee = await this.prisma.employee.findUnique({
             where: { id: employeeId },
             include: {
-                policy: true, // Employee Override
-                company: {
-                    include: {
-                        policy: true // Company Default
-                    }
-                }
+                policy: true,
+                company: true
             }
         });
 
         if (!employee) throw new NotFoundException(`Employee ${employeeId} not found`);
 
-        const companyPolicy = (employee.company?.policy?.settings as unknown as PolicySettingsDto) || {};
-        const employeeOverride = (employee.policy?.settings as unknown as PolicySettingsDto) || {};
+        const defaultPolicy = await this.getDefaultPolicy(employee.companyId);
+        const companySettings = (defaultPolicy?.settings as unknown as PolicySettingsDto) || {};
+        const assignedSettings = (employee.policy?.settings as unknown as PolicySettingsDto) || {};
 
-        // Use the existing logic to get merged result
-        const effectivePolicy = await this.getEffectivePolicy(employeeId);
-
-        // Calculate "Diff" / Metadata
-        // We check which keys exist in the employeeOverride object.
-        const overriddenFields = Object.keys(employeeOverride);
+        const effective = await this.getEffectivePolicy(employeeId);
 
         return {
-            effective: effectivePolicy,
+            effective,
             source: {
-                isOverridden: overriddenFields.length > 0,
-                overriddenFields,
-                companyPolicyId: employee.company?.policy?.id,
-                employeePolicyId: employee.policy?.id
+                hasAssignedPolicy: !!employee.policyId,
+                assignedPolicyName: employee.policy?.name,
+                defaultPolicyId: defaultPolicy?.id,
+                assignedPolicyId: employee.policyId
             },
             employee: {
-                id: employee.id
+                id: employee.id,
+                name: employee.fullName
             },
-            // Return raw objects too for full transparency if needed
-            companyPolicy,
-            employeeOverride
+            companyDefault: companySettings,
+            assignedTemplate: assignedSettings
         };
-    }
-
-    async removeByEmployee(employeeId: string) {
-        const policy = await this.prisma.policy.findUnique({ where: { employeeId } });
-        if (!policy) throw new NotFoundException("No override policy found for this employee");
-        return this.remove(policy.id);
     }
 }

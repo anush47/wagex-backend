@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import { SessionGroupingService } from './session-grouping.service';
 import { AttendanceEvent } from '@prisma/client';
 
@@ -28,6 +27,7 @@ describe('SessionGroupingService', () => {
         latitude: 1.0,
         longitude: 1.0,
         apiKeyName: 'test',
+        sessionId: null,
         manualOverride: false,
         remark: '',
         metadata: {}
@@ -47,6 +47,7 @@ describe('SessionGroupingService', () => {
         latitude: 1.0,
         longitude: 1.0,
         apiKeyName: 'test',
+        sessionId: null,
         manualOverride: false,
         remark: '',
         metadata: {}
@@ -66,6 +67,7 @@ describe('SessionGroupingService', () => {
         latitude: 1.0,
         longitude: 1.0,
         apiKeyName: 'test',
+        sessionId: null,
         manualOverride: false,
         remark: '',
         metadata: {}
@@ -85,6 +87,7 @@ describe('SessionGroupingService', () => {
         latitude: 1.0,
         longitude: 1.0,
         apiKeyName: 'test',
+        sessionId: null,
         manualOverride: false,
         remark: '',
         metadata: {}
@@ -117,6 +120,7 @@ describe('SessionGroupingService', () => {
         latitude: 1.0,
         longitude: 1.0,
         apiKeyName: 'test',
+        sessionId: null,
         manualOverride: false,
         remark: '',
         metadata: {}
@@ -136,6 +140,7 @@ describe('SessionGroupingService', () => {
         latitude: 1.0,
         longitude: 1.0,
         apiKeyName: 'test',
+        sessionId: null,
         manualOverride: false,
         remark: '',
         metadata: {}
@@ -155,6 +160,7 @@ describe('SessionGroupingService', () => {
         latitude: 1.0,
         longitude: 1.0,
         apiKeyName: 'test',
+        sessionId: null,
         manualOverride: false,
         remark: '',
         metadata: {}
@@ -174,6 +180,7 @@ describe('SessionGroupingService', () => {
         latitude: 1.0,
         longitude: 1.0,
         apiKeyName: 'test',
+        sessionId: null,
         manualOverride: false,
         remark: '',
         metadata: {}
@@ -204,6 +211,7 @@ describe('SessionGroupingService', () => {
         latitude: 1.0,
         longitude: 1.0,
         apiKeyName: 'test',
+        sessionId: null,
         manualOverride: false,
         remark: '',
         metadata: {}
@@ -223,6 +231,7 @@ describe('SessionGroupingService', () => {
         latitude: 1.0,
         longitude: 1.0,
         apiKeyName: 'test',
+        sessionId: null,
         manualOverride: false,
         remark: '',
         metadata: {}

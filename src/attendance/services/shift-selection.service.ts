@@ -28,10 +28,10 @@ export class ShiftSelectionService {
         eventTime?: Date,
     ): Promise<ShiftDto | null> {
         try {
-            // 1. Get employee's company
+            // 1. Get employee data (including policyId)
             const employee = await this.prisma.employee.findUnique({
                 where: { id: employeeId },
-                select: { companyId: true },
+                include: { policy: true },
             });
 
             if (!employee) {
@@ -39,34 +39,32 @@ export class ShiftSelectionService {
                 return null;
             }
 
-            // 2. Get company policy
-            const policy = await this.prisma.policy.findUnique({
-                where: { companyId: employee.companyId },
+            // 2. Check for assigned policy template override
+            if (employee.policy?.settings) {
+                const empSettings = employee.policy.settings as any;
+                if (empSettings.shifts) {
+                    return this.selectShiftByPolicy(empSettings.shifts, eventTime);
+                }
+            }
+
+            // 3. Fallback to company default policy
+            const defaultPolicy = await this.prisma.policy.findFirst({
+                where: { companyId: employee.companyId, isDefault: true },
             });
 
-            if (!policy || !policy.settings) {
-                this.logger.warn(`No policy found for company: ${employee.companyId}`);
+            if (!defaultPolicy || !defaultPolicy.settings) {
+                this.logger.warn(`No default policy found for company: ${employee.companyId}`);
                 return null;
             }
 
-            const settings = policy.settings as any;
+            const settings = defaultPolicy.settings as any;
             const shiftsConfig = settings.shifts;
 
             if (!shiftsConfig) {
                 return null;
             }
 
-            // 3. Check for employee-specific policy override
-            const employeePolicy = await this.prisma.policy.findUnique({
-                where: { employeeId },
-            });
-
-            if (employeePolicy && employeePolicy.settings) {
-                const empSettings = employeePolicy.settings as any;
-                if (empSettings.shifts) {
-                    return this.selectShiftByPolicy(empSettings.shifts, eventTime);
-                }
-            }
+            return this.selectShiftByPolicy(shiftsConfig, eventTime);
 
             // 4. Apply company-wide shift selection
             return this.selectShiftByPolicy(shiftsConfig, eventTime);

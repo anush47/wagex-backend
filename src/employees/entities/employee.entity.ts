@@ -103,6 +103,9 @@ export class Employee implements PrismaEmployee {
     emergencyContactPhone: string | null;
 
 
+    @ApiProperty({ example: 'policy-uuid', description: 'Assigned Policy ID', nullable: true })
+    policyId: string | null;
+
     @ApiProperty()
     createdAt: Date;
 

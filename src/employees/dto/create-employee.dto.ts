@@ -160,4 +160,9 @@ export class CreateEmployeeDto {
     @IsOptional()
     @IsString()
     emergencyContactPhone?: string;
+
+    @ApiProperty({ example: 'policy-uuid', description: 'Assigned Policy ID', required: false })
+    @IsOptional()
+    @IsUUID()
+    policyId?: string;
 }

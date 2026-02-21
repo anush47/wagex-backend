@@ -10,13 +10,22 @@ export class CreatePolicyDto {
     @Type(() => PolicySettingsDto)
     settings: PolicySettingsDto;
 
-    @ApiPropertyOptional({ example: 'uuid', description: 'Company ID (if creating default policy)' })
-    @IsOptional()
-    @IsUUID()
-    companyId?: string;
+    @ApiProperty({ example: 'Night Shift', description: 'Policy Name' })
+    @IsString()
+    @IsNotEmpty()
+    name: string;
 
-    @ApiPropertyOptional({ example: 'uuid', description: 'Employee ID (if creating override policy)' })
+    @ApiPropertyOptional({ description: 'Policy Description' })
     @IsOptional()
+    @IsString()
+    description?: string;
+
+    @ApiPropertyOptional({ default: false, description: 'Mark as company default' })
+    @IsOptional()
+    isDefault?: boolean;
+
+    @ApiProperty({ example: 'uuid', description: 'Company ID' })
+    @IsNotEmpty()
     @IsUUID()
-    employeeId?: string;
+    companyId: string;
 }

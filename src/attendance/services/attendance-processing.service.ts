@@ -120,27 +120,12 @@ export class AttendanceProcessingService {
             throw new Error('Employee not found');
         }
 
-        // 6. Determine Approval Status based on Policy
-        const effectivePolicyData = await this.prisma.employee.findUnique({
-            where: { id: employeeId },
-            include: {
-                policy: true, // Employee Override
-                company: { include: { policy: true } } // Company Default
-            }
-        });
+        // Determine Approval Status based on Policy
+        const detail = await this.policiesService.getEffectivePolicyDetail(employeeId);
+        const policySrc = detail.source.hasAssignedPolicy ? 'ASSIGNED_TEMPLATE' : 'COMPANY_DEFAULT';
+        this.logger.log(`[ATTENDANCE_LOGIC] Policy Source for ${employeeId}: ${policySrc} (${detail.source.assignedPolicyName || 'Default'})`);
 
-        const policySrc = effectivePolicyData?.policy ? 'EMPLOYEE_OVERRIDE' : 'COMPANY_DEFAULT';
-        this.logger.log(`[ATTENDANCE_LOGIC] Policy Source for ${employeeId}: ${policySrc}`);
-
-        const policy = await this.prisma.employee.findUnique({
-            where: { id: employeeId },
-            include: {
-                policy: true, // Employee Override
-                company: { include: { policy: true } } // Company Default
-            }
-        });
-
-        const effectivePolicy = await this.policiesService.getEffectivePolicy(employeeId);
+        const effectivePolicy = detail.effective;
         const approvalConfig = effectivePolicy?.attendance?.approvalPolicy;
 
         const firstInEvent = sessionGroup.events.find((e) => e.eventType === 'IN');
