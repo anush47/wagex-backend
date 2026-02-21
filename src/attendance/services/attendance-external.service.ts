@@ -39,19 +39,36 @@ export class AttendanceExternalService {
         }
 
         try {
-            // Match the GIN index expression exactly: (settings -> 'attendance' -> 'apiKeys')
+            // Single optimized query — GIN index hit + lateral employee subquery in one round-trip.
+            // Uses the exact expression the GIN index was built on:
+            //   (settings -> 'attendance' -> 'apiKeys')
             const queryValue = JSON.stringify([{ key: apiKey }]);
             const results = await this.prisma.$queryRaw<any[]>`
-SELECT
-p.id as "policyId",
-    p.settings,
-    p."companyId",
-        p."isDefault",
-            c.name as "companyName",
-            c."employerNumber"
+                SELECT
+                    p.id                  AS "policyId",
+                    p.settings,
+                    p."companyId",
+                    p."isDefault",
+                    c.name                AS "companyName",
+                    c."employerNumber",
+                    emp_agg."empCount",
+                    emp_agg."empId",
+                    emp_agg."empName",
+                    emp_agg."empNo"
                 FROM public.policies p
                 LEFT JOIN public.companies c ON p."companyId" = c.id
-WHERE(p.settings -> 'attendance' -> 'apiKeys') @> ${queryValue}:: jsonb
+                -- Lateral subquery: count + fetch employee info only when policy is non-default
+                LEFT JOIN LATERAL (
+                    SELECT
+                        COUNT(*)::int              AS "empCount",
+                        MIN(e.id)                  AS "empId",
+                        MIN(e."nameWithInitials")   AS "empName",
+                        MIN(e."employeeNo")         AS "empNo"
+                    FROM public.employees e
+                    WHERE e."policyId" = p.id
+                      AND p."isDefault" = false
+                ) emp_agg ON true
+                WHERE (p.settings -> 'attendance' -> 'apiKeys') @> ${queryValue}::jsonb
                 LIMIT 1
             `;
 
@@ -69,24 +86,17 @@ WHERE(p.settings -> 'attendance' -> 'apiKeys') @> ${queryValue}:: jsonb
                 return { valid: false };
             }
 
-            // Determine if this is a "Personal" key by checking if exactly one employee is assigned to this policy
+            // Resolve employee info from the lateral join result (no extra DB call needed)
             let employeeInfo: { id: string; name: string; employeeNo: number } | null = null;
-            if (!policy.isDefault) {
-                const assignedEmployees = await this.prisma.employee.findMany({
-                    where: { policyId: policy.policyId },
-                    select: { id: true, nameWithInitials: true, employeeNo: true }
-                });
-
-                if (assignedEmployees.length === 1) {
-                    employeeInfo = {
-                        id: assignedEmployees[0].id,
-                        name: assignedEmployees[0].nameWithInitials,
-                        employeeNo: assignedEmployees[0].employeeNo
-                    };
-                }
+            if (!policy.isDefault && policy.empCount === 1 && policy.empId) {
+                employeeInfo = {
+                    id: policy.empId,
+                    name: policy.empName,
+                    employeeNo: policy.empNo
+                };
             }
 
-            let result: any = {
+            const result: any = {
                 valid: true,
                 type: policy.isDefault ? 'COMPANY' : (employeeInfo ? 'EMPLOYEE' : 'TEMPLATE'),
                 policyId: policy.policyId,
@@ -101,22 +111,21 @@ WHERE(p.settings -> 'attendance' -> 'apiKeys') @> ${queryValue}:: jsonb
                     lastUsedAt: new Date(),
                 },
                 employee: employeeInfo,
-                // Add policyId to help filter in createExternalEvent
                 restrictedToPolicyId: policy.isDefault ? null : policy.policyId
             };
 
-            // 2. Save to Cache
-            if (result.valid) {
-                this.apiKeyCache.set(apiKey, {
-                    result,
-                    expiresAt: Date.now() + this.CACHE_TTL
-                });
-                this.throttleLastUsedUpdate(apiKey, policy.policyId);
-            }
+            // Save to cache (5 min TTL)
+            this.apiKeyCache.set(apiKey, {
+                result,
+                expiresAt: Date.now() + this.CACHE_TTL
+            });
+
+            // Update lastUsedAt throttled in background (fire-and-forget)
+            this.throttleLastUsedUpdate(apiKey, policy.policyId);
 
             return result;
         } catch (error) {
-            this.logger.error(`Database error during API key verification: ${error.message} `);
+            this.logger.error(`Database error during API key verification: ${error.message}`);
         }
 
         return { valid: false };
