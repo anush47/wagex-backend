@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TimeService } from './time.service';
 import { AttendanceEvent, EventType } from '@prisma/client';
+import { ShiftSelectionService } from './shift-selection.service';
 
 export interface SessionGroup {
   events: AttendanceEvent[];
@@ -18,6 +19,7 @@ export class SessionGroupingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly timeService: TimeService,
+    private readonly shiftSelectionService: ShiftSelectionService,
   ) { }
 
   /**
@@ -39,10 +41,9 @@ export class SessionGroupingService {
     const sessionGroups = this.groupEventsByTimeProximity(sortedEvents);
 
     // Process each group into a session structure
-    const sessionGroupsProcessed: SessionGroup[] = sessionGroups.map(group => {
-      const sessionData = this.processEventGroup(group, referenceDate, timezone);
-      return sessionData;
-    });
+    const sessionGroupsProcessed: SessionGroup[] = await Promise.all(
+      sessionGroups.map(group => this.processEventGroup(group, referenceDate, timezone))
+    );
 
     return sessionGroupsProcessed;
   }
@@ -99,7 +100,7 @@ export class SessionGroupingService {
   /**
    * Process a group of events into session data structure
    */
-  private processEventGroup(events: AttendanceEvent[], referenceDate: Date, timezone: string): SessionGroup {
+  private async processEventGroup(events: AttendanceEvent[], referenceDate: Date, timezone: string): Promise<SessionGroup> {
     const sortedEvents = [...events].sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime());
 
     const inEvents = sortedEvents.filter(e => e.eventType === 'IN');
@@ -126,7 +127,21 @@ export class SessionGroupingService {
     }
 
     // Use TimeService to get the logical date for this session in the target timezone
-    const sessionDate = this.timeService.getLogicalDate(firstIn || referenceDate, timezone);
+    let sessionDate = this.timeService.getLogicalDate(firstIn || referenceDate, timezone);
+
+    // Apply Shift Date Offset (e.g. for night shifts starting yesterday)
+    if (firstIn) {
+      const { dateOffset } = await this.shiftSelectionService.getEffectiveShift(
+        events[0].employeeId,
+        firstIn,
+        timezone
+      );
+
+      if (dateOffset !== 0) {
+        sessionDate.setUTCDate(sessionDate.getUTCDate() + dateOffset);
+        this.logger.log(`[GROUPING] Applied dateOffset ${dateOffset} to sessionDate. New date: ${sessionDate.toISOString()}`);
+      }
+    }
 
     this.logger.log(`[GROUPING] Processed group: start = ${firstIn?.toISOString()}, end = ${lastOut?.toISOString()}, pairs = ${additionalInOutPairs.length} `);
 

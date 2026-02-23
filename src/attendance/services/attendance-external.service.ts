@@ -282,7 +282,7 @@ export class AttendanceExternalService {
         }
 
         // 3. Resolve Shift Name
-        const shift = await this.shiftSelectionService.getEffectiveShift(
+        const { shift } = await this.shiftSelectionService.getEffectiveShift(
             employeeId!,
             eventTime,
             timezone
@@ -356,7 +356,7 @@ export class AttendanceExternalService {
         const diffHours = diffMs / (1000 * 60 * 60);
 
         // Check for shift specific maxOutTime
-        const lastShift = await this.shiftSelectionService.getEffectiveShift(employeeId, lastEventTime, timezone);
+        const { shift: lastShift } = await this.shiftSelectionService.getEffectiveShift(employeeId, lastEventTime, timezone);
         let maxOutDate: Date | null = null;
 
         if (lastShift?.maxOutTime) {

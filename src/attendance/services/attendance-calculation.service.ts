@@ -51,6 +51,7 @@ export class AttendanceCalculationService {
             checkInTime?: Date | null;
             checkOutTime?: Date | null;
             shiftBreakMinutes?: number | null;
+            date?: Date | null;
         },
         shift: ShiftDto | null,
         leaves: LeaveRequest[] = [],
@@ -92,7 +93,8 @@ export class AttendanceCalculationService {
             checkOutTime,
             shift,
             leaves,
-            timezone
+            timezone,
+            data.sessionGroup?.sessionDate || (data as any).date
         );
 
         return {
@@ -306,6 +308,7 @@ export class AttendanceCalculationService {
         shift: ShiftDto | null,
         leaves: LeaveRequest[],
         timezone: string = 'UTC',
+        referenceDate?: Date | null, // Added referenceDate
     ): StatusFlags {
         const flags: StatusFlags = {
             isLate: false,
@@ -331,8 +334,12 @@ export class AttendanceCalculationService {
 
         const graceMinutes = shift.gracePeriodLate || 0;
 
+        // Use referenceDate for parsing shift times (logical day)
+        // If not provided, fallback to checkInTime
+        const refDate = referenceDate || checkInTime;
+
         // Check if late
-        const shiftStartTime = this.timeService.parseTimeWithTimezone(shift.startTime, checkInTime, timezone);
+        const shiftStartTime = this.timeService.parseTimeWithTimezone(shift.startTime, refDate, timezone);
         const lateThreshold = new Date(
             shiftStartTime.getTime() + graceMinutes * 60 * 1000,
         );
@@ -340,7 +347,13 @@ export class AttendanceCalculationService {
 
         // Check if early leave
         if (checkOutTime) {
-            const shiftEndTime = this.timeService.parseTimeWithTimezone(shift.endTime, checkOutTime, timezone);
+            const shiftEndTime = this.timeService.parseTimeWithTimezone(shift.endTime, refDate, timezone);
+
+            // Handle cross-day shift end time (e.g. 10 PM to 7 AM)
+            if (shiftEndTime < shiftStartTime) {
+                shiftEndTime.setDate(shiftEndTime.getDate() + 1);
+            }
+
             const earlyThreshold = new Date(
                 shiftEndTime.getTime() - graceMinutes * 60 * 1000,
             );

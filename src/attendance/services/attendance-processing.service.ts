@@ -70,7 +70,7 @@ export class AttendanceProcessingService {
         const sessions: AttendanceSession[] = [];
         for (const sessionGroup of sessionGroups) {
             // Get shift effective at the time of the first IN event in this group
-            const shift = await this.shiftService.getEffectiveShift(
+            const { shift } = await this.shiftService.getEffectiveShift(
                 employeeId,
                 sessionGroup.firstIn || date,
                 timezone,

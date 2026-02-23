@@ -212,7 +212,7 @@ export class AttendanceManualService {
         }
 
         const calculation = this.calculationService.calculate(
-            { checkInTime: effectiveIn, checkOutTime: effectiveOut, shiftBreakMinutes: breakMins },
+            { checkInTime: effectiveIn, checkOutTime: effectiveOut, shiftBreakMinutes: breakMins, date: effectiveDate },
             calcShift,
             leaves,
             timezone
