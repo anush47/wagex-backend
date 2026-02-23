@@ -6,6 +6,8 @@ import { AttendanceEvent, EventType, Role, EventSource, EventStatus } from '@pri
 import { ShiftSelectionService } from './shift-selection.service';
 import { PoliciesService } from '../../policies/policies.service';
 
+import { TimeService } from './time.service';
+
 @Injectable()
 export class AttendanceExternalService {
     private readonly logger = new Logger(AttendanceExternalService.name);
@@ -14,6 +16,7 @@ export class AttendanceExternalService {
         private readonly prisma: PrismaService,
         private readonly processingService: AttendanceProcessingService,
         private readonly shiftSelectionService: ShiftSelectionService,
+        private readonly timeService: TimeService,
     ) { }
 
     // Simple in-memory cache for API key verification (5-minute TTL)
@@ -51,6 +54,7 @@ export class AttendanceExternalService {
                     p."isDefault",
                     c.name                AS "companyName",
                     c."employerNumber",
+                    c."timezone",
                     emp_agg."empCount",
                     emp_agg."empId",
                     emp_agg."empName",
@@ -104,6 +108,7 @@ export class AttendanceExternalService {
                     id: policy.companyId,
                     name: policy.companyName,
                     employerNumber: policy.employerNumber,
+                    timezone: policy.timezone,
                 },
                 apiKey: {
                     id: keyConfig.id,
@@ -241,12 +246,19 @@ export class AttendanceExternalService {
             }
         }
 
+        // Get employee company timezone
+        const employeeData = await this.prisma.employee.findUnique({
+            where: { id: employeeId },
+            include: { company: true },
+        });
+        const timezone = employeeData?.company?.timezone || 'UTC';
+
         const eventTime = new Date(dto.eventTime);
         let eventType = dto.eventType;
 
         // Intelligent Type Detection
         if (!eventType) {
-            const decision = await this.determineEventType(employeeId, eventTime);
+            const decision = await this.determineEventType(employeeId, eventTime, timezone);
 
             // If the system detected a missing checkout, insert it first
             if (decision.autoCheckoutAt) {
@@ -273,7 +285,7 @@ export class AttendanceExternalService {
         const shift = await this.shiftSelectionService.getEffectiveShift(
             employeeId!,
             eventTime,
-            eventTime
+            timezone
         );
         const shiftName = shift?.name || 'No Shift Assigned';
 
@@ -313,6 +325,7 @@ export class AttendanceExternalService {
     private async determineEventType(
         employeeId: string,
         eventTime: Date,
+        timezone: string,
         lastEventContext?: { eventTime: Date; eventType: EventType; sessionId?: string | null }
     ): Promise<{ type: EventType; autoCheckoutAt?: Date; sessionId?: string | null }> {
         let lastEvent = lastEventContext;
@@ -343,17 +356,15 @@ export class AttendanceExternalService {
         const diffHours = diffMs / (1000 * 60 * 60);
 
         // Check for shift specific maxOutTime
-        const lastShift = await this.shiftSelectionService.getEffectiveShift(employeeId, lastEventTime);
+        const lastShift = await this.shiftSelectionService.getEffectiveShift(employeeId, lastEventTime, timezone);
         let maxOutDate: Date | null = null;
 
         if (lastShift?.maxOutTime) {
-            const [maxH, maxM] = lastShift.maxOutTime.split(':').map(Number);
-            maxOutDate = new Date(lastEventTime);
-            maxOutDate.setHours(maxH, maxM, 0, 0);
+            maxOutDate = this.timeService.parseTimeWithTimezone(lastShift.maxOutTime, lastEventTime, timezone);
 
             // Handle cross-day shifts
             if (maxOutDate < lastEventTime) {
-                maxOutDate.setDate(maxOutDate.getDate() + 1);
+                maxOutDate.setDate(maxOutDate.getUTCDate() + 1);
             }
         }
 
@@ -366,9 +377,7 @@ export class AttendanceExternalService {
         if (lastShift && (isPast24h || isPastMaxOut)) {
             // If the shift policy enables auto-checkout, provide the timestamp
             if (lastShift.autoClockOut && lastShift.endTime) {
-                let autoCheckoutAt = new Date(lastEventTime);
-                const [h, m] = lastShift.endTime.split(':').map(Number);
-                autoCheckoutAt.setHours(h, m, 0, 0);
+                let autoCheckoutAt = this.timeService.parseTimeWithTimezone(lastShift.endTime, lastEventTime, timezone);
 
                 if (autoCheckoutAt < lastEventTime) {
                     autoCheckoutAt.setDate(autoCheckoutAt.getDate() + 1);
@@ -427,6 +436,14 @@ export class AttendanceExternalService {
         const empMap = new Map(employees.map(e => [e.employeeNo, e]));
         const results: any[] = [];
         const validEvents: any[] = [];
+
+        // Resolve company timezone once for bulk operation
+        const company = await this.prisma.company.findUnique({
+            where: { id: companyId },
+            select: { timezone: true }
+        });
+        const timezone = company?.timezone || 'UTC';
+
         const processQueue = new Set<string>();
 
         const lastStateMap = new Map<string, { eventTime: Date; eventType: EventType; sessionId?: string | null }>();
@@ -471,7 +488,7 @@ export class AttendanceExternalService {
             if (!eventType) {
                 // Determine type using batch context if available
                 const lastInBatch = lastStateMap.get(employeeId);
-                decision = await this.determineEventType(employeeId, eventTime, lastInBatch);
+                decision = await this.determineEventType(employeeId, eventTime, timezone, lastInBatch);
 
                 if (decision.autoCheckoutAt) {
                     // Create the missing OUT event in the list

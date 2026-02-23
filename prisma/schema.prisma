@@ -12,6 +12,7 @@ model Company {
   active             Boolean             @default(true)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+  timezone           String              @default("UTC")
   employerNumber     String?
   address            String?
   startedDate        DateTime?

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AttendanceEvent } from '@prisma/client';
+import { TimeService } from './time.service';
+import { AttendanceEvent, EventType } from '@prisma/client';
 
 export interface SessionGroup {
   events: AttendanceEvent[];
@@ -14,7 +15,10 @@ export interface SessionGroup {
 export class SessionGroupingService {
   private readonly logger = new Logger(SessionGroupingService.name);
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly timeService: TimeService,
+  ) { }
 
   /**
    * Groups attendance events into logical sessions based on time proximity
@@ -23,7 +27,8 @@ export class SessionGroupingService {
   async groupEventsIntoSessions(
     employeeId: string,
     events: AttendanceEvent[],
-    referenceDate: Date
+    referenceDate: Date,
+    timezone: string,
   ): Promise<SessionGroup[]> {
     // Sort events chronologically
     const sortedEvents = [...events].sort(
@@ -35,7 +40,7 @@ export class SessionGroupingService {
 
     // Process each group into a session structure
     const sessionGroupsProcessed: SessionGroup[] = sessionGroups.map(group => {
-      const sessionData = this.processEventGroup(group, referenceDate);
+      const sessionData = this.processEventGroup(group, referenceDate, timezone);
       return sessionData;
     });
 
@@ -94,14 +99,17 @@ export class SessionGroupingService {
   /**
    * Process a group of events into session data structure
    */
-  private processEventGroup(events: AttendanceEvent[], referenceDate: Date): SessionGroup {
+  private processEventGroup(events: AttendanceEvent[], referenceDate: Date, timezone: string): SessionGroup {
     const sortedEvents = [...events].sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime());
 
     const inEvents = sortedEvents.filter(e => e.eventType === 'IN');
     const outEvents = sortedEvents.filter(e => e.eventType === 'OUT');
 
-    const firstIn = inEvents.length > 0 ? inEvents[0].eventTime : null;
-    const lastOut = outEvents.length > 0 ? outEvents[outEvents.length - 1].eventTime : null;
+    const firstIn = events.find((e) => e.eventType === 'IN')?.eventTime;
+    const lastOut = events
+      .slice()
+      .reverse()
+      .find((e) => e.eventType === 'OUT')?.eventTime;
 
     // Simplified break pairing: any gap between consecutive events within the primary bounds
     const additionalInOutPairs: Array<{ in: Date; out: Date }> = [];
@@ -117,13 +125,12 @@ export class SessionGroupingService {
       }
     }
 
-    const sessionDate = firstIn
-      ? new Date(Date.UTC(firstIn.getUTCFullYear(), firstIn.getUTCMonth(), firstIn.getUTCDate()))
-      : new Date(Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate()));
+    // Use TimeService to get the logical date for this session in the target timezone
+    const sessionDate = this.timeService.getLogicalDate(firstIn || referenceDate, timezone);
 
-    this.logger.log(`[GROUPING] Processed group: start=${firstIn?.toISOString()}, end=${lastOut?.toISOString()}, pairs=${additionalInOutPairs.length}`);
+    this.logger.log(`[GROUPING] Processed group: start = ${firstIn?.toISOString()}, end = ${lastOut?.toISOString()}, pairs = ${additionalInOutPairs.length} `);
 
-    return { events: sortedEvents, firstIn, lastOut, additionalInOutPairs, sessionDate };
+    return { events: sortedEvents, firstIn: firstIn || null, lastOut: lastOut || null, additionalInOutPairs, sessionDate };
   }
 
   /**
@@ -131,15 +138,14 @@ export class SessionGroupingService {
    */
   async getEventsForSessionGrouping(
     employeeId: string,
-    referenceDate: Date
+    referenceDate: Date,
+    timezone: string,
   ): Promise<AttendanceEvent[]> {
-    // Get events from start of yesterday to end of tomorrow
-    const startDate = new Date(referenceDate);
-    startDate.setUTCHours(0, 0, 0, 0);
+    // Get events from start of yesterday to end of tomorrow in the company timezone
+    const startDate = this.timeService.getStartOfDayInTimezone(referenceDate, timezone);
     startDate.setUTCDate(startDate.getUTCDate() - 1);
 
-    const endDate = new Date(referenceDate);
-    endDate.setUTCHours(23, 59, 59, 999);
+    const endDate = this.timeService.getEndOfDayInTimezone(referenceDate, timezone);
     endDate.setUTCDate(endDate.getUTCDate() + 1);
 
     return this.prisma.attendanceEvent.findMany({

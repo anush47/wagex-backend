@@ -28,9 +28,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
                 ? exception.getResponse()
                 : 'Internal server error';
 
-        // Log internal errors for debugging
-        if (httpStatus === HttpStatus.INTERNAL_SERVER_ERROR) {
-            this.logger.error(exception);
+        // Log all errors (>= 400)
+        if (httpStatus >= 400) {
+            this.logger.error(
+                `Filter: ${httpStatus} error at ${httpAdapter.getRequestUrl(ctx.getRequest())}: ${JSON.stringify(message)}`
+            );
         }
 
         const responseBody = {

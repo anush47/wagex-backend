@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PoliciesService } from '../../policies/policies.service';
+import { TimeService } from './time.service';
 
 import { ShiftDto as PolicyShiftDto, ShiftSelectionPolicy } from '../../policies/dto/shifts-policy.dto';
 
@@ -11,6 +12,7 @@ export class ShiftSelectionService {
     constructor(
         private prisma: PrismaService,
         private policiesService: PoliciesService,
+        private timeService: TimeService,
     ) { }
 
     /**
@@ -19,8 +21,8 @@ export class ShiftSelectionService {
      */
     async getEffectiveShift(
         employeeId: string,
-        date: Date,
         eventTime?: Date,
+        timezone?: string,
     ): Promise<PolicyShiftDto | null> {
         try {
             // Use unified policy resolution
@@ -48,8 +50,20 @@ export class ShiftSelectionService {
 
             // 3. Otherwise (CLOSEST_START_TIME or no policy), find shift closest to event time OR current time
             const referenceTime = eventTime || new Date();
-            const refH = referenceTime.getHours();
-            const refM = referenceTime.getMinutes();
+
+            // Use timezone aware hours/minutes if timezone is provided
+            let refH: number;
+            let refM: number;
+
+            if (timezone) {
+                const zonedDate = this.timeService.getZonedTime(referenceTime, timezone);
+                refH = zonedDate.getHours();
+                refM = zonedDate.getMinutes();
+            } else {
+                refH = referenceTime.getHours();
+                refM = referenceTime.getMinutes();
+            }
+
             const refTotal = refH * 60 + refM;
 
             let closestShift = list[0];

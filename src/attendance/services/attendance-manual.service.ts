@@ -1,9 +1,11 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { TimeService } from './time.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceProcessingService } from './attendance-processing.service';
 import { AttendanceCalculationService } from './attendance-calculation.service';
 import { LeaveIntegrationService } from './leave-integration.service';
 import { PoliciesService } from '../../policies/policies.service';
+import { ShiftDto as PolicyShiftDto, ShiftSelectionPolicy } from '../../policies/dto/shifts-policy.dto';
 import { CreateEventDto } from '../dto/event.dto';
 import {
     UpdateSessionDto,
@@ -23,6 +25,7 @@ export class AttendanceManualService {
         private readonly calculationService: AttendanceCalculationService,
         private readonly policiesService: PoliciesService,
         private readonly leaveService: LeaveIntegrationService,
+        private readonly timeService: TimeService,
     ) { }
 
     /**
@@ -91,8 +94,16 @@ export class AttendanceManualService {
      */
     async createManualSession(dto: CreateSessionDto): Promise<AttendanceSession> {
         const { employeeId, date, shiftId } = dto;
-        const sessionDate = new Date(date);
-        sessionDate.setUTCHours(0, 0, 0, 0);
+
+        const employee = await this.prisma.employee.findUnique({
+            where: { id: employeeId },
+            include: { company: true },
+        });
+
+        if (!employee) throw new NotFoundException('Employee not found');
+        const timezone = employee.company?.timezone || 'UTC';
+
+        const sessionDate = this.timeService.getLogicalDate(new Date(date), timezone);
 
         const existing = await this.prisma.attendanceSession.findUnique({
             where: {
@@ -107,12 +118,9 @@ export class AttendanceManualService {
             throw new BadRequestException('Session already exists for this date');
         }
 
-        const employee = await this.prisma.employee.findUnique({
-            where: { id: employeeId },
-            select: { companyId: true },
-        });
-
-        if (!employee) throw new NotFoundException('Employee not found');
+        if (existing) {
+            throw new BadRequestException('Session already exists for this date');
+        }
 
         const session = await this.prisma.attendanceSession.create({
             data: {
@@ -151,10 +159,17 @@ export class AttendanceManualService {
             manuallyEdited: true,
         };
 
+        // Resolve timezone
+        const employee = await this.prisma.employee.findUnique({
+            where: { id: session.employeeId },
+            include: { company: true }
+        });
+        const timezone = employee?.company?.timezone || 'UTC';
+
         // Handle date shift if needed
         if (dto.checkInTime) {
             const dateObj = new Date(dto.checkInTime);
-            const newDate = new Date(Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate()));
+            const newDate = this.timeService.getLogicalDate(dateObj, timezone);
 
             if (newDate.getTime() !== session.date.getTime()) {
                 const conflict = await this.prisma.attendanceSession.findUnique({
@@ -199,7 +214,8 @@ export class AttendanceManualService {
         const calculation = this.calculationService.calculate(
             { checkInTime: effectiveIn, checkOutTime: effectiveOut, shiftBreakMinutes: breakMins },
             calcShift,
-            leaves
+            leaves,
+            timezone
         );
 
         updateData.isLate = calculation.isLate;

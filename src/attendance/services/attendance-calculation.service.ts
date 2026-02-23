@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AttendanceEvent, SessionWorkDayStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SessionGroup } from './session-grouping.service';
+import { TimeService } from './time.service';
 
 import { ShiftDto } from '../../policies/dto/shifts-policy.dto';
 
@@ -35,7 +36,10 @@ export interface AttendanceCalculationResult extends WorkTimeResult, StatusFlags
 export class AttendanceCalculationService {
     private readonly logger = new Logger(AttendanceCalculationService.name);
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly timeService: TimeService,
+    ) { }
 
     /**
      * Centralized calculation function for both auto and manual attendance
@@ -50,6 +54,7 @@ export class AttendanceCalculationService {
         },
         shift: ShiftDto | null,
         leaves: LeaveRequest[] = [],
+        timezone: string = 'UTC',
     ): AttendanceCalculationResult {
         let workTime: WorkTimeResult;
 
@@ -65,7 +70,8 @@ export class AttendanceCalculationService {
                 data.checkInTime || null,
                 data.checkOutTime || null,
                 data.shiftBreakMinutes ?? shift?.breakTime ?? 0,
-                shift
+                shift,
+                timezone
             );
         }
 
@@ -85,7 +91,8 @@ export class AttendanceCalculationService {
             checkInTime,
             checkOutTime,
             shift,
-            leaves
+            leaves,
+            timezone
         );
 
         return {
@@ -110,6 +117,7 @@ export class AttendanceCalculationService {
         checkOut: Date | null,
         breakMinutes: number,
         shift: ShiftDto | null,
+        timezone: string,
     ): WorkTimeResult {
         if (!checkIn || !checkOut) {
             return {
@@ -297,6 +305,7 @@ export class AttendanceCalculationService {
         checkOutTime: Date | null,
         shift: ShiftDto | null,
         leaves: LeaveRequest[],
+        timezone: string = 'UTC',
     ): StatusFlags {
         const flags: StatusFlags = {
             isLate: false,
@@ -323,7 +332,7 @@ export class AttendanceCalculationService {
         const graceMinutes = shift.gracePeriodLate || 0;
 
         // Check if late
-        const shiftStartTime = this.parseTimeString(shift.startTime, checkInTime);
+        const shiftStartTime = this.timeService.parseTimeWithTimezone(shift.startTime, checkInTime, timezone);
         const lateThreshold = new Date(
             shiftStartTime.getTime() + graceMinutes * 60 * 1000,
         );
@@ -331,7 +340,7 @@ export class AttendanceCalculationService {
 
         // Check if early leave
         if (checkOutTime) {
-            const shiftEndTime = this.parseTimeString(shift.endTime, checkOutTime);
+            const shiftEndTime = this.timeService.parseTimeWithTimezone(shift.endTime, checkOutTime, timezone);
             const earlyThreshold = new Date(
                 shiftEndTime.getTime() - graceMinutes * 60 * 1000,
             );
@@ -487,12 +496,10 @@ export class AttendanceCalculationService {
     }
 
     /**
-     * Parse time string (HH:mm) to Date object
+     * Parse time string (HH:mm) into a Date object relative to a reference date
+     * @deprecated Use timeService.parseTimeWithTimezone instead for timezone-aware parsing
      */
-    private parseTimeString(timeStr: string, referenceDate: Date): Date {
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        const date = new Date(referenceDate);
-        date.setHours(hours, minutes, 0, 0);
-        return date;
+    private parseTimeString(timeStr: string, referenceDate: Date, timezone: string = 'UTC'): Date {
+        return this.timeService.parseTimeWithTimezone(timeStr, referenceDate, timezone);
     }
 }

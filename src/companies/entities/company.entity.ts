@@ -24,6 +24,9 @@ export class Company implements PrismaCompany {
     @ApiPropertyOptional({ example: 'https://example.com/logo.png', description: 'Logo URL' })
     logo: string | null;
 
+    @ApiProperty({ example: 'Asia/Colombo', description: 'Company timezone' })
+    timezone: string;
+
     @ApiPropertyOptional({ example: [], description: 'Uploaded files' })
     files: any | null;
 

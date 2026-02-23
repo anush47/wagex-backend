@@ -6,11 +6,16 @@ import {
 } from '../dto/session.dto';
 import { AttendanceSession } from '@prisma/client';
 
+import { TimeService } from './time.service';
+
 @Injectable()
 export class AttendanceQueryService {
     private readonly logger = new Logger(AttendanceQueryService.name);
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly timeService: TimeService,
+    ) { }
 
     /**
      * Get sessions with pagination
@@ -25,13 +30,11 @@ export class AttendanceQueryService {
         if (query.employeeId) where.employeeId = query.employeeId;
 
         if (query.startDate || query.endDate) {
+            // Sessions store "Logical Date" as UTC 00:00:00.
+            // Input strings from frontend (e.g., '2023-10-27') should be matched exactly.
             where.date = {};
             if (query.startDate) where.date.gte = new Date(query.startDate);
-            if (query.endDate) {
-                const end = new Date(query.endDate);
-                end.setUTCHours(23, 59, 59, 999);
-                where.date.lte = end;
-            }
+            if (query.endDate) where.date.lte = new Date(query.endDate);
         }
 
         if (query.isPending) {
@@ -130,12 +133,19 @@ export class AttendanceQueryService {
         if (query.employeeId) where.employeeId = query.employeeId;
 
         if (query.startDate || query.endDate) {
+            // Events store actual UTC time. We need to resolve company timezone to filter by "Local Day".
+            const company = await this.prisma.company.findUnique({
+                where: { id: query.companyId },
+                select: { timezone: true }
+            });
+            const timezone = company?.timezone || 'UTC';
+
             where.eventTime = {};
-            if (query.startDate) where.eventTime.gte = new Date(query.startDate);
+            if (query.startDate) {
+                where.eventTime.gte = this.timeService.getStartOfDayInTimezone(new Date(query.startDate), timezone);
+            }
             if (query.endDate) {
-                const end = new Date(query.endDate);
-                end.setUTCHours(23, 59, 59, 999);
-                where.eventTime.lte = end;
+                where.eventTime.lte = this.timeService.getEndOfDayInTimezone(new Date(query.endDate), timezone);
             }
         }
 

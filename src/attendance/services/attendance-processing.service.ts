@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { format } from 'date-fns';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ShiftSelectionService } from './shift-selection.service';
 import { AttendanceCalculationService } from './attendance-calculation.service';
@@ -7,6 +8,7 @@ import { AttendanceEvent, AttendanceSession, EventSource, ApprovalStatus, Sessio
 import { PoliciesService } from '../../policies/policies.service';
 import { ApprovalPolicyMode } from '../../policies/dto/attendance-policy.dto';
 import { SessionGroupingService, SessionGroup } from './session-grouping.service';
+import { TimeService } from './time.service';
 
 @Injectable()
 export class AttendanceProcessingService {
@@ -19,6 +21,7 @@ export class AttendanceProcessingService {
         private readonly leaveService: LeaveIntegrationService,
         private readonly policiesService: PoliciesService,
         private readonly sessionGroupingService: SessionGroupingService,
+        private readonly timeService: TimeService,
     ) { }
 
     /**
@@ -29,12 +32,19 @@ export class AttendanceProcessingService {
         employeeId: string,
         date: Date,
     ): Promise<AttendanceSession[]> {
+        // Resolve timezone once for the employee
+        const employee = await this.prisma.employee.findUnique({
+            where: { id: employeeId },
+            include: { company: true },
+        });
+        const timezone = employee?.company?.timezone || 'UTC';
+
         this.logger.log(
-            `Processing attendance for employee ${employeeId} on ${date.toISOString()}`,
+            `Processing attendance for employee ${employeeId} on ${date.toISOString()} in ${timezone}`,
         );
 
         // Get all events for this employee within the time window (24 hours before and after the reference date)
-        const events = await this.sessionGroupingService.getEventsForSessionGrouping(employeeId, date);
+        const events = await this.sessionGroupingService.getEventsForSessionGrouping(employeeId, date, timezone);
 
         if (events.length === 0) {
             this.logger.warn(
@@ -45,7 +55,7 @@ export class AttendanceProcessingService {
         }
 
         // Group events into logical sessions
-        const sessionGroups = await this.sessionGroupingService.groupEventsIntoSessions(employeeId, events, date);
+        const sessionGroups = await this.sessionGroupingService.groupEventsIntoSessions(employeeId, events, date, timezone);
 
         if (sessionGroups.length === 0) {
             this.logger.warn(
@@ -63,7 +73,7 @@ export class AttendanceProcessingService {
             const shift = await this.shiftService.getEffectiveShift(
                 employeeId,
                 sessionGroup.firstIn || date,
-                sessionGroup.firstIn || date,
+                timezone,
             );
 
             // Get leaves for the session date
@@ -76,7 +86,8 @@ export class AttendanceProcessingService {
             const calculation = this.calculationService.calculate(
                 { sessionGroup },
                 shift,
-                leaves
+                leaves,
+                timezone
             );
 
             const times = calculation;

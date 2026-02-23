@@ -13,6 +13,7 @@ import { AttendanceManualService } from './services/attendance-manual.service';
 import { AttendanceQueryService } from './services/attendance-query.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PoliciesModule } from '../policies/policies.module';
+import { TimeService } from './services/time.service';
 
 @Module({
     imports: [PrismaModule, PoliciesModule],
@@ -26,6 +27,7 @@ import { PoliciesModule } from '../policies/policies.module';
         AttendanceExternalService,
         AttendanceManualService,
         AttendanceQueryService,
+        TimeService,
     ],
     exports: [
         AttendanceProcessingService,

@@ -32,6 +32,11 @@ export class CreateCompanyDto {
     @IsString()
     logo?: string;
 
+    @ApiPropertyOptional({ example: 'Asia/Colombo', description: 'Company default timezone' })
+    @IsOptional()
+    @IsString()
+    timezone?: string;
+
     @ApiPropertyOptional({ example: [{ key: 'doc1', name: 'Document 1', url: '...' }], description: 'Uploaded files' })
     @IsOptional()
     @IsArray()
