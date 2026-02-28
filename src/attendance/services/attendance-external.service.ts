@@ -254,11 +254,16 @@ export class AttendanceExternalService {
         const timezone = employeeData?.company?.timezone || 'UTC';
 
         const eventTime = new Date(dto.eventTime);
-        let eventType = dto.eventType;
+        let effectiveEventType = dto.eventType;
+        let lastInEventTime: Date | undefined;
 
         // Intelligent Type Detection
-        if (!eventType) {
-            const decision = await this.determineEventType(employeeId, eventTime, timezone);
+        if (!effectiveEventType) {
+            const decision = await this.determineEventType(
+                employeeId,
+                eventTime,
+                timezone,
+            );
 
             // If the system detected a missing checkout, insert it first
             if (decision.autoCheckoutAt) {
@@ -275,17 +280,39 @@ export class AttendanceExternalService {
                     },
                 });
                 // After auto-checkout, the current event is definitely an IN
-                eventType = 'IN';
+                effectiveEventType = 'IN';
             } else {
-                eventType = decision.type;
+                effectiveEventType = decision.type;
+                lastInEventTime = decision.lastEventTime;
+            }
+        }
+
+        // If it's an OUT event (detected or provided), try to find its starting IN to get correct shift name
+        if (effectiveEventType === 'OUT' && !lastInEventTime) {
+            const lastIn = await this.prisma.attendanceEvent.findFirst({
+                where: { employeeId: employeeId!, eventType: 'IN', status: 'ACTIVE' },
+                orderBy: { eventTime: 'desc' },
+                select: { eventTime: true },
+            });
+            if (
+                lastIn &&
+                eventTime.getTime() - lastIn.eventTime.getTime() < 24 * 60 * 60 * 1000
+            ) {
+                lastInEventTime = lastIn.eventTime;
             }
         }
 
         // 3. Resolve Shift Name
+        // For OUT events, we use the start of the session to get the shift name
+        const shiftQueryTime =
+            effectiveEventType === 'OUT' && lastInEventTime
+                ? lastInEventTime
+                : eventTime;
+
         const { shift } = await this.shiftSelectionService.getEffectiveShift(
             employeeId!,
-            eventTime,
-            timezone
+            shiftQueryTime,
+            timezone,
         );
         const shiftName = shift?.name || 'No Shift Assigned';
 
@@ -294,7 +321,7 @@ export class AttendanceExternalService {
                 employeeId: employeeId!,
                 companyId,
                 eventTime,
-                eventType: eventType!,
+                eventType: effectiveEventType!,
                 source: 'API_KEY',
                 apiKeyName,
                 device: dto.device,
@@ -307,8 +334,9 @@ export class AttendanceExternalService {
         });
 
         // Trigger processing
-        this.processingService.processEmployeeDate(employeeId!, eventTime)
-            .catch(e => this.logger.error(`Processing error: ${e.message} `));
+        this.processingService
+            .processEmployeeDate(employeeId!, eventTime)
+            .catch((e) => this.logger.error(`Processing error: ${e.message} `));
 
         return {
             ...event,
@@ -326,21 +354,30 @@ export class AttendanceExternalService {
         employeeId: string,
         eventTime: Date,
         timezone: string,
-        lastEventContext?: { eventTime: Date; eventType: EventType; sessionId?: string | null }
-    ): Promise<{ type: EventType; autoCheckoutAt?: Date; sessionId?: string | null }> {
+        lastEventContext?: {
+            eventTime: Date;
+            eventType: EventType;
+            sessionId?: string | null;
+        },
+    ): Promise<{
+        type: EventType;
+        autoCheckoutAt?: Date;
+        sessionId?: string | null;
+        lastEventTime?: Date;
+    }> {
         let lastEvent = lastEventContext;
 
         if (!lastEvent) {
             const dbLastEvent = await this.prisma.attendanceEvent.findFirst({
                 where: { employeeId, status: 'ACTIVE' },
                 orderBy: { eventTime: 'desc' },
-                select: { eventTime: true, eventType: true, sessionId: true }
+                select: { eventTime: true, eventType: true, sessionId: true },
             });
             if (dbLastEvent) {
                 lastEvent = {
                     eventTime: new Date(dbLastEvent.eventTime),
                     eventType: dbLastEvent.eventType as EventType,
-                    sessionId: dbLastEvent.sessionId
+                    sessionId: dbLastEvent.sessionId,
                 };
             }
         }
@@ -356,11 +393,20 @@ export class AttendanceExternalService {
         const diffHours = diffMs / (1000 * 60 * 60);
 
         // Check for shift specific maxOutTime
-        const { shift: lastShift } = await this.shiftSelectionService.getEffectiveShift(employeeId, lastEventTime, timezone);
+        const { shift: lastShift } =
+            await this.shiftSelectionService.getEffectiveShift(
+                employeeId,
+                lastEventTime,
+                timezone,
+            );
         let maxOutDate: Date | null = null;
 
         if (lastShift?.maxOutTime) {
-            maxOutDate = this.timeService.parseTimeWithTimezone(lastShift.maxOutTime, lastEventTime, timezone);
+            maxOutDate = this.timeService.parseTimeWithTimezone(
+                lastShift.maxOutTime,
+                lastEventTime,
+                timezone,
+            );
 
             // Handle cross-day shifts
             if (maxOutDate < lastEventTime) {
@@ -377,7 +423,11 @@ export class AttendanceExternalService {
         if (lastShift && (isPast24h || isPastMaxOut)) {
             // If the shift policy enables auto-checkout, provide the timestamp
             if (lastShift.autoClockOut && lastShift.endTime) {
-                let autoCheckoutAt = this.timeService.parseTimeWithTimezone(lastShift.endTime, lastEventTime, timezone);
+                let autoCheckoutAt = this.timeService.parseTimeWithTimezone(
+                    lastShift.endTime,
+                    lastEventTime,
+                    timezone,
+                );
 
                 if (autoCheckoutAt < lastEventTime) {
                     autoCheckoutAt.setDate(autoCheckoutAt.getDate() + 1);
@@ -387,10 +437,15 @@ export class AttendanceExternalService {
                     autoCheckoutAt = new Date(eventTime.getTime() - 1000);
                 }
 
-                return { type: 'IN', autoCheckoutAt, sessionId: lastEvent.sessionId };
+                return {
+                    type: 'IN',
+                    autoCheckoutAt,
+                    sessionId: lastEvent.sessionId,
+                    lastEventTime: lastEvent.eventTime,
+                };
             }
 
-            // If auto-checkout is DISABLED (or no end time), we still start a new IN, 
+            // If auto-checkout is DISABLED (or no end time), we still start a new IN,
             // but we don't inject an auto-OUT record.
             return { type: 'IN' };
         }
@@ -401,7 +456,7 @@ export class AttendanceExternalService {
         }
 
         // Normal case: within 24h window and no reason to auto-checkout
-        return { type: 'OUT' };
+        return { type: 'OUT', lastEventTime: lastEvent.eventTime };
     }
 
     /**

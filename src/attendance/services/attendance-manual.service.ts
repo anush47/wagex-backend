@@ -152,17 +152,51 @@ export class AttendanceManualService {
 
         if (!session) throw new NotFoundException('Session not found');
 
+        const editFields = [
+            'checkInTime',
+            'checkOutTime',
+            'shiftId',
+            'workDayStatus',
+            'isLate',
+            'isEarlyLeave',
+            'isOnLeave',
+            'isHalfDay',
+            'hasShortLeave',
+            'totalMinutes',
+            'breakMinutes',
+            'workMinutes',
+            'overtimeMinutes',
+            'isBreakOverrideActive',
+        ];
+
+        const hasEditField = Object.keys(dto).some((key) =>
+            editFields.includes(key),
+        );
+
         const updateData: any = {
             ...dto,
-            checkInTime: dto.checkInTime === null ? null : (dto.checkInTime ? new Date(dto.checkInTime) : undefined),
-            checkOutTime: dto.checkOutTime === null ? null : (dto.checkOutTime ? new Date(dto.checkOutTime) : undefined),
-            manuallyEdited: true,
+            checkInTime:
+                dto.checkInTime === null
+                    ? null
+                    : dto.checkInTime
+                        ? new Date(dto.checkInTime)
+                        : undefined,
+            checkOutTime:
+                dto.checkOutTime === null
+                    ? null
+                    : dto.checkOutTime
+                        ? new Date(dto.checkOutTime)
+                        : undefined,
         };
+
+        if (hasEditField) {
+            updateData.manuallyEdited = true;
+        }
 
         // Resolve timezone
         const employee = await this.prisma.employee.findUnique({
             where: { id: session.employeeId },
-            include: { company: true }
+            include: { company: true },
         });
         const timezone = employee?.company?.timezone || 'UTC';
 
