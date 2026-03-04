@@ -5,8 +5,9 @@ import { AttendanceProcessingService } from '../../attendance/services/attendanc
 import { GenerateSalaryDto } from '../dto/salary.dto';
 import { PayCycleFrequency } from '../../policies/dto/payroll-settings-policy.dto';
 import { PayrollComponentType, PayrollComponentSystemType } from '../../policies/dto/salary-components-policy.dto';
-import { SalaryStatus } from '@prisma/client';
-import { merge } from 'lodash';
+import { SalaryStatus, LeaveStatus, ApprovalStatus } from '@prisma/client';
+import { merge, groupBy } from 'lodash';
+import { PolicySettingsDto } from '../../policies/dto/policy-settings.dto';
 
 @Injectable()
 export class SalaryEngineService {
@@ -15,6 +16,99 @@ export class SalaryEngineService {
         private readonly policiesService: PoliciesService,
         private readonly attendanceService: AttendanceProcessingService,
     ) { }
+
+    private calculateOvertime(session: any, hourlyRate: number, payrollConfig: any) {
+        if (!session.overtimeMinutes || session.overtimeMinutes <= 0) {
+            return { hours: 0, amount: 0, type: 'NONE' };
+        }
+
+        const hours = session.overtimeMinutes / 60;
+        let rate = payrollConfig?.otNormalRate || 1.5;
+        let type = 'NORMAL';
+
+        if (session.workHolidayId) {
+            rate = payrollConfig?.otTripleRate || 3.0;
+            type = 'TRIPLE';
+        } else if (new Date(session.date).getDay() === 0) { // Sunday
+            rate = payrollConfig?.otDoubleRate || 2.0;
+            type = 'DOUBLE';
+        }
+
+        return {
+            hours,
+            amount: hours * hourlyRate * rate,
+            type,
+        };
+    }
+
+    private async validateEmployeePayroll(employeeId: string, periodStart: Date, periodEnd: Date, policy: PolicySettingsDto) {
+        const warnings: string[] = [];
+        const problems: any[] = [];
+
+        // 1. Check for Pending Leaves
+        const pendingLeaves = await this.prisma.leaveRequest.findMany({
+            where: {
+                employeeId,
+                status: LeaveStatus.PENDING,
+                OR: [
+                    { startDate: { gte: periodStart, lte: periodEnd } },
+                    { endDate: { gte: periodStart, lte: periodEnd } },
+                ],
+            },
+        });
+
+        if (pendingLeaves.length > 0) {
+            problems.push({
+                type: 'PENDING_LEAVE',
+                message: `Found ${pendingLeaves.length} pending leave requests in this period.`,
+                count: pendingLeaves.length,
+            });
+        }
+
+        // 2. Check for Unapproved Attendance Sessions
+        const unapprovedSessions = await this.prisma.attendanceSession.findMany({
+            where: {
+                employeeId,
+                date: { gte: periodStart, lte: periodEnd },
+                OR: [
+                    { inApprovalStatus: ApprovalStatus.PENDING },
+                    { outApprovalStatus: ApprovalStatus.PENDING },
+                ],
+            },
+        });
+
+        if (unapprovedSessions.length > 0) {
+            problems.push({
+                type: 'UNAPPROVED_ATTENDANCE',
+                message: `Found ${unapprovedSessions.length} sessions requiring approval.`,
+                count: unapprovedSessions.length,
+            });
+        }
+
+        // 3. Check for Missing Attendance on Working Days
+        const sessions = await this.prisma.attendanceSession.findMany({
+            where: { employeeId, date: { gte: periodStart, lte: periodEnd } },
+            select: { date: true, isOnLeave: true, isHalfDay: true },
+        });
+
+        const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+        for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
+            const dayStr = d.toISOString().split('T')[0];
+            const hasSession = sessions.some(s => s.date.toISOString().split('T')[0] === dayStr);
+            const dayName = dayNames[d.getDay()];
+            const dayConfig = (policy.workingDays?.defaultPattern as any)?.[dayName];
+
+            if (!hasSession && dayConfig && dayConfig.type !== 'OFF') {
+                problems.push({
+                    type: 'MISSING_ATTENDANCE',
+                    message: `No attendance or leave found for working day: ${dayStr}`,
+                    date: dayStr,
+                });
+            }
+        }
+
+        return problems;
+    }
 
     async calculatePreview(companyId: string, periodStart: Date, periodEnd: Date, employeeId: string) {
         // 1. Get Effective Policy
@@ -54,32 +148,22 @@ export class SalaryEngineService {
 
         // 5. Calculate OT Breakdown
         let totalOtAmount = 0;
-        const otBreakdown = [
-            { type: 'NORMAL', hours: 0, amount: 0 },
-            { type: 'DOUBLE', hours: 0, amount: 0 },
-            { type: 'TRIPLE', hours: 0, amount: 0 },
-        ];
+        const otMap = {
+            'NORMAL': { hours: 0, amount: 0 },
+            'DOUBLE': { hours: 0, amount: 0 },
+            'TRIPLE': { hours: 0, amount: 0 },
+        };
 
         sessions.forEach(session => {
-            if (session.overtimeMinutes && session.overtimeMinutes > 0) {
-                const hours = session.overtimeMinutes / 60;
-                let rate = payrollConfig?.otNormalRate || 1.5;
-                let typeIdx = 0; // NORMAL
-
-                if (session.workHolidayId) {
-                    rate = payrollConfig?.otTripleRate || 3.0;
-                    typeIdx = 2; // TRIPLE
-                } else if (new Date(session.date).getDay() === 0) { // Sunday
-                    rate = payrollConfig?.otDoubleRate || 2.0;
-                    typeIdx = 1; // DOUBLE
-                }
-
-                const amount = hours * hourlyRate * rate;
-                otBreakdown[typeIdx].hours += hours;
-                otBreakdown[typeIdx].amount += amount;
-                totalOtAmount += amount;
+            const ot = this.calculateOvertime(session, hourlyRate, payrollConfig);
+            if (ot.type !== 'NONE') {
+                otMap[ot.type].hours += ot.hours;
+                otMap[ot.type].amount += ot.amount;
+                totalOtAmount += ot.amount;
             }
         });
+
+        const otBreakdown = Object.entries(otMap).map(([type, data]) => ({ type, ...data }));
 
         // 6. Calculate No-Pay Breakdown
         // If autoDeductUnpaidLeaves is active, we check for missing days
@@ -283,46 +367,106 @@ export class SalaryEngineService {
         // 10. Final Calculation
         const netSalary = (basicSalary + totalAdditions + totalOtAmount) - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction);
 
+        // 11. Run Validations
+        const problems = await this.validateEmployeePayroll(employeeId, periodStart, periodEnd, policy);
+
         return {
             employeeId,
             employeeName: employee.fullName,
+            employeeNo: employee.employeeNo,
+            policyName: (policy as any).name || 'Default',
             periodStartDate: periodStart,
             periodEndDate: periodEnd,
             basicSalary,
             otAmount: totalOtAmount,
             otBreakdown,
-            noPayAmount: totalNoPayAmount, // Keep original calculation for display breakdown
+            noPayAmount: totalNoPayAmount,
             noPayBreakdown,
             taxAmount,
             components: processedComponents,
             advanceDeduction: totalAdvanceDeduction,
             netSalary,
             advanceAdjustments,
+            problems,
+            hasProblems: problems.length > 0,
         };
     }
 
     async bulkGenerate(companyId: string, periodStart: Date, periodEnd: Date, employeeIds?: string[]) {
-        // If no employee IDs provided, get all active employees for company
-        let targetEmployeeIds = employeeIds;
-        if (!targetEmployeeIds || targetEmployeeIds.length === 0) {
-            const employees = await this.prisma.employee.findMany({
+        let targetEmployees: any[] = [];
+        if (!employeeIds || employeeIds.length === 0) {
+            targetEmployees = await this.prisma.employee.findMany({
                 where: { companyId, status: 'ACTIVE' },
-                select: { id: true },
+                include: { policy: true },
             });
-            targetEmployeeIds = employees.map(e => e.id);
+        } else {
+            targetEmployees = await this.prisma.employee.findMany({
+                where: { id: { in: employeeIds } },
+                include: { policy: true },
+            });
         }
 
         const previews: any[] = [];
-        for (const id of targetEmployeeIds) {
+        for (const emp of targetEmployees) {
             try {
-                const preview = await this.calculatePreview(companyId, periodStart, periodEnd, id);
-                previews.push(preview);
+                const preview = await this.calculatePreview(companyId, periodStart, periodEnd, emp.id);
+                previews.push({
+                    ...preview,
+                    policyId: emp.policyId || 'DEFAULT',
+                });
             } catch (error) {
-                console.error(`Error calculating salary for employee ${id}:`, error);
-                // Continue to next employee
+                console.error(`Error calculating salary for employee ${emp.id}:`, error);
             }
         }
 
-        return previews;
+        // Group by policy for a cleaner UI view
+        const grouped = groupBy(previews, 'policyId');
+        return Object.entries(grouped).map(([policyId, items]) => ({
+            policyId,
+            policyName: items[0].policyName,
+            employees: items,
+            totalNet: items.reduce((sum, i) => sum + i.netSalary, 0),
+            problemCount: items.filter(i => i.hasProblems).length,
+        }));
+    }
+
+    async saveDrafts(companyId: string, previews: any[]) {
+        const salaryRecords = previews.flatMap(p => p.employees).map(p => ({
+            employeeId: p.employeeId,
+            companyId,
+            periodStartDate: p.periodStartDate,
+            periodEndDate: p.periodEndDate,
+            payDate: new Date(), // Placeholder, usually set based on policy
+            basicSalary: p.basicSalary,
+            otAmount: p.otAmount,
+            otBreakdown: p.otBreakdown as any,
+            noPayAmount: p.noPayAmount,
+            noPayBreakdown: p.noPayBreakdown as any,
+            taxAmount: p.taxAmount,
+            components: p.components as any,
+            advanceDeduction: p.advanceDeduction,
+            netSalary: p.netSalary,
+            status: SalaryStatus.DRAFT,
+        }));
+
+        // We use createMany for performance, but need to handle existing drafts (update vs create)
+        // For simplicity in this step, we'll clear existing drafts for the period or just try to create.
+        // Better: iterate and upsert.
+
+        for (const salary of salaryRecords) {
+            await this.prisma.salary.upsert({
+                where: {
+                    employeeId_periodStartDate_periodEndDate: {
+                        employeeId: salary.employeeId,
+                        periodStartDate: salary.periodStartDate,
+                        periodEndDate: salary.periodEndDate,
+                    }
+                },
+                update: salary,
+                create: salary,
+            });
+        }
+
+        return { count: salaryRecords.length };
     }
 }

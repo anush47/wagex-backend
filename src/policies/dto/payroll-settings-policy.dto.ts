@@ -101,6 +101,15 @@ export class PayrollSettingsConfigDto {
     @IsNumber()
     otTripleRate?: number = 3.0;
 
+    @ApiProperty({ description: 'Automatically create draft salaries' })
+    @IsBoolean()
+    enableAutoDraft: boolean;
+
+    @ApiPropertyOptional({ example: 3, description: 'Days before PayDay to create automatic draft' })
+    @IsOptional()
+    @IsNumber()
+    draftCreationDaysBeforePayDay?: number;
+
     @ApiPropertyOptional({ example: 'uuid-calendar', description: 'Override Calendar ID for Payroll' })
     @IsOptional()
     @IsString()

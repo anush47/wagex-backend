@@ -20,39 +20,51 @@ export class SalariesService {
         );
     }
 
-    async saveDrafts(previews: any[]) {
+    async saveDrafts(companyId: string, groupedPreviews: any[]) {
         const savedSalaries: any[] = [];
+        const previews = groupedPreviews.flatMap(g => g.employees);
 
         for (const preview of previews) {
             const salary = await this.prisma.$transaction(async (tx) => {
-                // 1. Create Salary Draft
-                const created = await tx.salary.create({
-                    data: {
-                        companyId: preview.companyId || (await tx.employee.findUnique({ where: { id: preview.employeeId } }))?.companyId as string,
-                        employeeId: preview.employeeId,
-                        periodStartDate: preview.periodStartDate,
-                        periodEndDate: preview.periodEndDate,
-                        payDate: preview.payDate || new Date(), // Default to now if not provided
-                        basicSalary: preview.basicSalary,
-                        otAmount: preview.otAmount,
-                        otBreakdown: preview.otBreakdown,
-                        noPayAmount: preview.noPayAmount,
-                        noPayBreakdown: preview.noPayBreakdown,
-                        taxAmount: preview.taxAmount,
-                        components: preview.components,
-                        advanceDeduction: preview.advanceDeduction,
-                        netSalary: preview.netSalary,
-                        status: SalaryStatus.DRAFT,
+                // 1. Upsert Salary Draft
+                const salaryData = {
+                    companyId: companyId,
+                    employeeId: preview.employeeId,
+                    periodStartDate: new Date(preview.periodStartDate),
+                    periodEndDate: new Date(preview.periodEndDate),
+                    payDate: preview.payDate || new Date(),
+                    basicSalary: preview.basicSalary,
+                    otAmount: preview.otAmount,
+                    otBreakdown: preview.otBreakdown,
+                    noPayAmount: preview.noPayAmount,
+                    noPayBreakdown: preview.noPayBreakdown,
+                    taxAmount: preview.taxAmount,
+                    components: preview.components,
+                    advanceDeduction: preview.advanceDeduction,
+                    netSalary: preview.netSalary,
+                    status: SalaryStatus.DRAFT,
+                };
+
+                const created = await tx.salary.upsert({
+                    where: {
+                        employeeId_periodStartDate_periodEndDate: {
+                            employeeId: preview.employeeId,
+                            periodStartDate: new Date(preview.periodStartDate),
+                            periodEndDate: new Date(preview.periodEndDate),
+                        }
                     },
+                    update: salaryData,
+                    create: salaryData,
                 });
 
                 // 2. Mark Advances as Deducted if applicable
-                if (preview.advanceAdjustments) {
+                if (preview.advanceAdjustments && preview.advanceAdjustments.length > 0) {
                     for (const adj of preview.advanceAdjustments) {
                         const advance = await tx.salaryAdvance.findUnique({ where: { id: adj.advanceId } });
                         if (advance) {
                             const schedule = (advance.deductionSchedule as any[]) || [];
                             const updatedSchedule = schedule.map(s => {
+                                // Match by period start date
                                 if (new Date(s.periodStartDate).getTime() === new Date(preview.periodStartDate).getTime()) {
                                     return { ...s, isDeducted: true };
                                 }
@@ -75,7 +87,7 @@ export class SalariesService {
             savedSalaries.push(salary);
         }
 
-        return savedSalaries;
+        return { count: savedSalaries.length };
     }
 
     async findAll(query: SalaryQueryDto) {

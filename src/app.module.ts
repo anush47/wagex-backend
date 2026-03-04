@@ -25,11 +25,13 @@ import { CalendarsModule } from './calendars/calendars.module';
 import { SalariesModule } from './salaries/salaries.module';
 import { AdvancesModule } from './advances/advances.module';
 import { PaymentsModule } from './payments/payments.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{
       ttl: 60000,
       limit: 100, // 100 requests per minute

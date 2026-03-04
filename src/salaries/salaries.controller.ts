@@ -14,10 +14,10 @@ export class SalariesController {
         return this.salariesService.generatePreviews(dto);
     }
 
-    @Post('save-drafts')
+    @Post('save-drafts/:companyId')
     @ApiOperation({ summary: 'Save generated salary previews as drafts' })
-    saveDrafts(@Body() drafts: any[]) {
-        return this.salariesService.saveDrafts(drafts);
+    saveDrafts(@Param('companyId') companyId: string, @Body() groupedPreviews: any[]) {
+        return this.salariesService.saveDrafts(companyId, groupedPreviews);
     }
 
     @Get()
