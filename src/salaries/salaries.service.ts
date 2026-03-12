@@ -129,7 +129,10 @@ export class SalariesService {
                 skip,
                 take: limit,
                 orderBy: { periodStartDate: 'desc' },
-                include: { employee: { select: { fullName: true, employeeNo: true } } },
+                include: { 
+                    employee: { select: { fullName: true, employeeNo: true } },
+                    approvedBy: { select: { fullName: true } }
+                },
             }),
             this.prisma.salary.count({ where }),
         ]);
