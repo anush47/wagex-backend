@@ -46,6 +46,7 @@ model User {
   employees        Employee[]
   notifications    Notification[]
   memberships      UserCompany[]
+  approvedSalaries Salary[]        @relation("ApprovedSalaries")
 
   @@map("users")
 }
@@ -378,6 +379,9 @@ model Salary {
   sessions           AttendanceSession[]
   createdAt          DateTime             @default(now())
   updatedAt        DateTime     @updatedAt
+  approvedById     String?
+  approvedAt       DateTime?
+  approvedBy       User?        @relation("ApprovedSalaries", fields: [approvedById], references: [id])
   payments         Payment[]
   company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employee         Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)

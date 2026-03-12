@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SalaryEngineService } from './services/salary-engine.service';
 import { GenerateSalaryDto, SalaryQueryDto } from './dto/salary.dto';
@@ -140,7 +140,7 @@ export class SalariesService {
     async findOne(id: string) {
         const salary = await this.prisma.salary.findUnique({
             where: { id },
-            include: { employee: true, payments: true },
+            include: { employee: true, payments: true, approvedBy: { select: { fullName: true } } },
         });
         if (!salary) throw new NotFoundException(`Salary ${id} not found`);
         return salary;
@@ -205,6 +205,33 @@ export class SalariesService {
             });
         } catch (error) {
             console.error(`[SALARIES_SERVICE] Update failed for ${id}:`, error);
+            throw error;
+        }
+    }
+
+    async approve(id: string, userId: string) {
+        try {
+            const existing = await this.prisma.salary.findUnique({ where: { id } });
+            if (!existing) throw new NotFoundException(`Salary ${id} not found`);
+
+            if (existing.status !== SalaryStatus.DRAFT) {
+                throw new BadRequestException('Only draft salaries can be approved');
+            }
+
+            return await this.prisma.salary.update({
+                where: { id },
+                data: {
+                    status: SalaryStatus.APPROVED,
+                    approvedById: userId,
+                    approvedAt: new Date()
+                },
+                include: {
+                    employee: true,
+                    approvedBy: true
+                }
+            });
+        } catch (error) {
+            console.error(`[SALARIES_SERVICE] Approval failed for ${id}:`, error);
             throw error;
         }
     }
