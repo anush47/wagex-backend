@@ -307,6 +307,9 @@ model AttendanceSession {
   employee              Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   payrollHoliday        Holiday?             @relation("PayrollHoliday", fields: [payrollHolidayId], references: [id])
   workHoliday           Holiday?             @relation("WorkHoliday", fields: [workHolidayId], references: [id])
+  salaryId              String?
+  payrollStatus         SessionPayrollStatus @default(UNPROCESSED)
+  salary                Salary?              @relation(fields: [salaryId], references: [id])
 
   @@unique([employeeId, date])
   @@index([companyId, date])
@@ -367,8 +370,13 @@ model Salary {
   advanceDeduction Float        @default(0.0)
   netSalary        Float        @default(0.0)
   status           SalaryStatus @default(DRAFT)
-  remarks          String?
-  createdAt        DateTime     @default(now())
+  remarks            String?
+  otAdjustment       Float?               @default(0.0)
+  otAdjustmentReason String?
+  recoveryAdjustment       Float?               @default(0.0)
+  recoveryAdjustmentReason String?
+  sessions           AttendanceSession[]
+  createdAt          DateTime             @default(now())
   updatedAt        DateTime     @updatedAt
   payments         Payment[]
   company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -498,6 +506,11 @@ enum SessionWorkDayStatus {
   HALF_FIRST
   HALF_LAST
   OFF
+}
+
+enum SessionPayrollStatus {
+  UNPROCESSED
+  PROCESSED
 }
 
 enum SalaryStatus {

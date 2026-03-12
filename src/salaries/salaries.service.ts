@@ -35,6 +35,8 @@ export class SalariesService {
                     payDate: preview.payDate || new Date(),
                     basicSalary: preview.basicSalary,
                     otAmount: preview.otAmount,
+                    otAdjustment: preview.otAdjustment || 0,
+                    otAdjustmentReason: preview.otAdjustmentReason || null,
                     otBreakdown: preview.otBreakdown,
                     noPayAmount: preview.noPayAmount,
                     noPayBreakdown: preview.noPayBreakdown,
@@ -42,6 +44,7 @@ export class SalariesService {
                     components: preview.components,
                     advanceDeduction: preview.advanceDeduction,
                     netSalary: preview.netSalary,
+                    remarks: preview.remarks || null,
                     status: SalaryStatus.DRAFT,
                 };
 
@@ -56,6 +59,22 @@ export class SalariesService {
                     update: salaryData,
                     create: salaryData,
                 });
+
+                // Link Attendance Sessions
+                await tx.attendanceSession.updateMany({
+                    where: { salaryId: created.id },
+                    data: { salaryId: null, payrollStatus: 'UNPROCESSED' }
+                });
+
+                if (preview.sessionIds && preview.sessionIds.length > 0) {
+                    await tx.attendanceSession.updateMany({
+                        where: { id: { in: preview.sessionIds } },
+                        data: {
+                            salaryId: created.id,
+                            payrollStatus: 'PROCESSED'
+                        }
+                    });
+                }
 
                 // 2. Mark Advances as Deducted if applicable
                 if (preview.advanceAdjustments && preview.advanceAdjustments.length > 0) {

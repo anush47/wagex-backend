@@ -62,3 +62,90 @@ export class SalaryQueryDto {
     @IsString()
     status?: string;
 }
+
+export class SalarySaveItemDto {
+    @ApiProperty()
+    @IsString()
+    employeeId: string;
+
+    @ApiProperty()
+    @IsDateString()
+    periodStartDate: string;
+
+    @ApiProperty()
+    @IsDateString()
+    periodEndDate: string;
+
+    @ApiProperty()
+    @IsInt()
+    @Min(0)
+    basicSalary: number;
+
+    @ApiProperty()
+    @IsInt()
+    @Min(0)
+    otAmount: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsInt()
+    otAdjustment?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    otAdjustmentReason?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsInt()
+    recoveryAdjustment?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    recoveryAdjustmentReason?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    remarks?: string;
+
+    @ApiProperty()
+    @IsArray()
+    @IsString({ each: true })
+    sessionIds: string[];
+
+    // Add other fields from the preview as needed
+    @ApiProperty()
+    @IsInt()
+    netSalary: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    otBreakdown?: any[];
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    noPayAmount?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    noPayBreakdown?: any[];
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    taxAmount?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    components?: any[];
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    advanceDeduction?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    advanceAdjustments?: any[];
+}

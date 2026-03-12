@@ -60,6 +60,7 @@ export class SalaryEngineService {
         if (pendingLeaves.length > 0) {
             problems.push({
                 type: 'PENDING_LEAVE',
+                severity: 'ERROR',
                 message: `Found ${pendingLeaves.length} pending leave requests in this period.`,
                 count: pendingLeaves.length,
             });
@@ -80,28 +81,71 @@ export class SalaryEngineService {
         if (unapprovedSessions.length > 0) {
             problems.push({
                 type: 'UNAPPROVED_ATTENDANCE',
+                severity: 'ERROR',
                 message: `Found ${unapprovedSessions.length} sessions requiring approval.`,
                 count: unapprovedSessions.length,
             });
         }
 
-        // 3. Check for Missing Attendance on Working Days
+        // 3. Check for Unclosed Sessions (No Check-out)
+        const unclosedSessions = await this.prisma.attendanceSession.findMany({
+            where: {
+                employeeId,
+                date: { gte: periodStart, lte: periodEnd },
+                checkInTime: { not: null },
+                checkOutTime: null,
+                isOnLeave: false,
+            },
+        });
+
+        if (unclosedSessions.length > 0) {
+            const datesStr = unclosedSessions.map(s => s.date.toISOString().split('T')[0]).join(', ');
+            problems.push({
+                type: 'UNCLOSED_SESSION',
+                severity: 'ERROR',
+                message: `Found ${unclosedSessions.length} unclosed sessions (missing check-out) on: ${datesStr}`,
+                count: unclosedSessions.length,
+            });
+        }
+
+        // 4. Check for Missing Attendance on Working Days (No Session AND No Approved Leave)
         const sessions = await this.prisma.attendanceSession.findMany({
             where: { employeeId, date: { gte: periodStart, lte: periodEnd } },
             select: { date: true, isOnLeave: true, isHalfDay: true },
+        });
+
+        const approvedLeaves = await this.prisma.leaveRequest.findMany({
+            where: {
+                employeeId,
+                status: LeaveStatus.APPROVED,
+                OR: [
+                    { startDate: { gte: periodStart, lte: periodEnd } },
+                    { endDate: { gte: periodStart, lte: periodEnd } },
+                    { AND: [{ startDate: { lte: periodStart } }, { endDate: { gte: periodEnd } }] }
+                ],
+            },
         });
 
         const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
         for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
             const dayStr = d.toISOString().split('T')[0];
             const hasSession = sessions.some(s => s.date.toISOString().split('T')[0] === dayStr);
+            const hasApprovedLeave = approvedLeaves.some(l => {
+                const lStart = new Date(l.startDate);
+                const lEnd = new Date(l.endDate);
+                const dDate = new Date(dayStr);
+                return dDate >= lStart && dDate <= lEnd;
+            });
+
             const dayName = dayNames[d.getDay()];
             const dayConfig = (policy.workingDays?.defaultPattern as any)?.[dayName];
 
-            if (!hasSession && dayConfig && dayConfig.type !== 'OFF') {
+            // Only flag if it's a working day (NOT OFF)
+            if (!hasSession && !hasApprovedLeave && dayConfig && dayConfig.type?.toString().toUpperCase() !== 'OFF') {
                 problems.push({
                     type: 'MISSING_ATTENDANCE',
-                    message: `No attendance or leave found for working day: ${dayStr}`,
+                    severity: 'WARNING',
+                    message: `No attendance log or approved leave found for working day: ${dayStr}`,
                     date: dayStr,
                 });
             }
@@ -143,6 +187,16 @@ export class SalaryEngineService {
                     gte: periodStart,
                     lte: periodEnd,
                 },
+                OR: [
+                    { salaryId: null },
+                    {
+                        salary: {
+                            periodStartDate: periodStart,
+                            periodEndDate: periodEnd,
+                            status: SalaryStatus.DRAFT
+                        }
+                    }
+                ]
             },
         });
 
@@ -173,6 +227,22 @@ export class SalaryEngineService {
             { type: 'UNPAID_LEAVE', count: 0, amount: 0 },
         ];
 
+        const approvedLeaves = await this.prisma.leaveRequest.findMany({
+            where: {
+                employeeId,
+                status: LeaveStatus.APPROVED,
+                OR: [
+                    { startDate: { gte: periodStart, lte: periodEnd } },
+                    { endDate: { gte: periodStart, lte: periodEnd } },
+                    { AND: [{ startDate: { lte: periodStart } }, { endDate: { gte: periodEnd } }] }
+                ],
+            },
+        });
+
+        const unpaidLeaveTypeIds = (policy.leaves?.leaveTypes || [])
+            .filter((lt: any) => lt.isPaid === false)
+            .map((lt: any) => lt.id);
+
         if (payrollConfig?.autoDeductUnpaidLeaves) {
             const dailyRate = basicSalary / baseRateDivisor;
 
@@ -198,15 +268,25 @@ export class SalaryEngineService {
                     const dayName = dayNames[d.getDay()];
                     const dayConfig = (policy.workingDays?.defaultPattern as any)?.[dayName];
 
-                    if (dayConfig && dayConfig.type !== 'OFF') {
+                    if (dayConfig && dayConfig.type?.toString().toUpperCase() !== 'OFF') {
                         noPayBreakdown[0].count++;
                         noPayBreakdown[0].amount += dailyRate;
                         totalNoPayAmount += dailyRate;
                     }
                 } else if (session.isOnLeave) {
-                    // Check if the leave was UNPAID (This metadata isn't explicitly on session yet, but we'll assume it for now if flagged as UNPAID in a future step)
-                    // Currently leaveIntegrationService doesn't pass 'unpaid' status to session.
-                    // Placeholder for now.
+                    // Check if this specific leave session is linked to an UNPAID leave type
+                    const activeLeave = approvedLeaves.find(l => {
+                        const lStart = new Date(l.startDate);
+                        const lEnd = new Date(l.endDate);
+                        const dDate = new Date(dayStr);
+                        return dDate >= lStart && dDate <= lEnd;
+                    });
+
+                    if (activeLeave && unpaidLeaveTypeIds.includes(activeLeave.leaveTypeId)) {
+                        noPayBreakdown[1].count++;
+                        noPayBreakdown[1].amount += dailyRate;
+                        totalNoPayAmount += dailyRate;
+                    }
                 }
             }
         }
@@ -387,6 +467,8 @@ export class SalaryEngineService {
             advanceDeduction: totalAdvanceDeduction,
             netSalary,
             advanceAdjustments,
+            sessionIds: sessions.map(s => s.id),
+            sessions: sessions, // For preview display
             problems,
             hasProblems: problems.length > 0,
         };
