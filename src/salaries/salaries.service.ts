@@ -238,4 +238,35 @@ export class SalariesService {
             throw error;
         }
     }
+
+    async delete(id: string) {
+        try {
+            return await this.prisma.$transaction(async (tx) => {
+                const existing = await tx.salary.findUnique({ where: { id } });
+                if (!existing) throw new NotFoundException(`Salary ${id} not found`);
+
+                // Unlink attendance sessions
+                await tx.attendanceSession.updateMany({
+                    where: { salaryId: id },
+                    data: { 
+                        salaryId: null, 
+                        payrollStatus: SessionPayrollStatus.UNPROCESSED 
+                    }
+                });
+
+                // Delete related payments
+                await tx.payment.deleteMany({
+                    where: { salaryId: id }
+                });
+
+                // Finally delete the salary
+                return await tx.salary.delete({
+                    where: { id }
+                });
+            });
+        } catch (error) {
+            console.error(`[SALARIES_SERVICE] Delete failed for ${id}:`, error);
+            throw error;
+        }
+    }
 }

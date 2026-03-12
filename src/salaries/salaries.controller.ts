@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseGuards, Request, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SalariesService } from './salaries.service';
 import { GenerateSalaryDto, SalaryQueryDto } from './dto/salary.dto';
@@ -43,5 +43,11 @@ export class SalariesController {
     approve(@Param('id') id: string, @Request() req: any) {
         const userId = req.user.id;
         return this.salariesService.approve(id, userId);
+    }
+
+    @Delete(':id')
+    @ApiOperation({ summary: 'Delete salary' })
+    delete(@Param('id') id: string) {
+        return this.salariesService.delete(id);
     }
 }
