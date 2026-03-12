@@ -31,4 +31,10 @@ export class SalariesController {
     findOne(@Param('id') id: string) {
         return this.salariesService.findOne(id);
     }
+
+    @Post(':id')
+    @ApiOperation({ summary: 'Update salary' })
+    update(@Param('id') id: string, @Body() data: any) {
+        return this.salariesService.update(id, data);
+    }
 }

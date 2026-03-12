@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SalaryEngineService } from './services/salary-engine.service';
 import { GenerateSalaryDto, SalaryQueryDto } from './dto/salary.dto';
-import { SalaryStatus } from '@prisma/client';
+import { SalaryStatus, SessionPayrollStatus } from '@prisma/client';
 
 @Injectable()
 export class SalariesService {
@@ -144,5 +144,68 @@ export class SalariesService {
         });
         if (!salary) throw new NotFoundException(`Salary ${id} not found`);
         return salary;
+    }
+
+    async update(id: string, data: any) {
+        const toNum = (val: any) => {
+            if (val === null || val === undefined || val === '') return 0;
+            const num = Number(val);
+            return isNaN(num) ? 0 : num;
+        };
+
+        try {
+            return await this.prisma.$transaction(async (tx) => {
+                const existing = await tx.salary.findUnique({ where: { id } });
+                if (!existing) throw new NotFoundException(`Salary ${id} not found`);
+
+                const salaryData: any = {
+                    basicSalary: toNum(data.basicSalary),
+                    otAmount: toNum(data.otAmount),
+                    otBreakdown: data.otBreakdown || [],
+                    noPayAmount: toNum(data.noPayAmount),
+                    noPayBreakdown: data.noPayBreakdown || [],
+                    taxAmount: toNum(data.taxAmount),
+                    advanceDeduction: toNum(data.advanceDeduction),
+                    netSalary: toNum(data.netSalary),
+                    otAdjustment: toNum(data.otAdjustment),
+                    otAdjustmentReason: data.otAdjustmentReason || null,
+                    recoveryAdjustment: toNum(data.recoveryAdjustment),
+                    recoveryAdjustmentReason: data.recoveryAdjustmentReason || null,
+                    components: data.components || [],
+                    remarks: data.remarks || null,
+                };
+
+                if (data.payDate) {
+                    salaryData.payDate = new Date(data.payDate);
+                }
+
+                const updated = await tx.salary.update({
+                    where: { id },
+                    data: salaryData,
+                });
+
+                if (data.sessionIds && Array.isArray(data.sessionIds)) {
+                    await tx.attendanceSession.updateMany({
+                        where: { salaryId: id },
+                        data: { salaryId: null, payrollStatus: SessionPayrollStatus.UNPROCESSED }
+                    });
+
+                    if (data.sessionIds.length > 0) {
+                        await tx.attendanceSession.updateMany({
+                            where: { id: { in: data.sessionIds } },
+                            data: {
+                                salaryId: id,
+                                payrollStatus: SessionPayrollStatus.PROCESSED
+                            }
+                        });
+                    }
+                }
+
+                return updated;
+            });
+        } catch (error) {
+            console.error(`[SALARIES_SERVICE] Update failed for ${id}:`, error);
+            throw error;
+        }
     }
 }
