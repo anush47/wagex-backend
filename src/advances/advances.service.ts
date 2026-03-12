@@ -46,4 +46,37 @@ export class AdvancesService {
             data: { status: AdvanceStatus.APPROVED },
         });
     }
+
+    async getActiveDeductions(employeeId: string, startDate: Date, endDate: Date) {
+        const advances = await this.prisma.salaryAdvance.findMany({
+            where: {
+                employeeId,
+                status: AdvanceStatus.APPROVED, // Must be approved to be deducted
+                remainingAmount: { gt: 0 },
+            }
+        });
+
+        const activeDeductions = advances.filter(advance => {
+            const schedule = (advance.deductionSchedule as any[]) || [];
+            return schedule.some(s => 
+                !s.isDeducted && 
+                new Date(s.periodStartDate).getTime() >= startDate.getTime() &&
+                new Date(s.periodStartDate).getTime() <= endDate.getTime()
+            );
+        }).map(advance => {
+            const schedule = (advance.deductionSchedule as any[]) || [];
+            const installment = schedule.find(s => 
+                !s.isDeducted && 
+                new Date(s.periodStartDate).getTime() >= startDate.getTime() &&
+                new Date(s.periodStartDate).getTime() <= endDate.getTime()
+            );
+            return {
+                advanceId: advance.id,
+                amount: installment.amount,
+                reason: advance.reason,
+            };
+        });
+
+        return activeDeductions;
+    }
 }

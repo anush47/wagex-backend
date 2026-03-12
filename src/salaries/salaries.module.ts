@@ -5,9 +5,10 @@ import { SalaryEngineService } from './services/salary-engine.service';
 import { SalaryAutomationService } from './services/salary-automation.service';
 import { PoliciesModule } from '../policies/policies.module';
 import { AttendanceModule } from '../attendance/attendance.module';
+import { AdvancesModule } from '../advances/advances.module';
 
 @Module({
-    imports: [PoliciesModule, AttendanceModule],
+    imports: [PoliciesModule, AttendanceModule, AdvancesModule],
     controllers: [SalariesController],
     providers: [SalariesService, SalaryEngineService, SalaryAutomationService],
     exports: [SalariesService, SalaryEngineService, SalaryAutomationService],

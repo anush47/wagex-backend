@@ -256,9 +256,40 @@ export class SalariesService {
                 });
 
                 // Delete related payments
-                await tx.payment.deleteMany({
-                    where: { salaryId: id }
+                const payments = await tx.payment.findMany({ where: { salaryId: id } });
+                if (payments.length > 0) {
+                    await tx.payment.deleteMany({ where: { salaryId: id } });
+                }
+
+                // Since Prisma JSON filtering might be complex, let's just reverse based on the existing salary periods
+                const allAdvances = await tx.salaryAdvance.findMany({
+                    where: { employeeId: existing.employeeId }
                 });
+
+                for (const advance of allAdvances) {
+                    const schedule = (advance.deductionSchedule as any[]) || [];
+                    let modified = false;
+                    let amountToRestore = 0;
+                    
+                    const updatedSchedule = schedule.map(s => {
+                        if (new Date(s.periodStartDate).getTime() === existing.periodStartDate.getTime() && s.isDeducted) {
+                            modified = true;
+                            amountToRestore += s.amount;
+                            return { ...s, isDeducted: false };
+                        }
+                        return s;
+                    });
+
+                    if (modified) {
+                        await tx.salaryAdvance.update({
+                            where: { id: advance.id },
+                            data: {
+                                deductionSchedule: updatedSchedule,
+                                remainingAmount: { increment: amountToRestore }
+                            }
+                        });
+                    }
+                }
 
                 // Finally delete the salary
                 return await tx.salary.delete({

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PoliciesService } from '../../policies/policies.service';
 import { AttendanceProcessingService } from '../../attendance/services/attendance-processing.service';
+import { AdvancesService } from '../../advances/advances.service';
 import { GenerateSalaryDto } from '../dto/salary.dto';
 import { PayCycleFrequency } from '../../policies/dto/payroll-settings-policy.dto';
 import { PayrollComponentType, PayrollComponentSystemType } from '../../policies/dto/salary-components-policy.dto';
@@ -15,6 +16,7 @@ export class SalaryEngineService {
         private readonly prisma: PrismaService,
         private readonly policiesService: PoliciesService,
         private readonly attendanceService: AttendanceProcessingService,
+        private readonly advancesService: AdvancesService,
     ) { }
 
     private calculateOvertime(session: any, hourlyRate: number, payrollConfig: any) {
@@ -414,38 +416,13 @@ export class SalaryEngineService {
         const taxAmount = 0;
 
         // 9. Advance Recovery
-        const advances = await this.prisma.salaryAdvance.findMany({
-            where: {
-                employeeId,
-                remainingAmount: { gt: 0 },
-                status: 'PAID',
-            },
-        });
-
-        let totalAdvanceDeduction = 0;
-        const advanceAdjustments: any[] = [];
-
-        for (const advance of advances) {
-            const schedule = (advance.deductionSchedule as any[]) || [];
-            // Match installment within the period
-            const periodInstallment = schedule.find(s => {
-                const sStart = new Date(s.periodStartDate);
-                return sStart.getTime() >= periodStart.getTime() &&
-                    sStart.getTime() <= periodEnd.getTime() &&
-                    !s.isDeducted;
-            });
-
-            if (periodInstallment) {
-                totalAdvanceDeduction += periodInstallment.amount;
-                advanceAdjustments.push({
-                    advanceId: advance.id,
-                    amount: periodInstallment.amount,
-                });
-            }
-        }
+        const advanceAdjustments = await this.advancesService.getActiveDeductions(employeeId, periodStart, periodEnd);
+        const totalAdvanceDeduction = advanceAdjustments.reduce((sum, adj) => sum + adj.amount, 0);
 
         // 10. Final Calculation
-        const netSalary = (basicSalary + totalAdditions + totalOtAmount) - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction);
+        // Net Salary = Earnings - NoPay - ComponentDeductions - Tax - AdvanceRecoveries
+        const grossEarnings = basicSalary + totalAdditions + totalOtAmount;
+        const netSalary = grossEarnings - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction);
 
         // 11. Run Validations
         const problems = await this.validateEmployeePayroll(employeeId, periodStart, periodEnd, policy);

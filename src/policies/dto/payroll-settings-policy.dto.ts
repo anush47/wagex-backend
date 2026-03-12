@@ -114,4 +114,9 @@ export class PayrollSettingsConfigDto {
     @IsOptional()
     @IsString()
     calendarId?: string;
+
+    @ApiPropertyOptional({ description: 'Automatically acknowledge payments' })
+    @IsOptional()
+    @IsBoolean()
+    autoAcknowledgePayments?: boolean = false;
 }

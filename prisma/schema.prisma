@@ -427,6 +427,7 @@ model Payment {
   remarks       String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  status        PaymentStatus  @default(PENDING_ACKNOWLEDGEMENT)
   advance       SalaryAdvance? @relation(fields: [advanceId], references: [id])
   company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   salary        Salary?        @relation(fields: [salaryId], references: [id])
@@ -435,6 +436,11 @@ model Payment {
   @@index([salaryId])
   @@index([advanceId])
   @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING_ACKNOWLEDGEMENT
+  ACKNOWLEDGED
 }
 
 enum Role {
