@@ -1,14 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSalaryAdvanceDto } from './dto/create-advance.dto';
-import { AdvanceStatus } from '@prisma/client';
+import { AdvanceStatus, PaymentMethod } from '@prisma/client';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class AdvancesService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly paymentsService: PaymentsService
+    ) { }
 
     async create(dto: CreateSalaryAdvanceDto) {
-        return this.prisma.salaryAdvance.create({
+        const advance = await this.prisma.salaryAdvance.create({
             data: {
                 employeeId: dto.employeeId,
                 companyId: dto.companyId,
@@ -18,15 +22,30 @@ export class AdvancesService {
                 reason: dto.reason,
                 deductionSchedule: (dto.deductionSchedule || []) as any,
                 remarks: dto.remarks,
-                status: AdvanceStatus.PENDING,
+                status: AdvanceStatus.APPROVED,
             },
         });
+
+        // Auto-create payment
+        await this.paymentsService.create({
+            companyId: dto.companyId,
+            advanceId: advance.id,
+            amount: dto.totalAmount,
+            date: dto.date,
+            paymentMethod: PaymentMethod.CASH, // Default to CASH for now
+            remarks: 'Auto-disbursed upon issuance',
+        });
+
+        return advance;
     }
 
     async findAll(companyId: string) {
         return this.prisma.salaryAdvance.findMany({
             where: { companyId },
-            include: { employee: { select: { fullName: true, employeeNo: true } } },
+            include: { 
+                employee: { select: { fullName: true, employeeNo: true } },
+                payments: true
+            },
             orderBy: { date: 'desc' },
         });
     }
@@ -51,7 +70,7 @@ export class AdvancesService {
         const advances = await this.prisma.salaryAdvance.findMany({
             where: {
                 employeeId,
-                status: AdvanceStatus.APPROVED, // Must be approved to be deducted
+                status: { in: [AdvanceStatus.APPROVED, AdvanceStatus.PAID] }, // Must be approved or paid to be deducted
                 remainingAmount: { gt: 0 },
             }
         });
@@ -78,5 +97,49 @@ export class AdvancesService {
         });
 
         return activeDeductions;
+    }
+
+    async remove(id: string) {
+        const advance = await this.findOne(id);
+        
+        // Safety check: Don't delete if there are payments
+        if (advance.payments && advance.payments.length > 0) {
+            throw new Error('Cannot delete an advance that has associated payments');
+        }
+
+        // Safety check: Don't delete if any deduction has been made
+        const schedule = (advance.deductionSchedule as any[]) || [];
+        if (schedule.some(s => s.isDeducted)) {
+            throw new Error('Cannot delete an advance that has already been partially recovered');
+        }
+
+        return this.prisma.salaryAdvance.delete({
+            where: { id },
+        });
+    }
+
+    async bulkRemove(ids: string[]) {
+        // Find all advances with their payments and schedules
+        const advances = await this.prisma.salaryAdvance.findMany({
+            where: { id: { in: ids } },
+            include: { payments: true }
+        });
+
+        // Filter out those that are safe to delete
+        const safeToDelete = advances.filter(adv => {
+            const hasPayments = adv.payments && adv.payments.length > 0;
+            const hasDeductions = ((adv.deductionSchedule as any[]) || []).some(s => s.isDeducted);
+            return !hasPayments && !hasDeductions;
+        });
+
+        if (safeToDelete.length === 0) {
+            throw new Error('None of the selected advances are eligible for deletion (they may have payments or recoveries)');
+        }
+
+        const safeIds = safeToDelete.map(adv => adv.id);
+
+        return this.prisma.salaryAdvance.deleteMany({
+            where: { id: { in: safeIds } }
+        });
     }
 }

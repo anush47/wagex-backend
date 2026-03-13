@@ -28,6 +28,8 @@ model Company {
   salaries           Salary[]
   salaryAdvances     SalaryAdvance[]
   memberships        UserCompany[]
+  epfRecords         EpfRecord[]
+  etfRecords         EtfRecord[]
 
   @@map("companies")
 }
@@ -46,7 +48,7 @@ model User {
   employees        Employee[]
   notifications    Notification[]
   memberships      UserCompany[]
-  approvedSalaries Salary[]        @relation("ApprovedSalaries")
+  approvedSalaries Salary[]       @relation("ApprovedSalaries")
 
   @@map("users")
 }
@@ -355,36 +357,41 @@ model Holiday {
 }
 
 model Salary {
-  id               String       @id @default(uuid())
-  employeeId       String
-  companyId        String
-  periodStartDate  DateTime
-  periodEndDate    DateTime
-  payDate          DateTime
-  basicSalary      Float        @default(0.0)
-  otAmount         Float        @default(0.0)
-  otBreakdown      Json?        @default("[]")
-  noPayAmount      Float        @default(0.0)
-  noPayBreakdown   Json?        @default("[]")
-  taxAmount        Float        @default(0.0)
-  components       Json?        @default("[]")
-  advanceDeduction Float        @default(0.0)
-  netSalary        Float        @default(0.0)
-  status           SalaryStatus @default(DRAFT)
-  remarks            String?
-  otAdjustment       Float?               @default(0.0)
-  otAdjustmentReason String?
-  recoveryAdjustment       Float?               @default(0.0)
+  id                       String              @id @default(uuid())
+  employeeId               String
+  companyId                String
+  periodStartDate          DateTime
+  periodEndDate            DateTime
+  payDate                  DateTime
+  basicSalary              Float               @default(0.0)
+  otAmount                 Float               @default(0.0)
+  otBreakdown              Json?               @default("[]")
+  noPayAmount              Float               @default(0.0)
+  noPayBreakdown           Json?               @default("[]")
+  taxAmount                Float               @default(0.0)
+  components               Json?               @default("[]")
+  advanceDeduction         Float               @default(0.0)
+  netSalary                Float               @default(0.0)
+  status                   SalaryStatus        @default(DRAFT)
+  remarks                  String?
+  otAdjustment             Float?              @default(0.0)
+  otAdjustmentReason       String?
+  holidayPayAdjustment     Float?              @default(0.0)
+  holidayPayAdjustmentReason String?
+  recoveryAdjustment       Float?              @default(0.0)
   recoveryAdjustmentReason String?
-  sessions           AttendanceSession[]
-  createdAt          DateTime             @default(now())
-  updatedAt        DateTime     @updatedAt
-  approvedById     String?
-  approvedAt       DateTime?
-  approvedBy       User?        @relation("ApprovedSalaries", fields: [approvedById], references: [id])
-  payments         Payment[]
-  company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  employee         Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  advanceAdjustments       Json?               @default("[]")
+  sessions                 AttendanceSession[]
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  approvedById             String?
+  approvedAt               DateTime?
+  approvedBy               User?               @relation("ApprovedSalaries", fields: [approvedById], references: [id])
+  payments                 Payment[]
+  company                  Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee                 Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  epfRecords               EpfRecord[]         @relation("EpfSalaries")
+  etfRecords               EtfRecord[]         @relation("EtfSalaries")
 
   @@unique([employeeId, periodStartDate, periodEndDate])
   @@index([companyId, periodStartDate, periodEndDate])
@@ -436,6 +443,55 @@ model Payment {
   @@index([salaryId])
   @@index([advanceId])
   @@map("payments")
+}
+
+model EpfRecord {
+  id                String         @id @default(uuid())
+  companyId         String
+  month             Int
+  year              Int
+  referenceNo       String?
+  totalContribution Float
+  surcharge         Float          @default(0.0)
+  paidDate          DateTime?
+  slipUrl           String?
+  paymentMethod     PaymentMethod? @default(CASH)
+  bankName          String?
+  bankBranch        String?
+  chequeNo          String?
+  remarks           String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salaries Salary[] @relation("EpfSalaries")
+
+  @@unique([companyId, month, year])
+  @@map("epf_records")
+}
+
+model EtfRecord {
+  id                String         @id @default(uuid())
+  companyId         String
+  month             Int
+  year              Int
+  totalContribution Float
+  surcharge         Float          @default(0.0)
+  paidDate          DateTime?
+  slipUrl           String?
+  paymentMethod     PaymentMethod? @default(CASH)
+  bankName          String?
+  bankBranch        String?
+  chequeNo          String?
+  remarks           String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salaries Salary[] @relation("EtfSalaries")
+
+  @@unique([companyId, month, year])
+  @@map("etf_records")
 }
 
 enum PaymentStatus {

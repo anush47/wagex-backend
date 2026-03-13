@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Patch, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Query, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AdvancesService } from './advances.service';
 import { CreateSalaryAdvanceDto } from './dto/create-advance.dto';
@@ -30,5 +30,17 @@ export class AdvancesController {
     @ApiOperation({ summary: 'Approve an advance' })
     approve(@Param('id') id: string) {
         return this.advancesService.approve(id);
+    }
+
+    @Delete(':id')
+    @ApiOperation({ summary: 'Delete an advance' })
+    remove(@Param('id') id: string) {
+        return this.advancesService.remove(id);
+    }
+
+    @Delete()
+    @ApiOperation({ summary: 'Bulk delete advances' })
+    bulkRemove(@Body('ids') ids: string[]) {
+        return this.advancesService.bulkRemove(ids);
     }
 }

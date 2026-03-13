@@ -304,7 +304,7 @@ export class SalaryEngineService {
         const standardDeductions = components.filter(c => c.category === 'DEDUCTION' && (!c.systemType || c.systemType === PayrollComponentSystemType.NONE));
 
         let processedComponents: any[] = [];
-        let currentTotalEarnings = basicSalary + totalOtAmount; // Start with Basic + OT
+        let currentTotalEarnings = basicSalary; // Start with Basic only (Exclude OT per user requirement)
 
         // Phase 2: System Additions (e.g. Holiday Pay)
         // These often inject extra earnings based on attendance, affecting Total Earnings for EPF
@@ -312,17 +312,15 @@ export class SalaryEngineService {
             let amount = 0;
             if (comp.systemType === PayrollComponentSystemType.HOLIDAY_PAY) {
                 // Logic: Find sessions on holidays, calculate extra pay
-                // For simplified MVP: We'll take the TRIPLE rate OT amount calculated earlier as roughly equivalent if untracked
-                // But ideally, we re-scan sessions for `workHolidayId` and apply specific rates.
-                // Let's use the explicit holiday OT bucket from previous step if available.
                 const holidayOt = otBreakdown.find(b => b.type === 'TRIPLE');
                 if (holidayOt) {
                     amount = holidayOt.amount;
-                    // Note: If we use this, we should remove it from `totalOtAmount` to avoid double counting?
-                    // Strategy: If HOLIDAY_PAY component exists, we assume OT logic handled it separately or we override it.
-                    // For now, let's assume this component *is* the mechanism for rewarding holiday work, so we might want to deduct from OT breakdown or just treat it as additive bonus.
-                    // Let's treat it as *additive* to existing OT for safety unless configured otherwise.
                 }
+                
+                // ADD USER-REQUESTED ADJUSTMENT:
+                // amount += holidayPayAdjustment (from previous draft if exists)
+                // However, calculatePreview is often for NEW previews.
+                // We should check if we have adjustment inputs passed in or if we should fetch existing.
             }
 
             processedComponents.push({
@@ -421,8 +419,25 @@ export class SalaryEngineService {
 
         // 10. Final Calculation
         // Net Salary = Earnings - NoPay - ComponentDeductions - Tax - AdvanceRecoveries
-        const grossEarnings = basicSalary + totalAdditions + totalOtAmount;
-        const netSalary = grossEarnings - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction);
+        // user requirement: Holiday pay + adjustments should affect total earnings (statutory base)
+        const holidayPayComp = processedComponents.find(c => c.systemType === PayrollComponentSystemType.HOLIDAY_PAY);
+        const holidayPayAmount = holidayPayComp ? holidayPayComp.amount : 0;
+        
+        // Final statutory base (Tot. Earn.) adjustment if needed
+        // For existing drafts, we fetch the adjustments from DB if not provided
+        const existingSalary = await this.prisma.salary.findUnique({
+            where: { employeeId_periodStartDate_periodEndDate: { employeeId, periodStartDate: periodStart, periodEndDate: periodEnd } }
+        });
+        
+        const hPayAdjustment = existingSalary?.holidayPayAdjustment || 0;
+        const otAdj = existingSalary?.otAdjustment || 0;
+        const recAdj = existingSalary?.recoveryAdjustment || 0;
+
+        // Add holiday pay adjustment to the statutory base
+        currentTotalEarnings += hPayAdjustment;
+
+        const grossEarnings = basicSalary + totalAdditions + totalOtAmount + otAdj + hPayAdjustment;
+        const netSalary = grossEarnings - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction + recAdj);
 
         // 11. Run Validations
         const problems = await this.validateEmployeePayroll(employeeId, periodStart, periodEnd, policy);
@@ -448,6 +463,12 @@ export class SalaryEngineService {
             sessions: sessions, // For preview display
             problems,
             hasProblems: problems.length > 0,
+            holidayPayAdjustment: hPayAdjustment,
+            holidayPayAdjustmentReason: existingSalary?.holidayPayAdjustmentReason,
+            otAdjustment: otAdj,
+            otAdjustmentReason: existingSalary?.otAdjustmentReason,
+            recoveryAdjustment: recAdj,
+            recoveryAdjustmentReason: existingSalary?.recoveryAdjustmentReason,
         };
     }
 
@@ -504,25 +525,29 @@ export class SalaryEngineService {
             taxAmount: p.taxAmount,
             components: p.components as any,
             advanceDeduction: p.advanceDeduction,
+            advanceAdjustments: p.advanceAdjustments || [],
             netSalary: p.netSalary,
             status: SalaryStatus.DRAFT,
+            holidayPayAdjustment: p.holidayPayAdjustment || 0,
+            holidayPayAdjustmentReason: p.holidayPayAdjustmentReason || "",
+            otAdjustment: p.otAdjustment || 0,
+            otAdjustmentReason: p.otAdjustmentReason || "",
+            recoveryAdjustment: p.recoveryAdjustment || 0,
+            recoveryAdjustmentReason: p.recoveryAdjustmentReason || "",
         }));
 
-        // We use createMany for performance, but need to handle existing drafts (update vs create)
-        // For simplicity in this step, we'll clear existing drafts for the period or just try to create.
-        // Better: iterate and upsert.
-
+        // We use upsert for performance and to handle existing drafts
         for (const salary of salaryRecords) {
             await this.prisma.salary.upsert({
                 where: {
                     employeeId_periodStartDate_periodEndDate: {
-                        employeeId: salary.employeeId,
-                        periodStartDate: salary.periodStartDate,
-                        periodEndDate: salary.periodEndDate,
+                        employeeId: (salary as any).employeeId,
+                        periodStartDate: (salary as any).periodStartDate,
+                        periodEndDate: (salary as any).periodEndDate,
                     }
                 },
-                update: salary,
-                create: salary,
+                update: salary as any,
+                create: salary as any,
             });
         }
 

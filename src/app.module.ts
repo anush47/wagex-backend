@@ -25,6 +25,7 @@ import { CalendarsModule } from './calendars/calendars.module';
 import { SalariesModule } from './salaries/salaries.module';
 import { AdvancesModule } from './advances/advances.module';
 import { PaymentsModule } from './payments/payments.module';
+import { StatutoryModule } from './statutory/statutory.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
 
@@ -39,6 +40,7 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
     PrismaModule,
     UsersModule,
     AuthModule,
+    StatutoryModule,
     CompaniesModule,
     EmployeesModule,
     AuditModule,

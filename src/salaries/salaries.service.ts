@@ -43,6 +43,7 @@ export class SalariesService {
                     taxAmount: preview.taxAmount,
                     components: preview.components,
                     advanceDeduction: preview.advanceDeduction,
+                    advanceAdjustments: preview.advanceAdjustments || [],
                     netSalary: preview.netSalary,
                     remarks: preview.remarks || null,
                     status: SalaryStatus.DRAFT,
@@ -175,6 +176,7 @@ export class SalariesService {
                     otAdjustmentReason: data.otAdjustmentReason || null,
                     recoveryAdjustment: toNum(data.recoveryAdjustment),
                     recoveryAdjustmentReason: data.recoveryAdjustmentReason || null,
+                    advanceAdjustments: data.advanceAdjustments || [],
                     components: data.components || [],
                     remarks: data.remarks || null,
                 };
