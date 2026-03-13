@@ -8,6 +8,7 @@ import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { User } from './entities/user.entity';
 import { QueryDto } from '../common/dto/query.dto';
+import { AllowInactive } from '../auth/allow-inactive.decorator';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -35,6 +36,7 @@ export class UsersController {
   }
 
   @Get('me')
+  @AllowInactive()
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, type: User })
   async getMe(@Request() req): Promise<User> {

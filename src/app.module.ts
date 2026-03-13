@@ -15,6 +15,7 @@ import { AuditInterceptor } from './audit/audit.interceptor';
 import { RolesGuard } from './auth/roles.guard';
 import { PermissionsGuard } from './auth/permissions.guard';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { ActiveUserGuard } from './auth/active-user.guard';
 import { PoliciesModule } from './policies/policies.module';
 import { StorageModule } from './storage/storage.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -68,7 +69,11 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
     },
     {
       provide: APP_GUARD,
-      useClass: UserExistsGuard, // Auth Logic
+      useClass: UserExistsGuard, // Auth Logic (Check for Guests)
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ActiveUserGuard, // Account Status (Check for Inactive)
     },
     {
       provide: APP_GUARD,

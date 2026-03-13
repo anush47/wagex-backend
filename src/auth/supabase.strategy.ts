@@ -48,8 +48,7 @@ export class SupabaseStrategy extends PassportStrategy(Strategy) {
         });
 
         if (user) {
-            if (!user.active) throw new UnauthorizedException('User inactive');
-            return user; // Return full user entity
+            return user; // Return full user entity even if inactive
         }
 
         // User not found in DB -> Return "Guest" context for Registration
