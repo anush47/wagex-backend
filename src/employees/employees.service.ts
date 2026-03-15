@@ -89,9 +89,14 @@ export class EmployeesService {
     // Build where clause
     const where: any = {};
 
+    // Status filter - default excludes DELETED
     if (status && status !== 'ALL') {
       where.status = status;
+    } else if (!status) {
+      // Default: exclude DELETED employees
+      where.status = { not: 'DELETED' };
     }
+    // If status === 'ALL', don't filter (includes DELETED)
 
     if (companyId) {
       // If specific company requested, filter by it
@@ -277,15 +282,51 @@ export class EmployeesService {
     return updated as unknown as Employee;
   }
 
-  async remove(id: string): Promise<Employee> {
-    // Ensure it exists first
-    await this.findOne(id);
+  async remove(id: string): Promise<{ message: string; employee?: Employee; softDeleted: boolean }> {
+    const employee = await this.findOne(id);
 
-    this.logger.log(`Deleting employee ID: ${id}`);
-    const deleted = await this.prisma.employee.delete({
-      where: { id },
+    // Check if employee has any salaries
+    const salaryCount = await this.prisma.salary.count({
+      where: { employeeId: id }
     });
-    return deleted as unknown as Employee;
+
+    if (salaryCount === 0) {
+      // HARD DELETE - No salary records, cascade everything
+      this.logger.log(`Hard deleting employee ID: ${id} (no salary records)`);
+
+      // Deprovision user if exists
+      if (employee.userId) {
+        await this.deprovisionUser(id);
+      }
+
+      await this.prisma.employee.delete({
+        where: { id },
+      });
+
+      return { message: 'Employee permanently deleted (no salary records)', softDeleted: false };
+    } else {
+      // SOFT DELETE - Has salary records, preserve data
+      this.logger.log(`Soft deleting employee ID: ${id} (has ${salaryCount} salary records)`);
+
+      // Deprovision user account
+      if (employee.userId) {
+        await this.deprovisionUser(id);
+      }
+
+      const updated = await this.prisma.employee.update({
+        where: { id },
+        data: {
+          status: 'DELETED',
+          resignedDate: new Date()
+        },
+      });
+
+      return {
+        message: 'Employee marked as deleted (salary records preserved)',
+        employee: updated as unknown as Employee,
+        softDeleted: true
+      };
+    }
   }
 
   /**

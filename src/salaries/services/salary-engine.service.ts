@@ -298,38 +298,81 @@ export class SalaryEngineService {
             }
         });
 
-        // 5. Calculate OT Breakdown & Finalize Period Basic Salary
+        // 5. Calculate OT Breakdown & Holiday Pay Breakdown
+        // Rules with affectTotalEarnings=true go to Holiday Pay, others go to regular OT
         let totalOtAmount = 0;
-        const dynamicOtMap: Record<string, { hours: number, amount: number }> = {};
+        let totalHolidayPayAmount = 0;
+        const dynamicOtMap: Record<string, { hours: number, amount: number, type: string }> = {};
+        const holidayPayMap: Record<string, { hours: number, amount: number, holidayName: string, affectTotalEarnings: boolean }> = {};
+        const otRules = policy.payrollConfiguration?.otRules || [];
 
         sessions.forEach(session => {
             const ot = this.calculateOvertime(session, otHourlyRate, payrollConfig);
             if (ot.type !== 'NONE') {
-                if (!dynamicOtMap[ot.type]) {
-                    dynamicOtMap[ot.type] = { hours: 0, amount: 0 };
+                // Map session.workDayStatus to OvertimeDayType
+                let mappedStatus: OvertimeDayType = OvertimeDayType.ANY;
+                if (session.workDayStatus === SessionWorkDayStatus.FULL) mappedStatus = OvertimeDayType.WORKING_DAY;
+                else if (session.workDayStatus === SessionWorkDayStatus.HALF_FIRST || session.workDayStatus === SessionWorkDayStatus.HALF_LAST) mappedStatus = OvertimeDayType.HALF_DAY;
+                else if (session.workDayStatus === SessionWorkDayStatus.OFF) mappedStatus = OvertimeDayType.OFF_DAY;
+
+                // Find the matching OT rule for this session
+                let matchedRule = otRules.find(rule => {
+                    if (rule.isHoliday) {
+                        const isSessionOnHoliday = !!(session.workHolidayId || session.payrollHolidayId);
+                        return isSessionOnHoliday;
+                    }
+                    return rule.dayStatus === mappedStatus && !rule.isHoliday;
+                });
+
+                // Check if this OT should go to Holiday Pay (affectTotalEarnings = true)
+                const goesToHolidayPay = matchedRule?.affectTotalEarnings !== false;
+
+                if (goesToHolidayPay) {
+                    // Add to Holiday Pay breakdown
+                    const holidayName = matchedRule?.isHoliday 
+                        ? (session.payrollHoliday || session.workHoliday)?.name || 'Off Day / Holiday'
+                        : 'Off Day OT';
+                    const holidayKey = `${matchedRule?.id || 'off-day'}-${session.date}`;
+                    
+                    if (!holidayPayMap[holidayKey]) {
+                        holidayPayMap[holidayKey] = {
+                            hours: 0,
+                            amount: 0,
+                            holidayName,
+                            affectTotalEarnings: true
+                        };
+                    }
+                    holidayPayMap[holidayKey].hours += ot.hours;
+                    holidayPayMap[holidayKey].amount += ot.amount;
+                    totalHolidayPayAmount += ot.amount;
+                } else {
+                    // Add to regular OT breakdown
+                    if (!dynamicOtMap[ot.type]) {
+                        dynamicOtMap[ot.type] = { hours: 0, amount: 0, type: ot.type };
+                    }
+                    dynamicOtMap[ot.type].hours += ot.hours;
+                    dynamicOtMap[ot.type].amount += ot.amount;
+                    totalOtAmount += ot.amount;
                 }
-                dynamicOtMap[ot.type].hours += ot.hours;
-                dynamicOtMap[ot.type].amount += ot.amount;
-                totalOtAmount += ot.amount;
             }
         });
+
+        const otBreakdown = Object.entries(dynamicOtMap).map(([_, data]) => ({ type: data.type, hours: data.hours, amount: data.amount }));
+        const holidayPayBreakdown = Object.values(holidayPayMap);
 
         // 5.1 Calculate Period Basic Salary based on sessions and method
         // Frequency: Monthly -> Full Basic. Others -> Prorated by divisor.
         if (
-            calculationMethod !== PayrollCalculationMethod.SHIFT_ATTENDANCE_FLAT || true // Simplified: all currently benefit from the same potential-based basic
+            calculationMethod !== PayrollCalculationMethod.SHIFT_ATTENDANCE_FLAT || true
         ) {
             if (payrollConfig?.frequency === PayCycleFrequency.MONTHLY) {
                 basicSalaryForPeriod = employeeBaseSalary;
             } else {
                 const diffTime = Math.abs(periodEnd.getTime() - periodStart.getTime());
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                // "for other ones use the per day calculation based on the divisor"
                 basicSalaryForPeriod = (employeeBaseSalary / baseRateDivisor) * diffDays;
             }
         }
-
-        const otBreakdown = Object.entries(dynamicOtMap).map(([type, data]) => ({ type, ...data }));
 
         // 5.2 Calculate Late/Early Deduction
         let totalLateDeduction = 0;
@@ -470,22 +513,15 @@ export class SalaryEngineService {
             currentTotalEarnings -= totalLateDeduction;
         }
 
-        // Phase 2: System Additions (e.g. Holiday Pay)
+        // Phase 2: System Additions (excluding Holiday Pay which is calculated separately)
         // These often inject extra earnings based on attendance, affecting Total Earnings for EPF
         systemAdditions.forEach(comp => {
-            let amount = 0;
+            // Skip HOLIDAY_PAY as it's now calculated separately from attendance sessions
             if (comp.systemType === PayrollComponentSystemType.HOLIDAY_PAY) {
-                // Logic: Find sessions on holidays, calculate extra pay
-                const holidayOt = otBreakdown.find(b => b.type === 'TRIPLE');
-                if (holidayOt) {
-                    amount = holidayOt.amount;
-                }
-                
-                // ADD USER-REQUESTED ADJUSTMENT:
-                // amount += holidayPayAdjustment (from previous draft if exists)
-                // However, calculatePreview is often for NEW previews.
-                // We should check if we have adjustment inputs passed in or if we should fetch existing.
+                return;
             }
+            
+            let amount = 0;
 
             processedComponents.push({
                 ...comp,
@@ -516,6 +552,42 @@ export class SalaryEngineService {
                 currentTotalEarnings += amount;
             }
         });
+
+        // Phase 3.1: Add Holiday Pay as a component (includes OT from rules with affectTotalEarnings=true)
+        // This includes Off Day OT and Holiday OT that affect statutory base
+        if (totalHolidayPayAmount > 0) {
+            processedComponents.push({
+                id: 'holiday-pay',
+                name: 'Holiday Pay',
+                category: 'ADDITION',
+                type: 'FLAT_AMOUNT',
+                amount: totalHolidayPayAmount,
+                systemType: PayrollComponentSystemType.HOLIDAY_PAY,
+                affectsTotalEarnings: true,
+                isStatutory: true,
+                breakdown: holidayPayBreakdown
+            });
+
+            // Holiday pay always affects total earnings (that's why it's in this category)
+            currentTotalEarnings += totalHolidayPayAmount;
+        }
+
+        // Phase 3.2: Add regular OT as a component (does NOT affect total earnings)
+        if (totalOtAmount > 0) {
+            processedComponents.push({
+                id: 'ot-pay',
+                name: 'Overtime Pay',
+                category: 'ADDITION',
+                type: 'FLAT_AMOUNT',
+                amount: totalOtAmount,
+                systemType: PayrollComponentSystemType.NONE,
+                affectsTotalEarnings: false,
+                isStatutory: false,
+                breakdown: otBreakdown
+            });
+
+            // Regular OT does NOT affect total earnings for EPF/ETF
+        }
 
         // Phase 4: System Deductions (EPF, ETF)
         // Note: No-Pay and Late are now injected manually at the end or processed if they still exist in policy
@@ -561,17 +633,9 @@ export class SalaryEngineService {
             });
         });
 
-        // Phase 4.1: Inject Virtual System Deductions (Unpaid Leaves / Late)
-        if (payrollConfig?.autoDeductUnpaidLeaves && totalUnpaidAmount > 0) {
-            processedComponents.push({
-                name: 'Unpaid Leave / LOP',
-                category: 'DEDUCTION',
-                type: 'FLAT_AMOUNT',
-                amount: totalUnpaidAmount,
-                systemType: PayrollComponentSystemType.NO_PAY_DEDUCTION,
-                affectsTotalEarnings: payrollConfig.unpaidLeavesAffectTotalEarnings
-            });
-        }
+        // Phase 4.1: Inject Virtual System Deductions (Late only, No-Pay is handled separately)
+        // Note: We do NOT add Unpaid Leave / LOP as a component since it's already 
+        // tracked separately in noPayAmount and noPayBreakdown fields
         if (payrollConfig?.autoDeductLate && totalLateDeduction > 0) {
             processedComponents.push({
                 name: 'Late Arrival Deduction',
@@ -648,6 +712,8 @@ export class SalaryEngineService {
             basicSalary: basicSalaryForPeriod,
             otAmount: totalOtAmount,
             otBreakdown,
+            holidayPayAmount: totalHolidayPayAmount,
+            holidayPayBreakdown,
             lateDeduction: totalLateDeduction,
             lateAdjustment: lateAdj,
             noPayAmount: totalNoPayAmount,

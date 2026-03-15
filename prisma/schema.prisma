@@ -338,20 +338,21 @@ model Calendar {
 }
 
 model Holiday {
-  id              String              @id @default(uuid())
-  calendarId      String
-  date            DateTime            @db.Date
-  name            String
-  description     String?
-  isPublic        Boolean             @default(false)
-  isMercantile    Boolean             @default(false)
-  isBank          Boolean             @default(false)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  payrollSessions AttendanceSession[] @relation("PayrollHoliday")
-  workSessions    AttendanceSession[] @relation("WorkHoliday")
-  calendar        Calendar            @relation(fields: [calendarId], references: [id], onDelete: Cascade)
-  leaveRequests   LeaveRequest[]
+  id                  String              @id @default(uuid())
+  calendarId          String
+  date                DateTime            @db.Date
+  name                String
+  description         String?
+  isPublic            Boolean             @default(false)
+  isMercantile        Boolean             @default(false)
+  isBank              Boolean             @default(false)
+  affectTotalEarnings Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  payrollSessions     AttendanceSession[] @relation("PayrollHoliday")
+  workSessions        AttendanceSession[] @relation("WorkHoliday")
+  calendar            Calendar            @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  leaveRequests       LeaveRequest[]
 
   @@unique([calendarId, date])
   @@index([date])
@@ -368,6 +369,8 @@ model Salary {
   basicSalary              Float               @default(0.0)
   otAmount                 Float               @default(0.0)
   otBreakdown              Json?               @default("[]")
+  holidayPayAmount         Float               @default(0.0)
+  holidayPayBreakdown      Json?               @default("[]")
   noPayAmount              Float               @default(0.0)
   noPayBreakdown           Json?               @default("[]")
   taxAmount                Float               @default(0.0)

@@ -5,6 +5,7 @@ import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { PolicySettingsDto } from './dto/policy-settings.dto';
 import { Policy } from '@prisma/client';
 import { merge } from 'lodash';
+import { DEFAULT_POLICY_SETTINGS } from './constants/default-policy.template';
 
 @Injectable()
 export class PoliciesService {
@@ -23,13 +24,25 @@ export class PoliciesService {
             });
         }
 
+        // If no settings provided, use company default policy as template
+        let finalSettings = settings;
+        if (!settings || Object.keys(settings).length === 0) {
+            const defaultPolicy = await this.getDefaultPolicy(companyId);
+            if (defaultPolicy && defaultPolicy.settings) {
+                finalSettings = defaultPolicy.settings as any;
+            } else {
+                // Fallback to global default template if no company default exists
+                finalSettings = DEFAULT_POLICY_SETTINGS as any;
+            }
+        }
+
         return this.prisma.policy.create({
             data: {
                 companyId,
                 name,
                 description,
                 isDefault: !!isDefault,
-                settings: settings as any,
+                settings: finalSettings as any,
             }
         });
     }
@@ -51,12 +64,12 @@ export class PoliciesService {
         });
 
         if (policies.length === 0) {
-            // Create initial default policy
+            // Create initial default policy with full template
             const defaultPolicy = await this.create({
                 companyId,
                 name: 'Company Default',
                 isDefault: true,
-                settings: {} as any
+                settings: DEFAULT_POLICY_SETTINGS as any
             });
             return [defaultPolicy];
         }
@@ -83,12 +96,12 @@ export class PoliciesService {
                 });
             }
 
-            // Create new default
+            // Create new default with full template
             return this.create({
                 companyId,
                 name: 'Company Default',
                 isDefault: true,
-                settings: {} as any
+                settings: DEFAULT_POLICY_SETTINGS as any
             });
         }
 

@@ -86,6 +86,11 @@ export class OvertimeRuleDto {
     @ValidateNested({ each: true })
     @Type(() => OvertimeTierDto)
     tiers: OvertimeTierDto[];
+
+    @ApiPropertyOptional({ description: 'Whether OT from this rule affects total earnings for statutory calculations', default: true })
+    @IsOptional()
+    @IsBoolean()
+    affectTotalEarnings?: boolean = true;
 }
 
 export class PayrollSettingsConfigDto {
@@ -188,6 +193,9 @@ export class PayrollSettingsConfigDto {
     otHourlyValue?: number = 8;
 
     @ApiPropertyOptional({ example: 1.5 })
+    @IsOptional()
+    @IsNumber()
+    otNormalRate?: number = 1.5;
 
     @ApiPropertyOptional({ example: 2.0 })
     @IsOptional()

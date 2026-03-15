@@ -21,6 +21,11 @@ export class DailyWorkConfigDto {
     @IsOptional()
     @IsEnum(HalfDayShift)
     halfDayShift?: HalfDayShift;
+
+    @ApiPropertyOptional({ description: 'Whether work on this day affects total earnings for statutory calculations', default: true })
+    @IsOptional()
+    @IsBoolean()
+    affectTotalEarnings?: boolean = true;
 }
 
 export class WorkingDaysConfigDto {
@@ -42,4 +47,9 @@ export class WorkingDaysConfigDto {
     @IsOptional()
     @IsString()
     payrollCalendar?: string;
+
+    @ApiPropertyOptional({ description: 'Default affect total earnings setting for working days', default: true })
+    @IsOptional()
+    @IsBoolean()
+    affectTotalEarnings?: boolean = true;
 }

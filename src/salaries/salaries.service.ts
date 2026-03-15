@@ -38,6 +38,8 @@ export class SalariesService {
                     otAdjustment: preview.otAdjustment || 0,
                     otAdjustmentReason: preview.otAdjustmentReason || null,
                     otBreakdown: preview.otBreakdown,
+                    holidayPayAmount: preview.holidayPayAmount || 0,
+                    holidayPayBreakdown: preview.holidayPayBreakdown,
                     noPayAmount: preview.noPayAmount,
                     noPayBreakdown: preview.noPayBreakdown,
                     taxAmount: preview.taxAmount,

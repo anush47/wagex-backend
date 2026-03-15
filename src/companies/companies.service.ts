@@ -16,7 +16,10 @@ export class CompaniesService {
   async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
     this.logger.log(`Creating new company: ${createCompanyDto.name}`);
     return this.prisma.company.create({
-      data: createCompanyDto,
+      data: {
+        ...createCompanyDto,
+        timezone: createCompanyDto.timezone || 'Asia/Colombo', // Default to Sri Lanka/Indian Standard Time (+5:30)
+      },
     });
   }
 
@@ -24,9 +27,12 @@ export class CompaniesService {
     this.logger.log(`Creating company with membership for user: ${userId}`);
 
     return this.prisma.$transaction(async (tx) => {
-      // Create company
+      // Create company with default timezone
       const company = await tx.company.create({
-        data: createCompanyDto,
+        data: {
+          ...createCompanyDto,
+          timezone: createCompanyDto.timezone || 'Asia/Colombo',
+        },
       });
 
       // Add user as company member with employer role
