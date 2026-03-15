@@ -82,12 +82,17 @@ export class AttendanceProcessingService {
                 sessionGroup.sessionDate,
             );
 
+            // Get effective policy early
+            const policyDetail = await this.policiesService.getEffectivePolicyDetail(employeeId);
+            const effectivePolicy = policyDetail.effective;
+
             // Calculate everything (centralized)
-            const calculation = this.calculationService.calculate(
+            const calculation = await this.calculationService.calculate(
                 { sessionGroup },
                 shift,
                 leaves,
-                timezone
+                timezone,
+                effectivePolicy
             );
 
             const times = calculation;
@@ -122,21 +127,20 @@ export class AttendanceProcessingService {
         flags: any,
     ): Promise<AttendanceSession> {
         // Get employee's company
-        const employee = await this.prisma.employee.findUnique({
+        const employeeRecord = await this.prisma.employee.findUnique({
             where: { id: employeeId },
             select: { companyId: true },
         });
 
-        if (!employee) {
+        if (!employeeRecord) {
             throw new Error('Employee not found');
         }
 
         // Determine Approval Status based on Policy
-        const detail = await this.policiesService.getEffectivePolicyDetail(employeeId);
-        const policySrc = detail.source.hasAssignedPolicy ? 'ASSIGNED_TEMPLATE' : 'COMPANY_DEFAULT';
-        this.logger.log(`[ATTENDANCE_LOGIC] Policy Source for ${employeeId}: ${policySrc} (${detail.source.assignedPolicyName || 'Default'})`);
-
-        const effectivePolicy = detail.effective;
+        // Note: we can pass effectivePolicy as an argument if needed, but for now we re-fetch or use if passed.
+        // Let's modify the signature to accept effectivePolicy to avoid duplicate calls.
+        const policyDetail = await this.policiesService.getEffectivePolicyDetail(employeeId);
+        const effectivePolicy = policyDetail.effective;
         const approvalConfig = effectivePolicy?.attendance?.approvalPolicy;
 
         const firstInEvent = sessionGroup.events.find((e) => e.eventType === 'IN');
@@ -186,7 +190,7 @@ export class AttendanceProcessingService {
 
         const sessionData = {
             employeeId,
-            companyId: employee.companyId,
+            companyId: employeeRecord.companyId,
             date: sessionGroup.sessionDate,
             shiftId: shift?.id || null,
             shiftName: shift?.name || null,
@@ -206,7 +210,9 @@ export class AttendanceProcessingService {
             workMinutes: times.workMinutes,
             overtimeMinutes: times.overtimeMinutes,
             isLate: flags.isLate,
+            lateMinutes: flags.lateMinutes,
             isEarlyLeave: flags.isEarlyLeave,
+            earlyLeaveMinutes: flags.earlyLeaveMinutes,
             isOnLeave: flags.isOnLeave,
             isHalfDay: flags.isHalfDay,
             hasShortLeave: flags.hasShortLeave,

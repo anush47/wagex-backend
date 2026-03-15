@@ -4,9 +4,9 @@ import { PoliciesService } from '../../policies/policies.service';
 import { AttendanceProcessingService } from '../../attendance/services/attendance-processing.service';
 import { AdvancesService } from '../../advances/advances.service';
 import { GenerateSalaryDto } from '../dto/salary.dto';
-import { PayCycleFrequency } from '../../policies/dto/payroll-settings-policy.dto';
+import { PayCycleFrequency, PayrollCalculationMethod, OvertimeDayType, UnpaidLeaveAction } from '../../policies/dto/payroll-settings-policy.dto';
 import { PayrollComponentType, PayrollComponentSystemType } from '../../policies/dto/salary-components-policy.dto';
-import { SalaryStatus, LeaveStatus, ApprovalStatus } from '@prisma/client';
+import { SalaryStatus, LeaveStatus, ApprovalStatus, SessionWorkDayStatus } from '@prisma/client';
 import { merge, groupBy } from 'lodash';
 import { PolicySettingsDto } from '../../policies/dto/policy-settings.dto';
 
@@ -24,12 +24,26 @@ export class SalaryEngineService {
             return { hours: 0, amount: 0, type: 'NONE' };
         }
 
-        const otRules = payrollConfig?.otRules || [];
+        const calculationMethod = payrollConfig?.calculationMethod || PayrollCalculationMethod.FIXED_MONTHLY_SALARY;
+        if (
+            calculationMethod === PayrollCalculationMethod.SHIFT_ATTENDANCE_FLAT ||
+            calculationMethod === PayrollCalculationMethod.DAILY_ATTENDANCE_FLAT
+        ) {
+            return { hours: 0, amount: 0, type: 'NONE' };
+        }
+
+        const otRules = (payrollConfig?.otRules as any[]) || [];
         let matchedRule: any = null;
+
+        // Map session.workDayStatus (DB) to OvertimeDayType (Policy)
+        let mappedStatus: OvertimeDayType = OvertimeDayType.ANY;
+        if (session.workDayStatus === SessionWorkDayStatus.FULL) mappedStatus = OvertimeDayType.WORKING_DAY;
+        else if (session.workDayStatus === SessionWorkDayStatus.HALF_FIRST || session.workDayStatus === SessionWorkDayStatus.HALF_LAST) mappedStatus = OvertimeDayType.HALF_DAY;
+        else if (session.workDayStatus === SessionWorkDayStatus.OFF) mappedStatus = OvertimeDayType.OFF_DAY;
 
         if (otRules.length > 0) {
             for (const rule of otRules) {
-                let statusMatch = rule.dayStatus === 'ANY' || rule.dayStatus === session.workDayStatus;
+                let statusMatch = rule.dayStatus === OvertimeDayType.ANY || rule.dayStatus === mappedStatus;
                 
                 let holidayMatch = true;
                 if (rule.isHoliday !== undefined && rule.isHoliday !== null) {
@@ -240,20 +254,16 @@ export class SalaryEngineService {
         });
         if (!employee) throw new NotFoundException(`Employee ${employeeId} not found`);
 
-        // 3. Resolve Basic Salary for Period
+        // 3. Resolve Basic Salary for Period based on Calculation Method
         const payrollConfig = policy.payrollConfiguration;
         const baseRateDivisor = payrollConfig?.baseRateDivisor || 30;
-        let basicSalary = employee.basicSalary;
-
-        if (payrollConfig && payrollConfig.frequency !== PayCycleFrequency.MONTHLY) {
-            // For non-monthly, we calculate based on the period duration
-            const dailyRate = basicSalary / baseRateDivisor;
-            const diffTime = Math.abs(periodEnd.getTime() - periodStart.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            basicSalary = dailyRate * diffDays;
-        }
-
-        const hourlyRate = basicSalary / (payrollConfig?.otDivisor || 200);
+        const otDivisor = payrollConfig?.otDivisor || 200;
+        const calculationMethod = payrollConfig?.calculationMethod || PayrollCalculationMethod.FIXED_MONTHLY_SALARY;
+        
+        const employeeBaseSalary = employee.basicSalary;
+        let basicSalaryForPeriod = 0;
+        const hourlyRate = employeeBaseSalary / otDivisor;
+        const dailyRate = employeeBaseSalary / baseRateDivisor;
 
         // 4. Fetch Attendance Data for Period
         const sessions = await this.prisma.attendanceSession.findMany({
@@ -280,7 +290,7 @@ export class SalaryEngineService {
             }
         });
 
-        // 5. Calculate OT Breakdown
+        // 5. Calculate OT Breakdown & Finalize Period Basic Salary
         let totalOtAmount = 0;
         const dynamicOtMap: Record<string, { hours: number, amount: number }> = {};
 
@@ -296,7 +306,46 @@ export class SalaryEngineService {
             }
         });
 
+        // 5.1 Calculate Period Basic Salary based on sessions and method
+        if (calculationMethod === PayrollCalculationMethod.FIXED_MONTHLY_SALARY) {
+            basicSalaryForPeriod = employeeBaseSalary;
+            if (payrollConfig && payrollConfig.frequency !== PayCycleFrequency.MONTHLY) {
+                const diffTime = Math.abs(periodEnd.getTime() - periodStart.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                basicSalaryForPeriod = dailyRate * diffDays;
+            }
+        } else if (calculationMethod === PayrollCalculationMethod.HOURLY_ATTENDANCE_WITH_OT) {
+            const totalWorkMinutes = sessions.reduce((sum, s) => sum + (s.workMinutes || 0), 0);
+            basicSalaryForPeriod = (totalWorkMinutes / 60) * hourlyRate;
+        } else if (calculationMethod === PayrollCalculationMethod.DAILY_ATTENDANCE_FLAT) {
+            let totalDays = 0;
+            sessions.forEach(s => {
+                if (s.workDayStatus === SessionWorkDayStatus.FULL) totalDays += 1;
+                else if (s.workDayStatus === SessionWorkDayStatus.HALF_FIRST || s.workDayStatus === SessionWorkDayStatus.HALF_LAST) totalDays += 0.5;
+                else if (s.workDayStatus === SessionWorkDayStatus.OFF && (s.workMinutes || 0) > 0) totalDays += 1;
+            });
+            basicSalaryForPeriod = totalDays * dailyRate;
+        } else if (calculationMethod === PayrollCalculationMethod.SHIFT_ATTENDANCE_FLAT || calculationMethod === PayrollCalculationMethod.SHIFT_ATTENDANCE_WITH_OT) {
+            basicSalaryForPeriod = sessions.length * dailyRate; // Assuming dailyRate acts as shiftRate
+        }
+
         const otBreakdown = Object.entries(dynamicOtMap).map(([type, data]) => ({ type, ...data }));
+
+        // 5.2 Calculate Late/Early Deduction
+        let totalLateDeduction = 0;
+        if (payrollConfig?.lateDeductionValue) {
+            const totalLateMinutes = sessions.reduce((sum, s: any) => sum + (s.lateMinutes || 0) + (s.earlyLeaveMinutes || 0), 0);
+            
+            if (payrollConfig.lateDeductionType === 'DIVISOR_BASED') {
+                // Calculation: (Basic / BaseRateDivisor / LateDeductionValue) * (TotalLateMinutes / 60)
+                // LateDeductionValue is usually "Hours per working day" (e.g. 8)
+                const minuteRate = (employeeBaseSalary / baseRateDivisor) / (payrollConfig.lateDeductionValue * 60);
+                totalLateDeduction = totalLateMinutes * minuteRate;
+            } else {
+                // FIXED_AMOUNT (per minute probably?)
+                totalLateDeduction = totalLateMinutes * payrollConfig.lateDeductionValue;
+            }
+        }
 
         // 6. Calculate No-Pay Breakdown
         // If autoDeductUnpaidLeaves is active, we check for missing days
@@ -323,7 +372,7 @@ export class SalaryEngineService {
             .map((lt: any) => lt.id);
 
         if (payrollConfig?.autoDeductUnpaidLeaves) {
-            const dailyRate = basicSalary / baseRateDivisor;
+            const dailyRate = employeeBaseSalary / baseRateDivisor;
 
             // 1. Calculate Expected Days (Business logic: assume all days in period are working for now, unless policy says otherwise)
             // In a more complex system, we'd check the workingDays policy pattern.
@@ -368,6 +417,11 @@ export class SalaryEngineService {
                     }
                 }
             }
+
+            // User Requirement: No-Pay deducts from basic salary directly if set to DEDUCT_FROM_TOTAL
+            if (payrollConfig?.unpaidLeaveAction === UnpaidLeaveAction.DEDUCT_FROM_TOTAL) {
+                basicSalaryForPeriod = Math.max(0, basicSalaryForPeriod - totalNoPayAmount);
+            }
         }
 
         // 7. Salary Components (Additions / Deductions)
@@ -381,7 +435,23 @@ export class SalaryEngineService {
         const standardDeductions = components.filter(c => c.category === 'DEDUCTION' && (!c.systemType || c.systemType === PayrollComponentSystemType.NONE));
 
         let processedComponents: any[] = [];
-        let currentTotalEarnings = basicSalary; // Start with Basic only (Exclude OT per user requirement)
+        let currentTotalEarnings = basicSalaryForPeriod; // Start with resolved Basic for Period
+        
+        // If no-pay was already subtracted from basic and we want it to NOT affect total earnings (statutory base)
+        // we add it back temporarily for calculation if noPayAffectsTotalEarnings is false
+        if (payrollConfig?.autoDeductUnpaidLeaves && 
+            payrollConfig?.unpaidLeaveAction === UnpaidLeaveAction.DEDUCT_FROM_TOTAL && 
+            payrollConfig?.noPayAffectsTotalEarnings === false) {
+            currentTotalEarnings += totalNoPayAmount;
+        }
+
+        // Conversely, if no-pay is NOT yet subtracted (it's a separate deduction component) 
+        // but user WANTS it to affect total earnings, we subtract it here
+        if (payrollConfig?.autoDeductUnpaidLeaves && 
+            payrollConfig?.unpaidLeaveAction === UnpaidLeaveAction.ADD_AS_DEDUCTION && 
+            payrollConfig?.noPayAffectsTotalEarnings !== false) {
+            currentTotalEarnings -= totalNoPayAmount;
+        }
 
         // Phase 2: System Additions (e.g. Holiday Pay)
         // These often inject extra earnings based on attendance, affecting Total Earnings for EPF
@@ -417,7 +487,7 @@ export class SalaryEngineService {
             if (comp.type === PayrollComponentType.FLAT_AMOUNT) {
                 amount = comp.value;
             } else if (comp.type === PayrollComponentType.PERCENTAGE_BASIC) {
-                amount = (basicSalary * comp.value) / 100;
+                amount = (basicSalaryForPeriod * comp.value) / 100;
             }
 
             processedComponents.push({
@@ -467,7 +537,7 @@ export class SalaryEngineService {
             if (comp.type === PayrollComponentType.FLAT_AMOUNT) {
                 amount = comp.value;
             } else if (comp.type === PayrollComponentType.PERCENTAGE_BASIC) {
-                amount = (basicSalary * comp.value) / 100;
+                amount = (basicSalaryForPeriod * comp.value) / 100;
             } else if (comp.type === PayrollComponentType.PERCENTAGE_TOTAL_EARNINGS) {
                 amount = (currentTotalEarnings * comp.value) / 100;
             }
@@ -526,12 +596,13 @@ export class SalaryEngineService {
         const hPayAdjustment = existingSalary?.holidayPayAdjustment || 0;
         const otAdj = existingSalary?.otAdjustment || 0;
         const recAdj = existingSalary?.recoveryAdjustment || 0;
+        const lateAdj = existingSalary?.lateAdjustment || 0;
 
         // Add holiday pay adjustment to the statutory base
         currentTotalEarnings += hPayAdjustment;
 
-        const grossEarnings = basicSalary + totalAdditions + totalOtAmount + otAdj + hPayAdjustment;
-        const netSalary = grossEarnings - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction + recAdj);
+        const grossEarnings = basicSalaryForPeriod + totalAdditions + totalOtAmount + otAdj + hPayAdjustment;
+        const netSalary = grossEarnings - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction + recAdj + totalLateDeduction + lateAdj);
 
         // 11. Run Validations
         const problems = await this.validateEmployeePayroll(employeeId, periodStart, periodEnd, policy);
@@ -543,9 +614,11 @@ export class SalaryEngineService {
             policyName: (policy as any).name || 'Default',
             periodStartDate: periodStart,
             periodEndDate: periodEnd,
-            basicSalary,
+            basicSalary: basicSalaryForPeriod,
             otAmount: totalOtAmount,
             otBreakdown,
+            lateDeduction: totalLateDeduction,
+            lateAdjustment: lateAdj,
             noPayAmount: totalNoPayAmount,
             noPayBreakdown,
             taxAmount,

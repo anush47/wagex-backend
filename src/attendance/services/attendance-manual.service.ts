@@ -245,15 +245,18 @@ export class AttendanceManualService {
             breakMins = Math.max(calculated.breakMinutes, calcShift?.breakTime ?? session.shiftBreakMinutes ?? 0);
         }
 
-        const calculation = this.calculationService.calculate(
+        const calculation = await this.calculationService.calculate(
             { checkInTime: effectiveIn, checkOutTime: effectiveOut, shiftBreakMinutes: breakMins, date: effectiveDate },
             calcShift,
             leaves,
-            timezone
+            timezone,
+            policy
         );
 
         updateData.isLate = calculation.isLate;
+        updateData.lateMinutes = calculation.lateMinutes;
         updateData.isEarlyLeave = calculation.isEarlyLeave;
+        updateData.earlyLeaveMinutes = calculation.earlyLeaveMinutes;
         updateData.isOnLeave = calculation.isOnLeave;
         updateData.isHalfDay = calculation.isHalfDay;
         updateData.hasShortLeave = calculation.hasShortLeave;

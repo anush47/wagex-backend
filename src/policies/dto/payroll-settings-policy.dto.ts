@@ -178,6 +178,11 @@ export class PayrollSettingsConfigDto {
     @IsBoolean()
     autoAcknowledgePayments?: boolean = false;
 
+    @ApiProperty({ description: 'No-pay deduction affects Total Earnings (Statutory Base)' })
+    @IsBoolean()
+    @IsOptional()
+    noPayAffectsTotalEarnings?: boolean = true;
+
     @ApiPropertyOptional({ type: [OvertimeRuleDto] })
     @IsOptional()
     @IsArray()

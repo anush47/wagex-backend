@@ -286,7 +286,9 @@ model AttendanceSession {
   workMinutes           Int?
   overtimeMinutes       Int?
   isLate                Boolean              @default(false)
+  lateMinutes           Int?                 @default(0)
   isEarlyLeave          Boolean              @default(false)
+  earlyLeaveMinutes     Int?                 @default(0)
   isOnLeave             Boolean              @default(false)
   isHalfDay             Boolean              @default(false)
   hasShortLeave         Boolean              @default(false)
@@ -376,6 +378,9 @@ model Salary {
   remarks                  String?
   otAdjustment             Float?              @default(0.0)
   otAdjustmentReason       String?
+  lateDeduction            Float?              @default(0.0)
+  lateAdjustment           Float?              @default(0.0)
+  lateAdjustmentReason     String?
   holidayPayAdjustment     Float?              @default(0.0)
   holidayPayAdjustmentReason String?
   recoveryAdjustment       Float?              @default(0.0)

@@ -24,13 +24,17 @@ interface WorkTimeResult {
 
 interface StatusFlags {
     isLate: boolean;
+    lateMinutes: number;
     isEarlyLeave: boolean;
+    earlyLeaveMinutes: number;
     isOnLeave: boolean;
     isHalfDay: boolean;
     hasShortLeave: boolean;
 }
 
-export interface AttendanceCalculationResult extends WorkTimeResult, StatusFlags { }
+export interface AttendanceCalculationResult extends WorkTimeResult, StatusFlags {
+    policyOvertimeMinutes?: number;
+}
 
 @Injectable()
 export class AttendanceCalculationService {
@@ -44,7 +48,7 @@ export class AttendanceCalculationService {
     /**
      * Centralized calculation function for both auto and manual attendance
      */
-    calculate(
+    async calculate(
         data: {
             events?: AttendanceEvent[];
             sessionGroup?: SessionGroup;
@@ -56,7 +60,8 @@ export class AttendanceCalculationService {
         shift: ShiftDto | null,
         leaves: LeaveRequest[] = [],
         timezone: string = 'UTC',
-    ): AttendanceCalculationResult {
+        policy?: any,
+    ): Promise<AttendanceCalculationResult> {
         let workTime: WorkTimeResult;
 
         if (data.sessionGroup) {
@@ -97,10 +102,65 @@ export class AttendanceCalculationService {
             data.sessionGroup?.sessionDate || (data as any).date
         );
 
+        let policyOvertimeMinutes = workTime.overtimeMinutes;
+        let workHolidayId: string | null = null;
+        let payrollHolidayId: string | null = null;
+        let workDayStatus: SessionWorkDayStatus = SessionWorkDayStatus.FULL;
+
+        if (policy) {
+            const sessionDate = data.sessionGroup?.sessionDate || (data as any).date || new Date();
+            workDayStatus = this.determineWorkDayStatus(sessionDate, policy);
+            
+            const workCalendarId = policy.workingDays?.workingCalendar || policy.attendance?.calendarId || policy.calendarId;
+            const payrollCalendarId = policy.workingDays?.payrollCalendar || policy.payrollConfiguration?.calendarId || policy.calendarId;
+
+            const holidays = await this.resolveHolidays(sessionDate, workCalendarId, payrollCalendarId);
+            workHolidayId = holidays.workHolidayId;
+            payrollHolidayId = holidays.payrollHolidayId;
+
+            // Calculate policy OT minutes
+            policyOvertimeMinutes = this.calculatePolicyOvertimeMinutes(workTime.workMinutes, workDayStatus, !!(workHolidayId || payrollHolidayId), policy);
+        }
+
         return {
             ...workTime,
             ...flags,
+            overtimeMinutes: policyOvertimeMinutes, // Override with policy-specific OT
+            policyOvertimeMinutes,
         };
+    }
+
+    private calculatePolicyOvertimeMinutes(workMinutes: number, workDayStatus: SessionWorkDayStatus, isHoliday: boolean, policy: any): number {
+        const payrollConfig = policy.payrollConfiguration;
+        const otRules = (payrollConfig?.otRules as any[]) || [];
+        
+        // Map session.workDayStatus (DB) to OvertimeDayType (Policy)
+        let mappedStatus = 'ANY';
+        if (workDayStatus === SessionWorkDayStatus.FULL) mappedStatus = 'WORKING_DAY';
+        else if (workDayStatus === SessionWorkDayStatus.HALF_FIRST || workDayStatus === SessionWorkDayStatus.HALF_LAST) mappedStatus = 'HALF_DAY';
+        else if (workDayStatus === SessionWorkDayStatus.OFF) mappedStatus = 'OFF_DAY';
+
+        let matchedRule: any = null;
+        if (otRules.length > 0) {
+            for (const rule of otRules) {
+                let statusMatch = rule.dayStatus === 'ANY' || rule.dayStatus === mappedStatus;
+                let holidayMatch = true;
+                if (rule.isHoliday !== undefined && rule.isHoliday !== null) {
+                    if (rule.isHoliday !== isHoliday) holidayMatch = false;
+                }
+                if (statusMatch && holidayMatch) {
+                    matchedRule = rule;
+                    break;
+                }
+            }
+        }
+
+        if (matchedRule) {
+            if (!matchedRule.otEnabled) return 0;
+            return Math.max(0, workMinutes - (matchedRule.startAfterMinutes || 0));
+        }
+
+        return 0; // Default to 0 if no rule matches? Or keep raw? User wants "according to policy".
     }
 
     private getFirstIn(events: AttendanceEvent[]): Date | null {
@@ -312,7 +372,9 @@ export class AttendanceCalculationService {
     ): StatusFlags {
         const flags: StatusFlags = {
             isLate: false,
+            lateMinutes: 0,
             isEarlyLeave: false,
+            earlyLeaveMinutes: 0,
             isOnLeave: false,
             isHalfDay: false,
             hasShortLeave: false,
@@ -340,10 +402,10 @@ export class AttendanceCalculationService {
 
         // Check if late
         const shiftStartTime = this.timeService.parseTimeWithTimezone(shift.startTime, refDate, timezone);
-        const lateThreshold = new Date(
-            shiftStartTime.getTime() + graceMinutes * 60 * 1000,
-        );
-        flags.isLate = checkInTime > lateThreshold;
+        const lateDiff = Math.max(0, Math.floor((checkInTime.getTime() - shiftStartTime.getTime()) / (1000 * 60)));
+        
+        flags.lateMinutes = lateDiff;
+        flags.isLate = lateDiff > graceMinutes;
 
         // Check if early leave
         if (checkOutTime) {
@@ -354,10 +416,9 @@ export class AttendanceCalculationService {
                 shiftEndTime.setDate(shiftEndTime.getDate() + 1);
             }
 
-            const earlyThreshold = new Date(
-                shiftEndTime.getTime() - graceMinutes * 60 * 1000,
-            );
-            flags.isEarlyLeave = checkOutTime < earlyThreshold;
+            const earlyDiff = Math.max(0, Math.floor((shiftEndTime.getTime() - checkOutTime.getTime()) / (1000 * 60)));
+            flags.earlyLeaveMinutes = earlyDiff;
+            flags.isEarlyLeave = earlyDiff > graceMinutes;
         }
 
         return flags;

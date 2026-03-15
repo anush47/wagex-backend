@@ -155,14 +155,21 @@ export class PoliciesService {
         const assignedSettings = (employee.policy?.settings as unknown as PolicySettingsDto) || {};
 
         // 3. Merge: Default <- Assigned
+        // We use a custom merge to ensure arrays (rules, components) are replaced, not merged by index
         const effectivePolicy = merge({}, companySettings, assignedSettings);
 
-        // Special handling for shifts.list (replace rather than merge by index)
+        // Explicitly replace arrays from assigned settings if they exist to prevent index-based merging
         if (assignedSettings.shifts?.list) {
-            (effectivePolicy as any).shifts = {
-                ...(effectivePolicy.shifts || {}),
-                list: assignedSettings.shifts.list
-            };
+            (effectivePolicy as any).shifts = { ...effectivePolicy.shifts, list: assignedSettings.shifts.list };
+        }
+        if (assignedSettings.payrollConfiguration?.otRules) {
+            (effectivePolicy as any).payrollConfiguration = { ...effectivePolicy.payrollConfiguration, otRules: assignedSettings.payrollConfiguration.otRules };
+        }
+        if (assignedSettings.salaryComponents?.components) {
+            (effectivePolicy as any).salaryComponents = { ...effectivePolicy.salaryComponents, components: assignedSettings.salaryComponents.components };
+        }
+        if (assignedSettings.leaves?.leaveTypes) {
+            (effectivePolicy as any).leaves = { ...effectivePolicy.leaves, leaveTypes: assignedSettings.leaves.leaveTypes };
         }
 
         return effectivePolicy;
