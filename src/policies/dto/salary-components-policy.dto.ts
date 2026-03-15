@@ -67,6 +67,11 @@ export class PayrollComponentDto {
     @IsOptional()
     @IsEnum(PayrollComponentSystemType)
     systemType?: PayrollComponentSystemType = PayrollComponentSystemType.NONE;
+
+    @ApiPropertyOptional({ description: 'Employer contribution value' })
+    @IsOptional()
+    @IsNumber()
+    employerValue?: number;
 }
 
 export class SalaryComponentsConfigDto {

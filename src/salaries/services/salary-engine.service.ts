@@ -367,11 +367,18 @@ export class SalaryEngineService {
                 // EPF Base usually = Basic + Statutory Additions
                 // But simplified: use `currentTotalEarnings` (which includes basic + OT + flagged additions)
                 amount = (currentTotalEarnings * comp.value) / 100;
+                const employerRate = comp.employerValue ?? 12;
+                (comp as any).employerAmount = (currentTotalEarnings * employerRate) / 100;
+            } else if (comp.systemType === PayrollComponentSystemType.ETF_EMPLOYER) {
+                amount = (currentTotalEarnings * comp.value) / 100;
+                const employerRate = comp.employerValue ?? 3;
+                (comp as any).employerAmount = (currentTotalEarnings * employerRate) / 100;
             }
 
             processedComponents.push({
                 ...comp,
-                amount
+                amount,
+                employerAmount: (comp as any).employerAmount
             });
         });
 
