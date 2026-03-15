@@ -9,6 +9,7 @@ import { PayrollComponentType, PayrollComponentSystemType } from '../../policies
 import { SalaryStatus, LeaveStatus, ApprovalStatus, SessionWorkDayStatus } from '@prisma/client';
 import { merge, groupBy } from 'lodash';
 import { PolicySettingsDto } from '../../policies/dto/policy-settings.dto';
+import { calculateOvertimeForSession, calculatePolicyOvertimeMinutes, OvertimeResult } from '../../attendance/utils/overtime-calculator';
 
 @Injectable()
 export class SalaryEngineService {
@@ -19,7 +20,7 @@ export class SalaryEngineService {
         private readonly advancesService: AdvancesService,
     ) { }
 
-    private calculateOvertime(session: any, hourlyRate: number, payrollConfig: any) {
+    private calculateOvertime(session: any, hourlyRate: number, payrollConfig: any): OvertimeResult {
         if (!session.workMinutes || session.workMinutes <= 0) {
             return { hours: 0, amount: 0, type: 'NONE' };
         }
@@ -33,102 +34,28 @@ export class SalaryEngineService {
         }
 
         const otRules = (payrollConfig?.otRules as any[]) || [];
-        let matchedRule: any = null;
 
-        // Map session.workDayStatus (DB) to OvertimeDayType (Policy)
-        let mappedStatus: OvertimeDayType = OvertimeDayType.ANY;
-        if (session.workDayStatus === SessionWorkDayStatus.FULL) mappedStatus = OvertimeDayType.WORKING_DAY;
-        else if (session.workDayStatus === SessionWorkDayStatus.HALF_FIRST || session.workDayStatus === SessionWorkDayStatus.HALF_LAST) mappedStatus = OvertimeDayType.HALF_DAY;
-        else if (session.workDayStatus === SessionWorkDayStatus.OFF) mappedStatus = OvertimeDayType.OFF_DAY;
-
-        if (otRules.length > 0) {
-            for (const rule of otRules) {
-                let statusMatch = rule.dayStatus === OvertimeDayType.ANY || rule.dayStatus === mappedStatus;
-                
-                let holidayMatch = true;
-                if (rule.isHoliday !== undefined && rule.isHoliday !== null) {
-                    const isSessionOnHoliday = !!(session.workHolidayId || session.payrollHolidayId);
-                    if (rule.isHoliday !== isSessionOnHoliday) {
-                        holidayMatch = false;
-                    } else if (isSessionOnHoliday && rule.holidayTypes && rule.holidayTypes.length > 0) {
-                        const holiday = session.payrollHoliday || session.workHoliday;
-                        const holidayFlags: string[] = [];
-                        if (holiday?.isPublic) holidayFlags.push('PUBLIC');
-                        if (holiday?.isMercantile) holidayFlags.push('MERCANTILE');
-                        if (holiday?.isBank) holidayFlags.push('BANK');
-                        
-                        // Check if ANY of the rule's required types match the holiday's flags
-                        const typeMatch = rule.holidayTypes.some(t => holidayFlags.includes(t));
-                        if (!typeMatch) holidayMatch = false;
-                    }
-                }
-
-                if (statusMatch && holidayMatch) {
-                    matchedRule = rule;
-                    break;
-                }
-            }
+        // Check if session is on a holiday
+        const isSessionOnHoliday = !!(session.workHolidayId || session.payrollHolidayId);
+        const holiday = session.payrollHoliday || session.workHoliday;
+        const holidayFlags: string[] = [];
+        if (isSessionOnHoliday && holiday) {
+            if (holiday.isPublic) holidayFlags.push('PUBLIC');
+            if (holiday.isMercantile) holidayFlags.push('MERCANTILE');
+            if (holiday.isBank) holidayFlags.push('BANK');
         }
 
-        if (matchedRule) {
-            if (!matchedRule.otEnabled) {
-                return { hours: 0, amount: 0, type: 'NONE' };
-            }
+        // Use centralized OT calculator
+        const otResult = calculateOvertimeForSession(
+            session.workMinutes,
+            session.workDayStatus,
+            isSessionOnHoliday,
+            holidayFlags,
+            hourlyRate,
+            otRules
+        );
 
-            const eligibleMinutes = Math.max(0, session.workMinutes - matchedRule.startAfterMinutes);
-            if (eligibleMinutes <= 0) {
-                return { hours: 0, amount: 0, type: 'NONE' };
-            }
-
-            let totalOtAmount = 0;
-            const sortedTiers = [...matchedRule.tiers].sort((a, b) => a.thresholdMinutes - b.thresholdMinutes);
-            
-            for (let i = 0; i < sortedTiers.length; i++) {
-                const tier = sortedTiers[i];
-                const nextTier = sortedTiers[i + 1];
-                
-                const tierStartInRule = tier.thresholdMinutes;
-                const tierEndInRule = nextTier ? nextTier.thresholdMinutes : Infinity;
-                
-                // How much of the eligible OT falls into this tier window?
-                const segmentStart = Math.max(0, tierStartInRule);
-                const segmentEnd = Math.min(eligibleMinutes, tierEndInRule);
-                
-                if (segmentEnd > segmentStart) {
-                    const segmentMinutes = segmentEnd - segmentStart;
-                    totalOtAmount += (segmentMinutes / 60) * hourlyRate * tier.multiplier;
-                }
-            }
-
-            return {
-                hours: eligibleMinutes / 60,
-                amount: totalOtAmount,
-                type: matchedRule.name || 'RULE_BASED',
-            };
-        }
-
-        // Legacy Fallback
-        if (!session.overtimeMinutes || session.overtimeMinutes <= 0) {
-            return { hours: 0, amount: 0, type: 'NONE' };
-        }
-
-        const hours = session.overtimeMinutes / 60;
-        let rate = payrollConfig?.otNormalRate || 1.5;
-        let type = 'NORMAL';
-
-        if (session.workHolidayId) {
-            rate = payrollConfig?.otTripleRate || 3.0;
-            type = 'TRIPLE';
-        } else if (new Date(session.date).getDay() === 0) { // Sunday
-            rate = payrollConfig?.otDoubleRate || 2.0;
-            type = 'DOUBLE';
-        }
-
-        return {
-            hours,
-            amount: hours * hourlyRate * rate,
-            type,
-        };
+        return otResult;
     }
 
     private async validateEmployeePayroll(employeeId: string, periodStart: Date, periodEnd: Date, policy: PolicySettingsDto) {
@@ -308,32 +235,17 @@ export class SalaryEngineService {
 
         sessions.forEach(session => {
             const ot = this.calculateOvertime(session, otHourlyRate, payrollConfig);
-            if (ot.type !== 'NONE') {
-                // Map session.workDayStatus to OvertimeDayType
-                let mappedStatus: OvertimeDayType = OvertimeDayType.ANY;
-                if (session.workDayStatus === SessionWorkDayStatus.FULL) mappedStatus = OvertimeDayType.WORKING_DAY;
-                else if (session.workDayStatus === SessionWorkDayStatus.HALF_FIRST || session.workDayStatus === SessionWorkDayStatus.HALF_LAST) mappedStatus = OvertimeDayType.HALF_DAY;
-                else if (session.workDayStatus === SessionWorkDayStatus.OFF) mappedStatus = OvertimeDayType.OFF_DAY;
-
-                // Find the matching OT rule for this session
-                let matchedRule = otRules.find(rule => {
-                    if (rule.isHoliday) {
-                        const isSessionOnHoliday = !!(session.workHolidayId || session.payrollHolidayId);
-                        return isSessionOnHoliday;
-                    }
-                    return rule.dayStatus === mappedStatus && !rule.isHoliday;
-                });
-
+            if (ot.type !== 'NONE' && ot.matchedRule) {
                 // Check if this OT should go to Holiday Pay (affectTotalEarnings = true)
-                const goesToHolidayPay = matchedRule?.affectTotalEarnings !== false;
+                const goesToHolidayPay = ot.matchedRule.affectTotalEarnings !== false;
 
                 if (goesToHolidayPay) {
                     // Add to Holiday Pay breakdown
-                    const holidayName = matchedRule?.isHoliday 
-                        ? (session.payrollHoliday || session.workHoliday)?.name || 'Off Day / Holiday'
+                    const holidayName = ot.matchedRule.isHoliday
+                        ? (session.payrollHoliday || session.workHoliday)?.name || 'Holiday OT'
                         : 'Off Day OT';
-                    const holidayKey = `${matchedRule?.id || 'off-day'}-${session.date}`;
-                    
+                    const holidayKey = `${ot.matchedRule.id || 'holiday'}-${session.date}`;
+
                     if (!holidayPayMap[holidayKey]) {
                         holidayPayMap[holidayKey] = {
                             hours: 0,

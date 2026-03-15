@@ -26,8 +26,8 @@ export class UpdateSessionDto {
 
     @ApiPropertyOptional({ description: 'Shift ID override' })
     @IsOptional()
-    @IsUUID()
-    shiftId?: string;
+    @IsString()
+    shiftId?: string | null;
 
     @ApiPropertyOptional({ enum: SessionWorkDayStatus, description: 'Work day status' })
     @IsOptional()
@@ -98,8 +98,8 @@ export class CreateSessionDto {
     date: string;
 
     @IsOptional()
-    @IsUUID()
-    shiftId?: string;
+    @IsString()
+    shiftId?: string | null;
 }
 
 export class SessionQueryDto {

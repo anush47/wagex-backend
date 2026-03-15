@@ -5,6 +5,7 @@ import { SessionGroup } from './session-grouping.service';
 import { TimeService } from './time.service';
 
 import { ShiftDto } from '../../policies/dto/shifts-policy.dto';
+import { calculatePolicyOvertimeMinutes } from '../utils/overtime-calculator';
 
 interface LeaveRequest {
     id: string;
@@ -110,7 +111,7 @@ export class AttendanceCalculationService {
         if (policy) {
             const sessionDate = data.sessionGroup?.sessionDate || (data as any).date || new Date();
             workDayStatus = this.determineWorkDayStatus(sessionDate, policy);
-            
+
             const workCalendarId = policy.workingDays?.workingCalendar || policy.attendance?.calendarId || policy.calendarId;
             const payrollCalendarId = policy.workingDays?.payrollCalendar || policy.payrollConfiguration?.calendarId || policy.calendarId;
 
@@ -118,8 +119,29 @@ export class AttendanceCalculationService {
             workHolidayId = holidays.workHolidayId;
             payrollHolidayId = holidays.payrollHolidayId;
 
-            // Calculate policy OT minutes
-            policyOvertimeMinutes = this.calculatePolicyOvertimeMinutes(workTime.workMinutes, workDayStatus, !!(workHolidayId || payrollHolidayId), policy);
+            // Get holiday flags for OT calculation
+            const holidayFlags: string[] = [];
+            // Fetch holiday object to get flags
+            const holidayId = holidays.workHolidayId || holidays.payrollHolidayId;
+            if (holidayId) {
+                const holiday = await this.prisma.holiday.findUnique({
+                    where: { id: holidayId }
+                });
+                if (holiday) {
+                    if (holiday.isPublic) holidayFlags.push('PUBLIC');
+                    if (holiday.isMercantile) holidayFlags.push('MERCANTILE');
+                    if (holiday.isBank) holidayFlags.push('BANK');
+                }
+            }
+
+            // Calculate policy OT minutes with holiday flags
+            policyOvertimeMinutes = this.calculatePolicyOvertimeMinutes(
+                workTime.workMinutes,
+                workDayStatus,
+                !!(workHolidayId || payrollHolidayId),
+                holidayFlags,
+                policy
+            );
         }
 
         return {
@@ -130,37 +152,23 @@ export class AttendanceCalculationService {
         };
     }
 
-    private calculatePolicyOvertimeMinutes(workMinutes: number, workDayStatus: SessionWorkDayStatus, isHoliday: boolean, policy: any): number {
+    private calculatePolicyOvertimeMinutes(
+        workMinutes: number,
+        workDayStatus: SessionWorkDayStatus,
+        isHoliday: boolean,
+        holidayFlags: string[],
+        policy: any
+    ): number {
         const payrollConfig = policy.payrollConfiguration;
         const otRules = (payrollConfig?.otRules as any[]) || [];
-        
-        // Map session.workDayStatus (DB) to OvertimeDayType (Policy)
-        let mappedStatus = 'ANY';
-        if (workDayStatus === SessionWorkDayStatus.FULL) mappedStatus = 'WORKING_DAY';
-        else if (workDayStatus === SessionWorkDayStatus.HALF_FIRST || workDayStatus === SessionWorkDayStatus.HALF_LAST) mappedStatus = 'HALF_DAY';
-        else if (workDayStatus === SessionWorkDayStatus.OFF) mappedStatus = 'OFF_DAY';
 
-        let matchedRule: any = null;
-        if (otRules.length > 0) {
-            for (const rule of otRules) {
-                let statusMatch = rule.dayStatus === 'ANY' || rule.dayStatus === mappedStatus;
-                let holidayMatch = true;
-                if (rule.isHoliday !== undefined && rule.isHoliday !== null) {
-                    if (rule.isHoliday !== isHoliday) holidayMatch = false;
-                }
-                if (statusMatch && holidayMatch) {
-                    matchedRule = rule;
-                    break;
-                }
-            }
-        }
-
-        if (matchedRule) {
-            if (!matchedRule.otEnabled) return 0;
-            return Math.max(0, workMinutes - (matchedRule.startAfterMinutes || 0));
-        }
-
-        return 0; // Default to 0 if no rule matches? Or keep raw? User wants "according to policy".
+        return calculatePolicyOvertimeMinutes(
+            workMinutes,
+            workDayStatus,
+            isHoliday,
+            holidayFlags,
+            otRules
+        );
     }
 
     private getFirstIn(events: AttendanceEvent[]): Date | null {

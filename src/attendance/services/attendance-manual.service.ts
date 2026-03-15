@@ -187,6 +187,8 @@ export class AttendanceManualService {
                     : dto.checkOutTime
                         ? new Date(dto.checkOutTime)
                         : undefined,
+            // Convert empty string shiftId to null
+            shiftId: dto.shiftId === '' ? null : dto.shiftId,
         };
 
         if (hasEditField) {
