@@ -4,7 +4,7 @@ import { PoliciesService } from '../../policies/policies.service';
 import { AttendanceProcessingService } from '../../attendance/services/attendance-processing.service';
 import { AdvancesService } from '../../advances/advances.service';
 import { GenerateSalaryDto } from '../dto/salary.dto';
-import { PayCycleFrequency, PayrollCalculationMethod, OvertimeDayType, UnpaidLeaveAction } from '../../policies/dto/payroll-settings-policy.dto';
+import { PayCycleFrequency, PayrollCalculationMethod, OvertimeDayType } from '../../policies/dto/payroll-settings-policy.dto';
 import { PayrollComponentType, PayrollComponentSystemType } from '../../policies/dto/salary-components-policy.dto';
 import { SalaryStatus, LeaveStatus, ApprovalStatus, SessionWorkDayStatus } from '@prisma/client';
 import { merge, groupBy } from 'lodash';
@@ -257,12 +257,20 @@ export class SalaryEngineService {
         // 3. Resolve Basic Salary for Period based on Calculation Method
         const payrollConfig = policy.payrollConfiguration;
         const baseRateDivisor = payrollConfig?.baseRateDivisor || 30;
-        const otDivisor = payrollConfig?.otDivisor || 200;
         const calculationMethod = payrollConfig?.calculationMethod || PayrollCalculationMethod.FIXED_MONTHLY_SALARY;
         
         const employeeBaseSalary = employee.basicSalary;
         let basicSalaryForPeriod = 0;
-        const hourlyRate = employeeBaseSalary / otDivisor;
+        
+        // OT Hourly Rate Calculation: (Base / baseRateDivisor) / otHourlyValue OR fixed amount
+        let otHourlyRate = 0;
+        const othValue = (payrollConfig as any)?.otHourlyValue || 8;
+        if ((payrollConfig as any)?.otHourlyType === 'FIXED_AMOUNT') {
+            otHourlyRate = othValue;
+        } else {
+            otHourlyRate = (employeeBaseSalary / baseRateDivisor) / othValue;
+        }
+
         const dailyRate = employeeBaseSalary / baseRateDivisor;
 
         // 4. Fetch Attendance Data for Period
@@ -295,7 +303,7 @@ export class SalaryEngineService {
         const dynamicOtMap: Record<string, { hours: number, amount: number }> = {};
 
         sessions.forEach(session => {
-            const ot = this.calculateOvertime(session, hourlyRate, payrollConfig);
+            const ot = this.calculateOvertime(session, otHourlyRate, payrollConfig);
             if (ot.type !== 'NONE') {
                 if (!dynamicOtMap[ot.type]) {
                     dynamicOtMap[ot.type] = { hours: 0, amount: 0 };
@@ -307,52 +315,51 @@ export class SalaryEngineService {
         });
 
         // 5.1 Calculate Period Basic Salary based on sessions and method
-        if (calculationMethod === PayrollCalculationMethod.FIXED_MONTHLY_SALARY) {
-            basicSalaryForPeriod = employeeBaseSalary;
-            if (payrollConfig && payrollConfig.frequency !== PayCycleFrequency.MONTHLY) {
+        // Frequency: Monthly -> Full Basic. Others -> Prorated by divisor.
+        if (
+            calculationMethod !== PayrollCalculationMethod.SHIFT_ATTENDANCE_FLAT || true // Simplified: all currently benefit from the same potential-based basic
+        ) {
+            if (payrollConfig?.frequency === PayCycleFrequency.MONTHLY) {
+                basicSalaryForPeriod = employeeBaseSalary;
+            } else {
                 const diffTime = Math.abs(periodEnd.getTime() - periodStart.getTime());
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                basicSalaryForPeriod = dailyRate * diffDays;
+                // "for other ones use the per day calculation based on the divisor"
+                basicSalaryForPeriod = (employeeBaseSalary / baseRateDivisor) * diffDays;
             }
-        } else if (calculationMethod === PayrollCalculationMethod.HOURLY_ATTENDANCE_WITH_OT) {
-            const totalWorkMinutes = sessions.reduce((sum, s) => sum + (s.workMinutes || 0), 0);
-            basicSalaryForPeriod = (totalWorkMinutes / 60) * hourlyRate;
-        } else if (calculationMethod === PayrollCalculationMethod.DAILY_ATTENDANCE_FLAT) {
-            let totalDays = 0;
-            sessions.forEach(s => {
-                if (s.workDayStatus === SessionWorkDayStatus.FULL) totalDays += 1;
-                else if (s.workDayStatus === SessionWorkDayStatus.HALF_FIRST || s.workDayStatus === SessionWorkDayStatus.HALF_LAST) totalDays += 0.5;
-                else if (s.workDayStatus === SessionWorkDayStatus.OFF && (s.workMinutes || 0) > 0) totalDays += 1;
-            });
-            basicSalaryForPeriod = totalDays * dailyRate;
-        } else if (calculationMethod === PayrollCalculationMethod.SHIFT_ATTENDANCE_FLAT || calculationMethod === PayrollCalculationMethod.SHIFT_ATTENDANCE_WITH_OT) {
-            basicSalaryForPeriod = sessions.length * dailyRate; // Assuming dailyRate acts as shiftRate
         }
 
         const otBreakdown = Object.entries(dynamicOtMap).map(([type, data]) => ({ type, ...data }));
 
         // 5.2 Calculate Late/Early Deduction
         let totalLateDeduction = 0;
+        let totalLateMinutes = 0;
         if (payrollConfig?.lateDeductionValue) {
-            const totalLateMinutes = sessions.reduce((sum, s: any) => sum + (s.lateMinutes || 0) + (s.earlyLeaveMinutes || 0), 0);
+            totalLateMinutes = sessions.reduce((sum, s: any) => {
+                const sessionLate = (s.lateMinutes || 0) + (s.earlyLeaveMinutes || 0);
+                const grace = (payrollConfig as any).lateDeductionGraceMinutes || 0;
+                // If late is within grace, don't count it for deduction
+                return sum + (sessionLate > grace ? sessionLate : 0);
+            }, 0);
             
             if (payrollConfig.lateDeductionType === 'DIVISOR_BASED') {
-                // Calculation: (Basic / BaseRateDivisor / LateDeductionValue) * (TotalLateMinutes / 60)
-                // LateDeductionValue is usually "Hours per working day" (e.g. 8)
-                const minuteRate = (employeeBaseSalary / baseRateDivisor) / (payrollConfig.lateDeductionValue * 60);
+                const lateHourlyRate = (employeeBaseSalary / baseRateDivisor) / (payrollConfig.lateDeductionValue || 8);
+                const minuteRate = lateHourlyRate / 60;
                 totalLateDeduction = totalLateMinutes * minuteRate;
             } else {
-                // FIXED_AMOUNT (per minute probably?)
-                totalLateDeduction = totalLateMinutes * payrollConfig.lateDeductionValue;
+                totalLateDeduction = (totalLateMinutes / 60) * payrollConfig.lateDeductionValue;
             }
         }
 
         // 6. Calculate No-Pay Breakdown
-        // If autoDeductUnpaidLeaves is active, we check for missing days
-        let totalNoPayAmount = 0;
-        const noPayBreakdown = [
-            { type: 'ABSENCE', count: 0, amount: 0 },
-            { type: 'UNPAID_LEAVE', count: 0, amount: 0 },
+        let totalUnpaidAmount = 0;
+        let unpaidCount = 0;
+        let absenceCount = 0;
+        let absenceAmount = 0;
+
+        const unpaidBreakdown = [
+            { type: 'ABSENCE', count: 0, amount: 0, reason: 'Absence without leave' },
+            { type: 'UNPAID_LEAVE', count: 0, amount: 0, reason: 'Approved unpaid leave' },
         ];
 
         const approvedLeaves = await this.prisma.leaveRequest.findMany({
@@ -372,37 +379,31 @@ export class SalaryEngineService {
             .map((lt: any) => lt.id);
 
         if (payrollConfig?.autoDeductUnpaidLeaves) {
-            const dailyRate = employeeBaseSalary / baseRateDivisor;
+            const config = payrollConfig as any;
+            const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
-            // 1. Calculate Expected Days (Business logic: assume all days in period are working for now, unless policy says otherwise)
-            // In a more complex system, we'd check the workingDays policy pattern.
-            const diffTime = Math.abs(periodEnd.getTime() - periodStart.getTime());
-            const totalDaysInPeriod = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            const calculateNoPayDeduction = (type: any, value: number) => {
+                if (type === 'DIVISOR_BASED') {
+                    return value * dailyRate;
+                }
+                return value; // FIXED_AMOUNT
+            };
 
-            // 2. Count Present Days + Paid Leave Days
-            const presentDays = sessions.length; // Session exists = present or leave
-            const leaveSessions = sessions.filter(s => s.isOnLeave || s.isHalfDay);
-
-            // For now, simplify: if no session exists for a day, it's an absence.
-            // But we only have sessions for days where there's an event or leave.
-            // We need to iterate through the date range.
             for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
                 const dayStr = d.toISOString().split('T')[0];
                 const session = sessions.find(s => s.date.toISOString().split('T')[0] === dayStr);
 
                 if (!session) {
-                    // Check if it's a working day in policy
-                    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
                     const dayName = dayNames[d.getDay()];
                     const dayConfig = (policy.workingDays?.defaultPattern as any)?.[dayName];
 
                     if (dayConfig && dayConfig.type?.toString().toUpperCase() !== 'OFF') {
-                        noPayBreakdown[0].count++;
-                        noPayBreakdown[0].amount += dailyRate;
-                        totalNoPayAmount += dailyRate;
+                        unpaidBreakdown[0].count++;
+                        const amt = calculateNoPayDeduction(config.unpaidLeaveFullDayType, config.unpaidLeaveFullDayValue || 1);
+                        unpaidBreakdown[0].amount += amt;
+                        totalUnpaidAmount += amt;
                     }
                 } else if (session.isOnLeave) {
-                    // Check if this specific leave session is linked to an UNPAID leave type
                     const activeLeave = approvedLeaves.find(l => {
                         const lStart = new Date(l.startDate);
                         const lEnd = new Date(l.endDate);
@@ -411,20 +412,43 @@ export class SalaryEngineService {
                     });
 
                     if (activeLeave && unpaidLeaveTypeIds.includes(activeLeave.leaveTypeId)) {
-                        noPayBreakdown[1].count++;
-                        noPayBreakdown[1].amount += dailyRate;
-                        totalNoPayAmount += dailyRate;
+                        unpaidBreakdown[1].count++;
+                        const isHalfDay = (activeLeave as any).isHalfDay || session.isHalfDay;
+                        const amt = isHalfDay
+                            ? calculateNoPayDeduction(config.unpaidLeaveHalfDayType, config.unpaidLeaveHalfDayValue || 0.5)
+                            : calculateNoPayDeduction(config.unpaidLeaveFullDayType, config.unpaidLeaveFullDayValue || 1);
+                            
+                        unpaidBreakdown[1].amount += amt;
+                        totalUnpaidAmount += amt;
+                    }
+                } else if (session.isHalfDay) {
+                    const hasLeave = approvedLeaves.some(l => {
+                        const lStart = new Date(l.startDate);
+                        const lEnd = new Date(l.endDate);
+                        const dDate = new Date(dayStr);
+                        return dDate >= lStart && dDate <= lEnd;
+                    });
+
+                    if (!hasLeave) {
+                        unpaidBreakdown[0].count += 0.5;
+                        const amt = calculateNoPayDeduction(config.unpaidLeaveHalfDayType, config.unpaidLeaveHalfDayValue || 0.5);
+                        unpaidBreakdown[0].amount += amt;
+                        totalUnpaidAmount += amt;
                     }
                 }
             }
-
-            // User Requirement: No-Pay deducts from basic salary directly if set to DEDUCT_FROM_TOTAL
-            if (payrollConfig?.unpaidLeaveAction === UnpaidLeaveAction.DEDUCT_FROM_TOTAL) {
-                basicSalaryForPeriod = Math.max(0, basicSalaryForPeriod - totalNoPayAmount);
-            }
         }
 
-        // 7. Salary Components (Additions / Deductions)
+        // Consolidated No-Pay Breakdown for display
+        const totalNoPayAmount = totalUnpaidAmount + (payrollConfig?.autoDeductLate ? totalLateDeduction : 0);
+        const noPayBreakdown = [...unpaidBreakdown];
+        if (payrollConfig?.autoDeductLate) {
+            noPayBreakdown.push({ type: 'LATE', count: totalLateMinutes, amount: totalLateDeduction, reason: `Late arrivals / Early leaves (+${totalLateMinutes}m)` });
+        }
+
+        // 6.1 Note: User requirement - Deductions are always added as line items, never reducing basic directly.
+        // So we do NOT modify basicSalaryForPeriod here anymore.
+        
         // 7. Salary Components - Multi-Phase Processing
         const components = policy.salaryComponents?.components || [];
 
@@ -437,20 +461,13 @@ export class SalaryEngineService {
         let processedComponents: any[] = [];
         let currentTotalEarnings = basicSalaryForPeriod; // Start with resolved Basic for Period
         
-        // If no-pay was already subtracted from basic and we want it to NOT affect total earnings (statutory base)
-        // we add it back temporarily for calculation if noPayAffectsTotalEarnings is false
-        if (payrollConfig?.autoDeductUnpaidLeaves && 
-            payrollConfig?.unpaidLeaveAction === UnpaidLeaveAction.DEDUCT_FROM_TOTAL && 
-            payrollConfig?.noPayAffectsTotalEarnings === false) {
-            currentTotalEarnings += totalNoPayAmount;
+        // Adjust for Statutory Base (EPF/ETF) using specific toggles
+        if (payrollConfig?.autoDeductUnpaidLeaves && payrollConfig?.unpaidLeavesAffectTotalEarnings) {
+            currentTotalEarnings -= totalUnpaidAmount;
         }
 
-        // Conversely, if no-pay is NOT yet subtracted (it's a separate deduction component) 
-        // but user WANTS it to affect total earnings, we subtract it here
-        if (payrollConfig?.autoDeductUnpaidLeaves && 
-            payrollConfig?.unpaidLeaveAction === UnpaidLeaveAction.ADD_AS_DEDUCTION && 
-            payrollConfig?.noPayAffectsTotalEarnings !== false) {
-            currentTotalEarnings -= totalNoPayAmount;
+        if (payrollConfig?.autoDeductLate && payrollConfig?.lateDeductionsAffectTotalEarnings) {
+            currentTotalEarnings -= totalLateDeduction;
         }
 
         // Phase 2: System Additions (e.g. Holiday Pay)
@@ -500,19 +517,15 @@ export class SalaryEngineService {
             }
         });
 
-        // Phase 4: System Deductions (No-Pay)
-        // If NO_PAY_DEDUCTION component exists, we use its value instead of generic `totalNoPayAmount` logic, or align them.
-        let explicitNoPayDeduction = 0;
+        // Phase 4: System Deductions (EPF, ETF)
+        // Note: No-Pay and Late are now injected manually at the end or processed if they still exist in policy
         systemDeductions.forEach(comp => {
             let amount = 0;
-            if (comp.systemType === PayrollComponentSystemType.NO_PAY_DEDUCTION) {
-                // Use the calculated no-pay amount from Step 6
-                amount = totalNoPayAmount;
-                explicitNoPayDeduction += amount;
+            if (comp.systemType === PayrollComponentSystemType.NO_PAY_DEDUCTION || comp.systemType === PayrollComponentSystemType.LATE_DEDUCTION) {
+                // Skip policy-defined no-pay/late components as they are handled natively now
+                return;
             } else if (comp.systemType === PayrollComponentSystemType.EPF_EMPLOYEE) {
                 // EPF is calculated on "Total Earnings for EPF" (Liable Earnings)
-                // EPF Base usually = Basic + Statutory Additions
-                // But simplified: use `currentTotalEarnings` (which includes basic + OT + flagged additions)
                 amount = (currentTotalEarnings * comp.value) / 100;
                 if (comp.employerValue !== undefined) {
                     (comp as any).employerAmount = (currentTotalEarnings * comp.employerValue) / 100;
@@ -548,6 +561,28 @@ export class SalaryEngineService {
             });
         });
 
+        // Phase 4.1: Inject Virtual System Deductions (Unpaid Leaves / Late)
+        if (payrollConfig?.autoDeductUnpaidLeaves && totalUnpaidAmount > 0) {
+            processedComponents.push({
+                name: 'Unpaid Leave / LOP',
+                category: 'DEDUCTION',
+                type: 'FLAT_AMOUNT',
+                amount: totalUnpaidAmount,
+                systemType: PayrollComponentSystemType.NO_PAY_DEDUCTION,
+                affectsTotalEarnings: payrollConfig.unpaidLeavesAffectTotalEarnings
+            });
+        }
+        if (payrollConfig?.autoDeductLate && totalLateDeduction > 0) {
+            processedComponents.push({
+                name: 'Late Arrival Deduction',
+                category: 'DEDUCTION',
+                type: 'FLAT_AMOUNT',
+                amount: totalLateDeduction,
+                systemType: PayrollComponentSystemType.LATE_DEDUCTION,
+                affectsTotalEarnings: payrollConfig.lateDeductionsAffectTotalEarnings
+            });
+        }
+
         // Summarize
         const totalAdditions = processedComponents
             .filter(c => c.category === 'ADDITION')
@@ -565,13 +600,9 @@ export class SalaryEngineService {
             .filter(c => c.systemType === PayrollComponentSystemType.ETF_EMPLOYER)
             .reduce((sum, c) => sum + (c.employerAmount || 0), 0);
 
-        // If we used a component for No-Pay, we shouldn't double deduct it via `totalNoPayAmount` variable in net calc.
-        // If a NO_PAY component exists, we zero out the separate variable so it's only deducted via components.
-        const hasNoPayComponent = processedComponents.some(c => c.systemType === PayrollComponentSystemType.NO_PAY_DEDUCTION);
-        const finalNoPayDeductionForNet = hasNoPayComponent ? 0 : totalNoPayAmount;
-
-        // However, standard logic line 196 uses `totalDeductions` (from components) + `totalNoPayAmount`.
-        // So if component exists, it's inside `totalDeductions`. `totalNoPayAmount` should be 0.
+        // All deductions are now processed as components (virtual or standard)
+        const finalNoPayDeductionForNet = 0;
+        const finalLateDeductionForNet = 0;
 
 
         // 8. Tax Deduction (Placeholder)
@@ -602,7 +633,7 @@ export class SalaryEngineService {
         currentTotalEarnings += hPayAdjustment;
 
         const grossEarnings = basicSalaryForPeriod + totalAdditions + totalOtAmount + otAdj + hPayAdjustment;
-        const netSalary = grossEarnings - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction + recAdj + totalLateDeduction + lateAdj);
+        const netSalary = grossEarnings - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction + recAdj + finalLateDeductionForNet + lateAdj);
 
         // 11. Run Validations
         const problems = await this.validateEmployeePayroll(employeeId, periodStart, periodEnd, policy);

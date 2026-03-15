@@ -19,7 +19,8 @@ export enum PayrollComponentSystemType {
     EPF_EMPLOYER = 'EPF_EMPLOYER',       // Employer Share (12%) - Informational/Accounting
     ETF_EMPLOYER = 'ETF_EMPLOYER',       // Employer Share (3%) - Informational/Accounting
     HOLIDAY_PAY = 'HOLIDAY_PAY',         // Pay for working on holidays
-    NO_PAY_DEDUCTION = 'NO_PAY_DEDUCTION' // Deduction for unpaid absences/leaves
+    NO_PAY_DEDUCTION = 'NO_PAY_DEDUCTION', // Deduction for unpaid absences/leaves
+    LATE_DEDUCTION = 'LATE_DEDUCTION'    // Deduction for late arrivals/early leaves
 }
 
 export class PayrollComponentDto {

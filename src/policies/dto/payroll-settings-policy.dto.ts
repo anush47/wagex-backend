@@ -18,10 +18,7 @@ export enum PayrollCalculationMethod {
     FIXED_MONTHLY_SALARY = 'FIXED_MONTHLY_SALARY'
 }
 
-export enum UnpaidLeaveAction {
-    DEDUCT_FROM_TOTAL = 'DEDUCT_FROM_TOTAL',
-    ADD_AS_DEDUCTION = 'ADD_AS_DEDUCTION'
-}
+
 
 export enum LateDeductionType {
     DIVISOR_BASED = 'DIVISOR_BASED',
@@ -121,9 +118,40 @@ export class PayrollSettingsConfigDto {
     @IsBoolean()
     autoDeductUnpaidLeaves: boolean;
 
-    @ApiProperty({ enum: UnpaidLeaveAction, example: UnpaidLeaveAction.DEDUCT_FROM_TOTAL })
-    @IsEnum(UnpaidLeaveAction)
-    unpaidLeaveAction: UnpaidLeaveAction;
+    @ApiPropertyOptional({ enum: LateDeductionType, example: LateDeductionType.DIVISOR_BASED })
+    @IsOptional()
+    @IsEnum(LateDeductionType)
+    unpaidLeaveFullDayType?: LateDeductionType = LateDeductionType.DIVISOR_BASED;
+
+    @ApiPropertyOptional({ example: 1, description: 'Divisor or Fixed Amount for full day unpaid leave' })
+    @IsOptional()
+    @IsNumber()
+    unpaidLeaveFullDayValue?: number = 1;
+
+    @ApiPropertyOptional({ enum: LateDeductionType, example: LateDeductionType.DIVISOR_BASED })
+    @IsOptional()
+    @IsEnum(LateDeductionType)
+    unpaidLeaveHalfDayType?: LateDeductionType = LateDeductionType.DIVISOR_BASED;
+
+    @ApiPropertyOptional({ example: 0.5, description: 'Divisor or Fixed Amount for half day unpaid leave' })
+    @IsOptional()
+    @IsNumber()
+    unpaidLeaveHalfDayValue?: number = 0.5;
+
+    @ApiPropertyOptional({ description: 'Whether unpaid leave/absences affect Total Earnings for statutory calculations' })
+    @IsOptional()
+    @IsBoolean()
+    unpaidLeavesAffectTotalEarnings?: boolean = false;
+
+    @ApiProperty({ description: 'Automatically deduct for late arrivals/early leaves' })
+    @IsOptional()
+    @IsBoolean()
+    autoDeductLate?: boolean = true;
+
+    @ApiPropertyOptional({ description: 'Whether late deductions affect Total Earnings for statutory calculations' })
+    @IsOptional()
+    @IsBoolean()
+    lateDeductionsAffectTotalEarnings?: boolean = false;
 
     @ApiProperty({ enum: LateDeductionType, example: LateDeductionType.DIVISOR_BASED })
     @IsEnum(LateDeductionType)
@@ -132,6 +160,11 @@ export class PayrollSettingsConfigDto {
     @ApiProperty({ example: 8, description: 'Divisor (e.g. 8 hours) or Fixed Amount' })
     @IsNumber()
     lateDeductionValue: number;
+
+    @ApiPropertyOptional({ example: 15, description: 'Grace period in minutes before deduction starts' })
+    @IsOptional()
+    @IsNumber()
+    lateDeductionGraceMinutes?: number = 0;
 
     // Overtime Settings
     @ApiPropertyOptional({ enum: OvertimeCalculationMethod })
@@ -144,10 +177,17 @@ export class PayrollSettingsConfigDto {
     @IsNumber()
     otDivisor?: number = 200;
 
-    @ApiPropertyOptional({ example: 1.5 })
+    @ApiPropertyOptional({ enum: LateDeductionType, example: LateDeductionType.DIVISOR_BASED })
+    @IsOptional()
+    @IsEnum(LateDeductionType)
+    otHourlyType?: LateDeductionType = LateDeductionType.DIVISOR_BASED;
+
+    @ApiPropertyOptional({ example: 8, description: 'Divisor (e.g. 8 hours) or Fixed Amount for OT hourly rate' })
     @IsOptional()
     @IsNumber()
-    otNormalRate?: number = 1.5;
+    otHourlyValue?: number = 8;
+
+    @ApiPropertyOptional({ example: 1.5 })
 
     @ApiPropertyOptional({ example: 2.0 })
     @IsOptional()
@@ -177,11 +217,6 @@ export class PayrollSettingsConfigDto {
     @IsOptional()
     @IsBoolean()
     autoAcknowledgePayments?: boolean = false;
-
-    @ApiProperty({ description: 'No-pay deduction affects Total Earnings (Statutory Base)' })
-    @IsBoolean()
-    @IsOptional()
-    noPayAffectsTotalEarnings?: boolean = true;
 
     @ApiPropertyOptional({ type: [OvertimeRuleDto] })
     @IsOptional()
