@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsDateString, IsArray } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsDateString, IsArray, IsEnum } from 'class-validator';
+import { PaymentMethod } from '@prisma/client';
 
 export class CreateCompanyDto {
     @ApiProperty({ example: 'WageX Inc.', description: 'Name of the company' })
@@ -40,5 +41,5 @@ export class CreateCompanyDto {
     @ApiPropertyOptional({ example: [{ key: 'doc1', name: 'Document 1', url: '...' }], description: 'Uploaded files' })
     @IsOptional()
     @IsArray()
-    files?: any; // Keeping as any for flexibility with Json type, ideally create a DTO class for File structure
+    files?: any;
 }

@@ -130,6 +130,12 @@ export class SalariesService {
             if (startDate) where.periodStartDate.gte = new Date(startDate);
             if (endDate) where.periodStartDate.lte = new Date(endDate);
         }
+        if (query.excludeEpf) {
+            where.epfRecords = { none: {} };
+        }
+        if (query.excludeEtf) {
+            where.etfRecords = { none: {} };
+        }
 
         const [items, total] = await Promise.all([
             this.prisma.salary.findMany({

@@ -69,6 +69,16 @@ export class CreateEpfDto extends GenerateEpfDto {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
+    bankCode?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    branchCode?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
     chequeNo?: string;
 
     @ApiPropertyOptional()
@@ -117,6 +127,16 @@ export class UpdateEpfDto {
     @IsOptional()
     @IsString()
     bankBranch?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    bankCode?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    branchCode?: string;
 
     @ApiPropertyOptional()
     @IsOptional()

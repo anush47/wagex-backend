@@ -64,6 +64,16 @@ export class CreateEtfDto extends GenerateEtfDto {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
+    bankCode?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    branchCode?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
     chequeNo?: string;
 
     @ApiPropertyOptional()
@@ -107,6 +117,16 @@ export class UpdateEtfDto {
     @IsOptional()
     @IsString()
     bankBranch?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    bankCode?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    branchCode?: string;
 
     @ApiPropertyOptional()
     @IsOptional()

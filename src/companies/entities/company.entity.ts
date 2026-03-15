@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Company as PrismaCompany } from '@prisma/client';
+import { Company as PrismaCompany, PaymentMethod } from '@prisma/client';
 import { UserCompany } from '../../users/entities/user-company.entity';
 
 export class Company implements PrismaCompany {
@@ -29,6 +29,21 @@ export class Company implements PrismaCompany {
 
     @ApiPropertyOptional({ example: [], description: 'Uploaded files' })
     files: any | null;
+
+    @ApiPropertyOptional({ enum: () => PaymentMethod })
+    defaultStatutoryPaymentMethod: PaymentMethod | null;
+
+    @ApiPropertyOptional()
+    statutoryBankName: string | null;
+
+    @ApiPropertyOptional()
+    statutoryBankBranch: string | null;
+
+    @ApiPropertyOptional()
+    statutoryBankCode: string | null;
+
+    @ApiPropertyOptional()
+    statutoryBranchCode: string | null;
 
 
     @ApiProperty({ type: () => [UserCompany], description: 'Company memberships/users' })

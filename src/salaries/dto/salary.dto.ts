@@ -61,6 +61,16 @@ export class SalaryQueryDto {
     @IsOptional()
     @IsString()
     status?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @Type(() => Boolean)
+    excludeEpf?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @Type(() => Boolean)
+    excludeEtf?: boolean;
 }
 
 export class SalarySaveItemDto {

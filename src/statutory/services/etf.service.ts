@@ -95,11 +95,41 @@ export class EtfService {
       }
     }
 
+    // Ensure only one ETF record exists per month/year per company
+    const existingRecord = await this.prisma.etfRecord.findFirst({
+      where: {
+        companyId: data.companyId,
+        month: data.month,
+        year: data.year,
+      },
+    });
+
+    if (existingRecord) {
+      throw new Error(`An ETF record already exists for ${data.month}/${data.year}.`);
+    }
+
+    // Fetch company defaults for statutory details
+    const company = await this.prisma.company.findUnique({
+      where: { id: data.companyId! },
+      select: {
+        defaultStatutoryPaymentMethod: true,
+        statutoryBankName: true,
+        statutoryBankBranch: true,
+        statutoryBankCode: true,
+        statutoryBranchCode: true,
+      },
+    });
+
     return this.prisma.etfRecord.create({
       data: {
         ...data,
         companyId: data.companyId!,
         paidDate: data.paidDate ? new Date(data.paidDate) : null,
+        paymentMethod: data.paymentMethod || company?.defaultStatutoryPaymentMethod || 'BANK_TRANSFER',
+        bankName: data.bankName || company?.statutoryBankName,
+        bankBranch: data.bankBranch || company?.statutoryBankBranch,
+        bankCode: data.bankCode || company?.statutoryBankCode,
+        branchCode: data.branchCode || company?.statutoryBranchCode,
         salaries: {
           connect: salaryIds?.map((id) => ({ id })) || [],
         },
