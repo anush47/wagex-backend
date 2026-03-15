@@ -20,6 +20,80 @@ export class SalaryEngineService {
     ) { }
 
     private calculateOvertime(session: any, hourlyRate: number, payrollConfig: any) {
+        if (!session.workMinutes || session.workMinutes <= 0) {
+            return { hours: 0, amount: 0, type: 'NONE' };
+        }
+
+        const otRules = payrollConfig?.otRules || [];
+        let matchedRule: any = null;
+
+        if (otRules.length > 0) {
+            for (const rule of otRules) {
+                let statusMatch = rule.dayStatus === 'ANY' || rule.dayStatus === session.workDayStatus;
+                
+                let holidayMatch = true;
+                if (rule.isHoliday !== undefined && rule.isHoliday !== null) {
+                    const isSessionOnHoliday = !!(session.workHolidayId || session.payrollHolidayId);
+                    if (rule.isHoliday !== isSessionOnHoliday) {
+                        holidayMatch = false;
+                    } else if (isSessionOnHoliday && rule.holidayTypes && rule.holidayTypes.length > 0) {
+                        const holiday = session.payrollHoliday || session.workHoliday;
+                        const holidayFlags: string[] = [];
+                        if (holiday?.isPublic) holidayFlags.push('PUBLIC');
+                        if (holiday?.isMercantile) holidayFlags.push('MERCANTILE');
+                        if (holiday?.isBank) holidayFlags.push('BANK');
+                        
+                        // Check if ANY of the rule's required types match the holiday's flags
+                        const typeMatch = rule.holidayTypes.some(t => holidayFlags.includes(t));
+                        if (!typeMatch) holidayMatch = false;
+                    }
+                }
+
+                if (statusMatch && holidayMatch) {
+                    matchedRule = rule;
+                    break;
+                }
+            }
+        }
+
+        if (matchedRule) {
+            if (!matchedRule.otEnabled) {
+                return { hours: 0, amount: 0, type: 'NONE' };
+            }
+
+            const eligibleMinutes = Math.max(0, session.workMinutes - matchedRule.startAfterMinutes);
+            if (eligibleMinutes <= 0) {
+                return { hours: 0, amount: 0, type: 'NONE' };
+            }
+
+            let totalOtAmount = 0;
+            const sortedTiers = [...matchedRule.tiers].sort((a, b) => a.thresholdMinutes - b.thresholdMinutes);
+            
+            for (let i = 0; i < sortedTiers.length; i++) {
+                const tier = sortedTiers[i];
+                const nextTier = sortedTiers[i + 1];
+                
+                const tierStartInRule = tier.thresholdMinutes;
+                const tierEndInRule = nextTier ? nextTier.thresholdMinutes : Infinity;
+                
+                // How much of the eligible OT falls into this tier window?
+                const segmentStart = Math.max(0, tierStartInRule);
+                const segmentEnd = Math.min(eligibleMinutes, tierEndInRule);
+                
+                if (segmentEnd > segmentStart) {
+                    const segmentMinutes = segmentEnd - segmentStart;
+                    totalOtAmount += (segmentMinutes / 60) * hourlyRate * tier.multiplier;
+                }
+            }
+
+            return {
+                hours: eligibleMinutes / 60,
+                amount: totalOtAmount,
+                type: matchedRule.name || 'RULE_BASED',
+            };
+        }
+
+        // Legacy Fallback
         if (!session.overtimeMinutes || session.overtimeMinutes <= 0) {
             return { hours: 0, amount: 0, type: 'NONE' };
         }
@@ -200,26 +274,29 @@ export class SalaryEngineService {
                     }
                 ]
             },
+            include: {
+                payrollHoliday: true,
+                workHoliday: true,
+            }
         });
 
         // 5. Calculate OT Breakdown
         let totalOtAmount = 0;
-        const otMap = {
-            'NORMAL': { hours: 0, amount: 0 },
-            'DOUBLE': { hours: 0, amount: 0 },
-            'TRIPLE': { hours: 0, amount: 0 },
-        };
+        const dynamicOtMap: Record<string, { hours: number, amount: number }> = {};
 
         sessions.forEach(session => {
             const ot = this.calculateOvertime(session, hourlyRate, payrollConfig);
             if (ot.type !== 'NONE') {
-                otMap[ot.type].hours += ot.hours;
-                otMap[ot.type].amount += ot.amount;
+                if (!dynamicOtMap[ot.type]) {
+                    dynamicOtMap[ot.type] = { hours: 0, amount: 0 };
+                }
+                dynamicOtMap[ot.type].hours += ot.hours;
+                dynamicOtMap[ot.type].amount += ot.amount;
                 totalOtAmount += ot.amount;
             }
         });
 
-        const otBreakdown = Object.entries(otMap).map(([type, data]) => ({ type, ...data }));
+        const otBreakdown = Object.entries(dynamicOtMap).map(([type, data]) => ({ type, ...data }));
 
         // 6. Calculate No-Pay Breakdown
         // If autoDeductUnpaidLeaves is active, we check for missing days

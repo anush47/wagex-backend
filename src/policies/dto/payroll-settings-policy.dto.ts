@@ -1,5 +1,6 @@
-import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export enum PayCycleFrequency {
     MONTHLY = 'MONTHLY',
@@ -31,6 +32,63 @@ export enum OvertimeCalculationMethod {
     BASIC_DIVISOR = 'BASIC_DIVISOR',
     GROSS_DIVISOR = 'GROSS_DIVISOR',
     FIXED_HOURLY = 'FIXED_HOURLY'
+}
+
+export enum OvertimeDayType {
+    WORKING_DAY = 'WORKING_DAY',
+    HALF_DAY = 'HALF_DAY',
+    OFF_DAY = 'OFF_DAY',
+    HOLIDAY = 'HOLIDAY',
+    ANY = 'ANY'
+}
+
+export class OvertimeTierDto {
+    @ApiProperty({ example: 0, description: 'Minutes after OT starts for this tier (0 for start)' })
+    @IsNumber()
+    thresholdMinutes: number;
+
+    @ApiProperty({ example: 1.5, description: 'Multiplier for this tier' })
+    @IsNumber()
+    multiplier: number;
+}
+
+export class OvertimeRuleDto {
+    @ApiProperty({ example: 'rule-id' })
+    @IsString()
+    id: string;
+
+    @ApiProperty({ example: 'Normal Workday OT' })
+    @IsString()
+    name: string;
+
+    @ApiProperty({ enum: OvertimeDayType, example: OvertimeDayType.WORKING_DAY })
+    @IsEnum(OvertimeDayType)
+    dayStatus: OvertimeDayType;
+
+    @ApiPropertyOptional({ example: true, description: 'Whether this rule applies to holidays' })
+    @IsOptional()
+    @IsBoolean()
+    isHoliday?: boolean;
+
+    @ApiPropertyOptional({ example: ['PUBLIC', 'MERCANTILE'], isArray: true })
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    holidayTypes?: string[];
+
+    @ApiProperty({ example: true })
+    @IsBoolean()
+    otEnabled: boolean;
+
+    @ApiProperty({ example: 480, description: 'OT begins after this many minutes of work' })
+    @IsNumber()
+    startAfterMinutes: number;
+
+    @ApiProperty({ type: [OvertimeTierDto] })
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => OvertimeTierDto)
+    tiers: OvertimeTierDto[];
 }
 
 export class PayrollSettingsConfigDto {
@@ -119,4 +177,11 @@ export class PayrollSettingsConfigDto {
     @IsOptional()
     @IsBoolean()
     autoAcknowledgePayments?: boolean = false;
+
+    @ApiPropertyOptional({ type: [OvertimeRuleDto] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => OvertimeRuleDto)
+    otRules?: OvertimeRuleDto[] = [];
 }
