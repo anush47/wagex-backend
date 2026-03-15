@@ -44,9 +44,10 @@ export class EtfService {
         (c) => c.systemType === PayrollComponentSystemType.ETF_EMPLOYER,
       );
 
+      // Calculate liable earnings from the employer contribution amount
       let liableEarnings = 0;
-      if (etfEmployer && etfEmployer.value > 0) {
-        liableEarnings = etfEmployer.amount / (etfEmployer.value / 100);
+      if (etfEmployer && etfEmployer.employerAmount > 0 && etfEmployer.employerValue > 0) {
+        liableEarnings = etfEmployer.employerAmount / (etfEmployer.employerValue / 100);
       } else if (salary.basicSalary > 0) {
         liableEarnings = salary.basicSalary;
       }
@@ -56,8 +57,8 @@ export class EtfService {
         employeeName: salary.employee.fullName,
         employeeNo: salary.employee.employeeNo,
         liableEarnings,
-        employerContribution: etfEmployer?.amount || 0,
-        totalContribution: etfEmployer?.amount || 0,
+        employerContribution: etfEmployer?.employerAmount || 0,
+        totalContribution: etfEmployer?.employerAmount || 0,
       };
     });
 

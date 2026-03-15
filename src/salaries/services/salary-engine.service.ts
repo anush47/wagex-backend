@@ -515,10 +515,9 @@ export class SalaryEngineService {
                     (comp as any).employerAmount = (currentTotalEarnings * comp.employerValue) / 100;
                 }
             } else if (comp.systemType === PayrollComponentSystemType.ETF_EMPLOYER) {
-                amount = (currentTotalEarnings * comp.value) / 100;
-                if (comp.employerValue !== undefined) {
-                    (comp as any).employerAmount = (currentTotalEarnings * comp.employerValue) / 100;
-                }
+                // ETF is employer-only contribution, use employerValue for calculation
+                amount = (currentTotalEarnings * (comp.employerValue || 0)) / 100;
+                (comp as any).employerAmount = amount;
             }
 
             processedComponents.push({

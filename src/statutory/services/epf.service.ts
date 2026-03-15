@@ -8,6 +8,7 @@ export class EpfService {
   constructor(private readonly prisma: PrismaService) {}
 
   async generatePreview(dto: GenerateEpfDto) {
+    const referenceNo = await this.generateReferenceNo();
     const { companyId, month, year, salaryIds } = dto;
 
     const where: any = {
@@ -43,9 +44,6 @@ export class EpfService {
       const epfEmployee = components.find(
         (c) => c.systemType === PayrollComponentSystemType.EPF_EMPLOYEE,
       );
-      const eppEmployer = components.find(
-        (c) => c.systemType === PayrollComponentSystemType.EPF_EMPLOYER,
-      );
 
       // Total Liable Earnings for EPF is usually the base for these percentages
       // We can derive it: amount / (value / 100)
@@ -56,14 +54,21 @@ export class EpfService {
         liableEarnings = salary.basicSalary; // Fallback
       }
 
+      // Employer contribution is stored as employerAmount on the EPF_EMPLOYEE component
+      // OR as a separate EPF_EMPLOYER component
+      const epfEmployer = components.find(
+        (c) => c.systemType === PayrollComponentSystemType.EPF_EMPLOYER,
+      );
+      const employerContribution = epfEmployer?.amount || epfEmployee?.employerAmount || 0;
+
       return {
         salaryId: salary.id,
         employeeName: salary.employee.fullName,
         employeeNo: salary.employee.employeeNo,
         liableEarnings,
         employeeContribution: epfEmployee?.amount || 0,
-        employerContribution: eppEmployer?.amount || 0,
-        totalContribution: (epfEmployee?.amount || 0) + (eppEmployer?.amount || 0),
+        employerContribution: employerContribution,
+        totalContribution: (epfEmployee?.amount || 0) + employerContribution,
       };
     });
 
@@ -75,9 +80,15 @@ export class EpfService {
     return {
       month,
       year,
+      referenceNo,
       items: previewItems,
       totalContribution,
     };
+  }
+
+  private async generateReferenceNo() {
+    // For now, return a placeholder as per user request
+    return '11111111111';
   }
 
   async create(dto: CreateEpfDto) {
@@ -104,6 +115,7 @@ export class EpfService {
       data: {
         ...data,
         companyId: data.companyId!,
+        referenceNo: data.referenceNo || (await this.generateReferenceNo()),
         paidDate: data.paidDate ? new Date(data.paidDate) : null,
         salaries: {
           connect: salaryIds?.map((id) => ({ id })) || [],
