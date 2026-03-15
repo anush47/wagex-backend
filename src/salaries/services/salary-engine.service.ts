@@ -367,12 +367,14 @@ export class SalaryEngineService {
                 // EPF Base usually = Basic + Statutory Additions
                 // But simplified: use `currentTotalEarnings` (which includes basic + OT + flagged additions)
                 amount = (currentTotalEarnings * comp.value) / 100;
-                const employerRate = comp.employerValue ?? 12;
-                (comp as any).employerAmount = (currentTotalEarnings * employerRate) / 100;
+                if (comp.employerValue !== undefined) {
+                    (comp as any).employerAmount = (currentTotalEarnings * comp.employerValue) / 100;
+                }
             } else if (comp.systemType === PayrollComponentSystemType.ETF_EMPLOYER) {
                 amount = (currentTotalEarnings * comp.value) / 100;
-                const employerRate = comp.employerValue ?? 3;
-                (comp as any).employerAmount = (currentTotalEarnings * employerRate) / 100;
+                if (comp.employerValue !== undefined) {
+                    (comp as any).employerAmount = (currentTotalEarnings * comp.employerValue) / 100;
+                }
             }
 
             processedComponents.push({
@@ -407,6 +409,14 @@ export class SalaryEngineService {
         const totalComponentDeductions = processedComponents
             .filter(c => c.category === 'DEDUCTION')
             .reduce((sum, c) => sum + c.amount, 0);
+
+        const epfEmployerAmount = processedComponents
+            .filter(c => c.systemType === PayrollComponentSystemType.EPF_EMPLOYEE)
+            .reduce((sum, c) => sum + (c.employerAmount || 0), 0);
+
+        const etfEmployerAmount = processedComponents
+            .filter(c => c.systemType === PayrollComponentSystemType.ETF_EMPLOYER)
+            .reduce((sum, c) => sum + (c.employerAmount || 0), 0);
 
         // If we used a component for No-Pay, we shouldn't double deduct it via `totalNoPayAmount` variable in net calc.
         // If a NO_PAY component exists, we zero out the separate variable so it's only deducted via components.
