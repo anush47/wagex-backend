@@ -37,6 +37,8 @@ export interface AttendanceCalculationResult extends WorkTimeResult, StatusFlags
     policyOvertimeMinutes?: number;
 }
 
+import { ProcessingContext } from '../types/processing-context.types';
+
 @Injectable()
 export class AttendanceCalculationService {
     private readonly logger = new Logger(AttendanceCalculationService.name);
@@ -62,23 +64,30 @@ export class AttendanceCalculationService {
         leaves: LeaveRequest[] = [],
         timezone: string = 'UTC',
         policy?: any,
+        context?: ProcessingContext
     ): Promise<AttendanceCalculationResult> {
+        // Use context data if available
+        const effectiveShift = context?.shift || shift;
+        const effectiveLeaves = context?.leaves || leaves;
+        const effectiveTimezone = context?.timezone || timezone;
+        const effectivePolicy = context?.policy || policy;
+
         let workTime: WorkTimeResult;
 
         if (data.sessionGroup) {
             // Session group-based calculation (Enhanced with multiple IN/OUT pairs)
-            workTime = this.calculateWorkTimeFromSessionGroup(data.sessionGroup, shift);
+            workTime = this.calculateWorkTimeFromSessionGroup(data.sessionGroup, effectiveShift);
         } else if (data.events && data.events.length > 0) {
             // Event-based calculation (Auto)
-            workTime = this.calculateWorkTime(data.events, shift);
+            workTime = this.calculateWorkTime(data.events, effectiveShift);
         } else {
             // Explicit time-based calculation (Manual)
             workTime = this.calculateManualWorkTime(
                 data.checkInTime || null,
                 data.checkOutTime || null,
-                data.shiftBreakMinutes ?? shift?.breakTime ?? 0,
-                shift,
-                timezone
+                data.shiftBreakMinutes ?? effectiveShift?.breakTime ?? 0,
+                effectiveShift,
+                effectiveTimezone
             );
         }
 
@@ -97,9 +106,9 @@ export class AttendanceCalculationService {
         const flags = this.calculateStatusFlags(
             checkInTime,
             checkOutTime,
-            shift,
-            leaves,
-            timezone,
+            effectiveShift,
+            effectiveLeaves,
+            effectiveTimezone,
             data.sessionGroup?.sessionDate || (data as any).date
         );
 
@@ -108,29 +117,43 @@ export class AttendanceCalculationService {
         let payrollHolidayId: string | null = null;
         let workDayStatus: SessionWorkDayStatus = SessionWorkDayStatus.FULL;
 
-        if (policy) {
+        if (effectivePolicy) {
             const sessionDate = data.sessionGroup?.sessionDate || (data as any).date || new Date();
-            workDayStatus = this.determineWorkDayStatus(sessionDate, policy);
+            workDayStatus = this.determineWorkDayStatus(sessionDate, effectivePolicy);
 
-            const workCalendarId = policy.workingDays?.workingCalendar || policy.attendance?.calendarId || policy.calendarId;
-            const payrollCalendarId = policy.workingDays?.payrollCalendar || policy.payrollConfiguration?.calendarId || policy.calendarId;
+            const workCalendarId = effectivePolicy.workingDays?.workingCalendar || effectivePolicy.attendance?.calendarId || effectivePolicy.calendarId;
+            const payrollCalendarId = effectivePolicy.workingDays?.payrollCalendar || effectivePolicy.payrollConfiguration?.calendarId || effectivePolicy.calendarId;
 
-            const holidays = await this.resolveHolidays(sessionDate, workCalendarId, payrollCalendarId);
+            const holidays = await this.resolveHolidays(sessionDate, workCalendarId, payrollCalendarId, context);
             workHolidayId = holidays.workHolidayId;
             payrollHolidayId = holidays.payrollHolidayId;
 
             // Get holiday flags for OT calculation
             const holidayFlags: string[] = [];
-            // Fetch holiday object to get flags
-            const holidayId = holidays.workHolidayId || holidays.payrollHolidayId;
-            if (holidayId) {
-                const holiday = await this.prisma.holiday.findUnique({
-                    where: { id: holidayId }
-                });
-                if (holiday) {
-                    if (holiday.isPublic) holidayFlags.push('PUBLIC');
-                    if (holiday.isMercantile) holidayFlags.push('MERCANTILE');
-                    if (holiday.isBank) holidayFlags.push('BANK');
+            
+            // Optimization: If context has holidays, we search within those instead of fetching from DB
+            if (context?.holidays) {
+                const dayStart = new Date(sessionDate).setUTCHours(0, 0, 0, 0);
+                const matchingHoliday = context.holidays.find(h => 
+                   (h.calendarId === workCalendarId || h.calendarId === payrollCalendarId) && 
+                   new Date(h.date).setUTCHours(0, 0, 0, 0) === dayStart
+                );
+                if (matchingHoliday) {
+                    if (matchingHoliday.isPublic) holidayFlags.push('PUBLIC');
+                    if (matchingHoliday.isMercantile) holidayFlags.push('MERCANTILE');
+                    if (matchingHoliday.isBank) holidayFlags.push('BANK');
+                }
+            } else {
+                const holidayId = holidays.workHolidayId || holidays.payrollHolidayId;
+                if (holidayId) {
+                    const holiday = await this.prisma.holiday.findUnique({
+                        where: { id: holidayId }
+                    });
+                    if (holiday) {
+                        if (holiday.isPublic) holidayFlags.push('PUBLIC');
+                        if (holiday.isMercantile) holidayFlags.push('MERCANTILE');
+                        if (holiday.isBank) holidayFlags.push('BANK');
+                    }
                 }
             }
 
@@ -140,7 +163,7 @@ export class AttendanceCalculationService {
                 workDayStatus,
                 !!(workHolidayId || payrollHolidayId),
                 holidayFlags,
-                policy
+                effectivePolicy
             );
         }
 
@@ -506,9 +529,28 @@ export class AttendanceCalculationService {
         date: Date,
         workCalendarId?: string | null,
         payrollCalendarId?: string | null,
+        context?: ProcessingContext
     ): Promise<{ workHolidayId: string | null; payrollHolidayId: string | null }> {
         let workHolidayId: string | null = null;
         let payrollHolidayId: string | null = null;
+
+        // Optimization: Check context first
+        if (context?.holidays) {
+            const dayStart = new Date(date).setUTCHours(0, 0, 0, 0);
+            const matchingHolidays = context.holidays.filter(h => 
+                new Date(h.date).setUTCHours(0, 0, 0, 0) === dayStart
+            );
+
+            if (workCalendarId) {
+                const wh = matchingHolidays.find(h => h.calendarId === workCalendarId);
+                if (wh) workHolidayId = wh.id;
+            }
+            if (payrollCalendarId) {
+                const ph = matchingHolidays.find(h => h.calendarId === payrollCalendarId);
+                if (ph) payrollHolidayId = ph.id;
+            }
+            return { workHolidayId, payrollHolidayId };
+        }
 
         if (!workCalendarId && !payrollCalendarId) {
             return { workHolidayId, payrollHolidayId };

@@ -15,6 +15,8 @@ import {
 } from '../dto/session.dto';
 import { EventSource, AttendanceEvent, AttendanceSession, EventType } from '@prisma/client';
 
+import { ProcessingContext } from '../types/processing-context.types';
+
 @Injectable()
 export class AttendanceManualService {
     private readonly logger = new Logger(AttendanceManualService.name);
@@ -39,33 +41,25 @@ export class AttendanceManualService {
             `Creating ${source} event for employee ${dto.employeeId || dto.employeeNo}`,
         );
 
-        // Resolve employee
-        let employeeId: string;
-        let companyId: string;
+        // Resolve employee once
+        const employeeId = dto.employeeId;
+        if (!employeeId) {
+             throw new BadRequestException('employeeId required');
+        }
 
-        if (dto.employeeId) {
-            const employee = await this.prisma.employee.findUnique({
-                where: { id: dto.employeeId },
-                select: { id: true, companyId: true },
-            });
-            if (!employee) {
-                throw new NotFoundException('Employee not found');
-            }
-            employeeId = employee.id;
-            companyId = employee.companyId;
-        } else if (dto.employeeNo) {
-            throw new BadRequestException(
-                'Employee number resolution requires company context',
-            );
-        } else {
-            throw new BadRequestException('Either employeeId or employeeNo required');
+        const employee = await this.prisma.employee.findUnique({
+            where: { id: employeeId },
+            include: { company: true },
+        });
+        if (!employee) {
+            throw new NotFoundException('Employee not found');
         }
 
         // Create event
         const event = await this.prisma.attendanceEvent.create({
             data: {
                 employeeId,
-                companyId,
+                companyId: employee.companyId,
                 eventTime: new Date(dto.eventTime),
                 eventType: dto.eventType || 'IN',
                 source,
@@ -78,10 +72,24 @@ export class AttendanceManualService {
             },
         });
 
-        // Process immediately
+        // Optimized processing: Fetch context in parallel
         const eventDate = new Date(dto.eventTime);
         try {
-            await this.processingService.processEmployeeDate(employeeId, eventDate);
+            const [policy, leaves, holidays] = await Promise.all([
+                this.policiesService.getEffectivePolicy(employeeId),
+                this.leaveService.getApprovedLeaves(employeeId, eventDate),
+                this.calculationService.resolveHolidays(eventDate, employee.companyId) // Using companyId as fallback for cal resolution if needed
+            ]);
+
+            const context: ProcessingContext = {
+                employee,
+                policy,
+                leaves,
+                holidays: [], // Fallback, resolveHolidays handles it
+                timezone: employee.company?.timezone || 'UTC'
+            };
+
+            await this.processingService.processEmployeeDate(employeeId, eventDate, context);
         } catch (error) {
             this.logger.error(`Failed to process manual event: ${error.message}`);
         }
@@ -118,10 +126,6 @@ export class AttendanceManualService {
             throw new BadRequestException('Session already exists for this date');
         }
 
-        if (existing) {
-            throw new BadRequestException('Session already exists for this date');
-        }
-
         const session = await this.prisma.attendanceSession.create({
             data: {
                 employeeId,
@@ -134,7 +138,20 @@ export class AttendanceManualService {
             },
         });
 
-        await this.processingService.processEmployeeDate(employeeId, sessionDate);
+        // Parallel metadata fetch
+        const [policy, leaves] = await Promise.all([
+            this.policiesService.getEffectivePolicy(employeeId),
+            this.leaveService.getApprovedLeaves(employeeId, sessionDate)
+        ]);
+
+        const context: ProcessingContext = {
+            employee,
+            policy,
+            leaves,
+            timezone
+        };
+
+        await this.processingService.processEmployeeDate(employeeId, sessionDate, context);
 
         return this.prisma.attendanceSession.findUniqueOrThrow({ where: { id: session.id } });
     }
@@ -200,7 +217,8 @@ export class AttendanceManualService {
             where: { id: session.employeeId },
             include: { company: true },
         });
-        const timezone = employee?.company?.timezone || 'UTC';
+        if (!employee) throw new NotFoundException('Employee not found');
+        const timezone = employee.company?.timezone || 'UTC';
 
         // Handle date shift if needed
         if (dto.checkInTime) {
@@ -224,8 +242,9 @@ export class AttendanceManualService {
         const effectiveShiftId = dto.shiftId !== undefined ? (dto.shiftId === "none" ? null : dto.shiftId) : session.shiftId;
         const effectiveDate = updateData.date || session.date;
 
+        // Fetch policy first to get calendar IDs and shift info
         const policy = await this.policiesService.getEffectivePolicy(session.employeeId);
-        const policySettings = policy as any;
+        const policySettings = policy as any; // Assuming policy has these properties
 
         const workCalId = policySettings.workingDays?.workingCalendar || policySettings.attendance?.calendarId || policySettings.calendarId;
         const payCalId = policySettings.workingDays?.payrollCalendar || policySettings.payrollConfiguration?.calendarId || policySettings.calendarId;
@@ -235,7 +254,12 @@ export class AttendanceManualService {
             calcShift = policySettings.shifts?.list?.find((s: any) => s.id === effectiveShiftId);
         }
 
-        const leaves = await this.leaveService.getApprovedLeaves(session.employeeId, effectiveDate);
+        // Parallelize metadata fetching for calculation
+        const [leaves, holidayIds] = await Promise.all([
+            this.leaveService.getApprovedLeaves(session.employeeId, effectiveDate),
+            this.calculationService.resolveHolidays(effectiveDate, workCalId, payCalId)
+        ]);
+
         const effectiveOverride = dto.isBreakOverrideActive !== undefined ? dto.isBreakOverrideActive : session.isBreakOverrideActive;
 
         let breakMins: number;
@@ -247,12 +271,21 @@ export class AttendanceManualService {
             breakMins = Math.max(calculated.breakMinutes, calcShift?.breakTime ?? session.shiftBreakMinutes ?? 0);
         }
 
+        const context: ProcessingContext = {
+            employee,
+            policy,
+            leaves,
+            holidays: [], // Fallback
+            timezone
+        };
+
         const calculation = await this.calculationService.calculate(
             { checkInTime: effectiveIn, checkOutTime: effectiveOut, shiftBreakMinutes: breakMins, date: effectiveDate },
             calcShift,
             leaves,
             timezone,
-            policy
+            policy,
+            context
         );
 
         updateData.isLate = calculation.isLate;
@@ -279,9 +312,8 @@ export class AttendanceManualService {
             }
         }
 
-        const holidays = await this.calculationService.resolveHolidays(effectiveDate, workCalId, payCalId);
-        updateData.workHolidayId = holidays.workHolidayId;
-        updateData.payrollHolidayId = holidays.payrollHolidayId;
+        updateData.workHolidayId = holidayIds.workHolidayId;
+        updateData.payrollHolidayId = holidayIds.payrollHolidayId;
 
         return this.prisma.attendanceSession.update({ where: { id }, data: updateData });
     }

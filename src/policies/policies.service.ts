@@ -224,4 +224,49 @@ export class PoliciesService {
             assignedTemplate: assignedSettings
         };
     }
+
+    /**
+     * Efficiently resolves effective policies for multiple employees in bulk.
+     */
+    async resolveBulkPolicies(employeeIds: string[]): Promise<Map<string, PolicySettingsDto>> {
+        const employees = await this.prisma.employee.findMany({
+            where: { id: { in: employeeIds } },
+            include: {
+                policy: true, // Assigned template
+            }
+        });
+
+        const companyIds = [...new Set(employees.map(e => e.companyId))];
+        const defaultPolicies = await this.prisma.policy.findMany({
+            where: { companyId: { in: companyIds }, isDefault: true }
+        });
+
+        const companyPolicyMap = new Map(defaultPolicies.map(p => [p.companyId, p.settings as unknown as PolicySettingsDto]));
+        const result = new Map<string, PolicySettingsDto>();
+
+        for (const employee of employees) {
+            const companySettings = companyPolicyMap.get(employee.companyId) || {};
+            const assignedSettings = (employee.policy?.settings as unknown as PolicySettingsDto) || {};
+
+            // Same merge logic as getEffectivePolicy
+            const effective = merge({}, companySettings, assignedSettings);
+
+            if (assignedSettings.shifts?.list) {
+                (effective as any).shifts = { ...effective.shifts, list: assignedSettings.shifts.list };
+            }
+            if (assignedSettings.payrollConfiguration?.otRules) {
+                (effective as any).payrollConfiguration = { ...effective.payrollConfiguration, otRules: assignedSettings.payrollConfiguration.otRules };
+            }
+            if (assignedSettings.salaryComponents?.components) {
+                (effective as any).salaryComponents = { ...effective.salaryComponents, components: assignedSettings.salaryComponents.components };
+            }
+            if (assignedSettings.leaves?.leaveTypes) {
+                (effective as any).leaves = { ...effective.leaves, leaveTypes: assignedSettings.leaves.leaveTypes };
+            }
+
+            result.set(employee.id, effective);
+        }
+
+        return result;
+    }
 }

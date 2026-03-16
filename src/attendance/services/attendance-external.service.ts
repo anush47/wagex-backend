@@ -7,6 +7,7 @@ import { ShiftSelectionService } from './shift-selection.service';
 import { PoliciesService } from '../../policies/policies.service';
 
 import { TimeService } from './time.service';
+import { ProcessingContext } from '../types/processing-context.types';
 
 @Injectable()
 export class AttendanceExternalService {
@@ -17,6 +18,7 @@ export class AttendanceExternalService {
         private readonly processingService: AttendanceProcessingService,
         private readonly shiftSelectionService: ShiftSelectionService,
         private readonly timeService: TimeService,
+        private readonly policiesService: PoliciesService,
     ) { }
 
     // Simple in-memory cache for API key verification (5-minute TTL)
@@ -462,6 +464,9 @@ export class AttendanceExternalService {
     /**
      * Optimized Bulk creation with intelligent type detection
      */
+    /**
+     * Optimized Bulk creation with intelligent type detection and context-aware processing
+     */
     async bulkCreateExternalEvents(
         dto: BulkCreateEventsDto,
         verification: {
@@ -482,28 +487,50 @@ export class AttendanceExternalService {
 
         const uniqueEmployeeNos = [...new Set(sortedEvents.map(e => e.employeeNo).filter(Boolean) as number[])];
 
-        // 2. Bulk Resolve Employees
-        const employees = await this.prisma.employee.findMany({
-            where: { companyId, employeeNo: { in: uniqueEmployeeNos } },
-            select: { id: true, employeeNo: true, policyId: true }
+        // 2. Bulk Resolve Employees and Policies in parallel
+        const [employees, company] = await Promise.all([
+            this.prisma.employee.findMany({
+                where: { companyId, employeeNo: { in: uniqueEmployeeNos } },
+                include: { company: true }
+            }),
+            this.prisma.company.findUnique({
+                where: { id: companyId },
+                include: { policies: { where: { isDefault: true } } }
+            })
+        ]);
+
+        const employeeIds = employees.map(e => e.id);
+        const policyMap = await this.policiesService.resolveBulkPolicies(employeeIds);
+        
+        // Fetch all holidays for the date range
+        const eventTimes = sortedEvents.map(e => new Date(e.eventTime).getTime());
+        const minDate = new Date(Math.min(...eventTimes));
+        const maxDate = new Date(Math.max(...eventTimes));
+        
+        // Fetch all holidays for the company's possible calendars
+        const calIds = new Set<string>();
+        policyMap.forEach(p => {
+             if (p.calendarId) calIds.add(p.calendarId);
+             if (p.attendance?.calendarId) calIds.add(p.attendance.calendarId);
+             if (p.workingDays?.workingCalendar) calIds.add(p.workingDays.workingCalendar);
+             if (p.workingDays?.payrollCalendar) calIds.add(p.workingDays.payrollCalendar);
+        });
+
+        const holidays = await this.prisma.holiday.findMany({
+            where: {
+                calendarId: { in: Array.from(calIds) },
+                date: { gte: minDate, lte: maxDate }
+            }
         });
 
         const empMap = new Map(employees.map(e => [e.employeeNo, e]));
         const results: any[] = [];
         const validEvents: any[] = [];
-
-        // Resolve company timezone once for bulk operation
-        const company = await this.prisma.company.findUnique({
-            where: { id: companyId },
-            select: { timezone: true }
-        });
         const timezone = company?.timezone || 'UTC';
-
-        const processQueue = new Set<string>();
 
         const lastStateMap = new Map<string, { eventTime: Date; eventType: EventType; sessionId?: string | null }>();
 
-        // 4. Process events
+        // 4. Process events and determine types in memory
         for (const eventDto of sortedEvents) {
             let decision: { type: EventType; autoCheckoutAt?: Date; sessionId?: string | null } | undefined;
             const employee = empMap.get(eventDto.employeeNo!);
@@ -514,102 +541,91 @@ export class AttendanceExternalService {
                 continue;
             }
 
-            // Security Check: Policy scoping
+            // Security Checks
             if (verification.restrictedToPolicyId && employee.policyId !== verification.restrictedToPolicyId) {
-                results.push({
-                    employeeNo: eventDto.employeeNo,
-                    status: 'failed',
-                    error: 'Policy mismatch: API key not valid for this employee'
-                });
+                results.push({ employeeNo: eventDto.employeeNo, status: 'failed', error: 'Policy mismatch' });
                 continue;
             }
-
-            // Security Check: Personal key
-            if (verification.type === 'EMPLOYEE' && verification.employee) {
-                if (employeeId !== verification.employee.id) {
-                    results.push({
-                        employeeNo: eventDto.employeeNo,
-                        status: 'failed',
-                        error: `This API key is restricted to its owner only.`
-                    });
-                    continue;
-                }
+            if (verification.type === 'EMPLOYEE' && verification.employee && employeeId !== verification.employee.id) {
+                results.push({ employeeNo: eventDto.employeeNo, status: 'failed', error: 'Restricted key' });
+                continue;
             }
 
             const eventTime = new Date(eventDto.eventTime);
             let eventType = eventDto.eventType;
 
-            // Intelligent Type Detection for Bulk
             if (!eventType) {
-                // Determine type using batch context if available
                 const lastInBatch = lastStateMap.get(employeeId);
                 decision = await this.determineEventType(employeeId, eventTime, timezone, lastInBatch);
 
                 if (decision.autoCheckoutAt) {
-                    // Create the missing OUT event in the list
-                    const autoOut = {
+                    validEvents.push({
                         employeeId,
                         companyId,
                         eventTime: decision.autoCheckoutAt,
-                        eventType: 'OUT' as EventType,
-                        source: 'MANUAL' as const,
-                        remark: 'Auto checkout on shift end',
-                        status: 'ACTIVE' as const,
-                        sessionId: decision.sessionId, // Link to previous unclosed session
-                    };
-                    validEvents.push(autoOut);
-
-                    // Update state to reflect this auto-checkout
-                    lastStateMap.set(employeeId, {
-                        eventTime: decision.autoCheckoutAt,
                         eventType: 'OUT',
-                        sessionId: decision.sessionId
+                        source: 'MANUAL',
+                        remark: 'Auto checkout on shift end',
+                        status: 'ACTIVE',
+                        sessionId: decision.sessionId,
                     });
-
-                    // The current event now becomes an IN
+                    lastStateMap.set(employeeId, { eventTime: decision.autoCheckoutAt, eventType: 'OUT', sessionId: decision.sessionId });
                     eventType = 'IN';
                 } else {
                     eventType = decision.type;
                 }
             }
 
-            // Update state for next event in batch
-            lastStateMap.set(employeeId, {
-                eventTime,
-                eventType: eventType!,
-                sessionId: eventType === 'IN' ? null : decision?.sessionId
-            });
+            lastStateMap.set(employeeId, { eventTime, eventType: eventType as EventType, sessionId: eventType === 'IN' ? null : decision?.sessionId });
 
             validEvents.push({
                 employeeId,
                 companyId,
                 eventTime,
-                eventType: eventType!, // Now guaranteed to be set
-                source: 'API_KEY' as const,
+                eventType: eventType as EventType,
+                source: 'API_KEY',
                 apiKeyName,
                 device: eventDto.device,
                 location: eventDto.location,
                 latitude: eventDto.latitude,
                 longitude: eventDto.longitude,
                 remark: eventDto.remark,
-                status: 'ACTIVE' as const,
+                status: 'ACTIVE',
             });
-
-            const dateStr = eventTime.toISOString().split('T')[0];
-            processQueue.add(`${employeeId}:${dateStr} `);
         }
 
-        // 5. Bulk Insert
+        // 5. Bulk Insert Events
         if (validEvents.length > 0) {
             await this.prisma.attendanceEvent.createMany({ data: validEvents });
         }
 
-        // 6. Async Processing
-        processQueue.forEach(item => {
-            const [empId, dateStr] = item.split(':');
-            this.processingService.processEmployeeDate(empId, new Date(dateStr))
-                .catch(e => this.logger.error(`Bulk processing error: ${e.message} `));
+        // 6. Optimized Sequential Processing (or Parallel with small limit to avoid DB lock)
+        // We group processing by employee+date to avoid redundant session grouping calls
+        const processTasks = new Set<string>();
+        validEvents.forEach(e => {
+            const dateStr = e.eventTime.toISOString().split('T')[0];
+            processTasks.add(`${e.employeeId}:${dateStr}`);
         });
+
+        const processingPromises = Array.from(processTasks).map(async (task) => {
+            const [empId, dateStr] = task.split(':');
+            const emp = employees.find(e => e.id === empId);
+            const policy = policyMap.get(empId);
+            
+            if (emp && policy) {
+                const context: any = {
+                    employee: emp,
+                    policy: policy,
+                    holidays: holidays,
+                    timezone: emp.company?.timezone || timezone
+                };
+                return this.processingService.processEmployeeDate(empId, new Date(dateStr), context)
+                    .catch(e => this.logger.error(`Batch processing error for ${empId}: ${e.message}`));
+            }
+        });
+
+        // Use a small concurrency limit if needed, but for now we can do Promise.all
+        await Promise.all(processingPromises);
 
         return {
             success: true,
@@ -617,8 +633,8 @@ export class AttendanceExternalService {
             failed: results.filter(r => r.status === 'failed').length,
             results: [
                 ...results,
-                ...validEvents.map(e => ({
-                    employeeNo: employees.find(emp => emp.id === e.employeeId)?.employeeNo,
+                ...validEvents.filter(e => e.source === 'API_KEY').map(e => ({
+                    employeeNo: empMap.get(employees.find(emp => emp.id === e.employeeId)?.employeeNo!)?.employeeNo,
                     status: 'success'
                 }))
             ]

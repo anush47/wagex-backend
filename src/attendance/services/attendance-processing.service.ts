@@ -10,6 +10,8 @@ import { ApprovalPolicyMode } from '../../policies/dto/attendance-policy.dto';
 import { SessionGroupingService, SessionGroup } from './session-grouping.service';
 import { TimeService } from './time.service';
 
+import { ProcessingContext } from '../types/processing-context.types';
+
 @Injectable()
 export class AttendanceProcessingService {
     private readonly logger = new Logger(AttendanceProcessingService.name);
@@ -31,13 +33,17 @@ export class AttendanceProcessingService {
     async processEmployeeDate(
         employeeId: string,
         date: Date,
+        context?: ProcessingContext
     ): Promise<AttendanceSession[]> {
         // Resolve timezone once for the employee
-        const employee = await this.prisma.employee.findUnique({
-            where: { id: employeeId },
-            include: { company: true },
-        });
-        const timezone = employee?.company?.timezone || 'UTC';
+        let timezone: string = context?.timezone || 'UTC';
+        if (!context?.timezone) {
+            const employee = context?.employee || await this.prisma.employee.findUnique({
+                where: { id: employeeId },
+                include: { company: true },
+            });
+            timezone = (employee as any)?.company?.timezone || (employee as any)?.timezone || 'UTC';
+        }
 
         this.logger.log(
             `Processing attendance for employee ${employeeId} on ${date.toISOString()} in ${timezone}`,
@@ -70,21 +76,20 @@ export class AttendanceProcessingService {
         const sessions: AttendanceSession[] = [];
         for (const sessionGroup of sessionGroups) {
             // Get shift effective at the time of the first IN event in this group
-            const { shift } = await this.shiftService.getEffectiveShift(
+            const { shift } = context?.shift ? { shift: context.shift } : await this.shiftService.getEffectiveShift(
                 employeeId,
                 sessionGroup.firstIn || date,
                 timezone,
             );
 
             // Get leaves for the session date
-            const leaves = await this.leaveService.getApprovedLeaves(
+            const leaves = context?.leaves || await this.leaveService.getApprovedLeaves(
                 employeeId,
                 sessionGroup.sessionDate,
             );
 
             // Get effective policy early
-            const policyDetail = await this.policiesService.getEffectivePolicyDetail(employeeId);
-            const effectivePolicy = policyDetail.effective;
+            const effectivePolicy = context?.policy || (await this.policiesService.getEffectivePolicy(employeeId));
 
             // Calculate everything (centralized)
             const calculation = await this.calculationService.calculate(
@@ -92,7 +97,8 @@ export class AttendanceProcessingService {
                 shift,
                 leaves,
                 timezone,
-                effectivePolicy
+                effectivePolicy,
+                context
             );
 
             const times = calculation;
@@ -105,6 +111,7 @@ export class AttendanceProcessingService {
                 shift,
                 times,
                 flags,
+                context
             );
 
             if (session) {
@@ -125,11 +132,12 @@ export class AttendanceProcessingService {
         shift: any,
         times: any,
         flags: any,
+        context?: ProcessingContext
     ): Promise<AttendanceSession> {
         // Get employee's company
-        const employeeRecord = await this.prisma.employee.findUnique({
+        const employeeRecord = context?.employee || await this.prisma.employee.findUnique({
             where: { id: employeeId },
-            select: { companyId: true },
+            select: { id: true, companyId: true },
         });
 
         if (!employeeRecord) {
@@ -139,8 +147,7 @@ export class AttendanceProcessingService {
         // Determine Approval Status based on Policy
         // Note: we can pass effectivePolicy as an argument if needed, but for now we re-fetch or use if passed.
         // Let's modify the signature to accept effectivePolicy to avoid duplicate calls.
-        const policyDetail = await this.policiesService.getEffectivePolicyDetail(employeeId);
-        const effectivePolicy = policyDetail.effective;
+        const effectivePolicy = context?.policy || await this.policiesService.getEffectivePolicy(employeeId);
         const approvalConfig = effectivePolicy?.attendance?.approvalPolicy;
 
         const firstInEvent = sessionGroup.events.find((e) => e.eventType === 'IN');
