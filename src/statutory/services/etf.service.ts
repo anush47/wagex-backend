@@ -143,8 +143,24 @@ export class EtfService {
 
     const where: any = {};
     if (companyId) where.companyId = companyId;
-    if (month) where.month = month;
-    if (year) where.year = year;
+    if (month && !isNaN(month)) where.month = month;
+    if (year && !isNaN(year)) where.year = year;
+
+    if (query.search) {
+      const search = query.search;
+      where.OR = [
+        { remarks: { contains: search, mode: 'insensitive' } },
+      ];
+
+      // If search is a number, try to match month or year
+      const searchNum = parseInt(search);
+      if (!isNaN(searchNum)) {
+        where.OR.push({ year: searchNum });
+        if (searchNum >= 1 && searchNum <= 12) {
+          where.OR.push({ month: searchNum });
+        }
+      }
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.etfRecord.findMany({

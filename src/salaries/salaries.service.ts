@@ -17,6 +17,9 @@ export class SalariesService {
             new Date(dto.periodStartDate),
             new Date(dto.periodEndDate),
             dto.employeeIds,
+            dto.attendanceStartDate ? new Date(dto.attendanceStartDate) : undefined,
+            dto.attendanceEndDate ? new Date(dto.attendanceEndDate) : undefined,
+            dto.payDate ? new Date(dto.payDate) : undefined,
         );
     }
 
@@ -129,6 +132,29 @@ export class SalariesService {
             where.periodStartDate = {};
             if (startDate) where.periodStartDate.gte = new Date(startDate);
             if (endDate) where.periodStartDate.lte = new Date(endDate);
+        } else if (query.year) {
+            const y = query.year;
+            const m = query.month;
+            if (m) {
+                where.periodStartDate = {
+                    gte: new Date(y, m - 1, 1),
+                    lte: new Date(y, m - 1, 31),
+                };
+            } else {
+                where.periodStartDate = {
+                    gte: new Date(y, 0, 1),
+                    lte: new Date(y, 11, 31),
+                };
+            }
+        }
+
+        if (query.search) {
+            const search = query.search;
+            where.OR = [
+                { remarks: { contains: search, mode: 'insensitive' } },
+                { employee: { fullName: { contains: search, mode: 'insensitive' } } },
+                { employee: { employeeNo: { contains: search, mode: 'insensitive' } } },
+            ];
         }
         if (query.excludeEpf) {
             where.epfRecords = { none: {} };

@@ -170,4 +170,9 @@ export class EtfQueryDto {
     @Type(() => Number)
     @IsInt()
     year?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    search?: string;
 }

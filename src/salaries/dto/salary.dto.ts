@@ -15,6 +15,21 @@ export class GenerateSalaryDto {
     @IsDateString()
     periodEndDate: string;
 
+    @ApiPropertyOptional({ example: '2024-01-26' })
+    @IsOptional()
+    @IsDateString()
+    attendanceStartDate?: string;
+
+    @ApiPropertyOptional({ example: '2024-02-25' })
+    @IsOptional()
+    @IsDateString()
+    attendanceEndDate?: string;
+
+    @ApiPropertyOptional({ example: '2024-02-28' })
+    @IsOptional()
+    @IsDateString()
+    payDate?: string;
+
     @ApiPropertyOptional({ type: [String], description: 'Optional list of employee IDs to generate for' })
     @IsOptional()
     @IsArray()
@@ -70,7 +85,25 @@ export class SalaryQueryDto {
     @ApiPropertyOptional()
     @IsOptional()
     @Type(() => Boolean)
+    @IsOptional()
     excludeEtf?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    search?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    month?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    year?: number;
 }
 
 export class SalarySaveItemDto {

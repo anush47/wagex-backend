@@ -180,4 +180,9 @@ export class EpfQueryDto {
     @Type(() => Number)
     @IsInt()
     year?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    search?: string;
 }

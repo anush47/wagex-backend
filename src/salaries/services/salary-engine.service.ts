@@ -171,7 +171,19 @@ export class SalaryEngineService {
         return problems;
     }
 
-    async calculatePreview(companyId: string, periodStart: Date, periodEnd: Date, employeeId: string) {
+    async calculatePreview(
+        companyId: string, 
+        periodStart: Date, 
+        periodEnd: Date, 
+        employeeId: string,
+        attendanceStart?: Date,
+        attendanceEnd?: Date,
+        payDate?: Date
+    ) {
+        // Use attendance period if provided, otherwise fallback to salary period
+        const aStart = attendanceStart || periodStart;
+        const aEnd = attendanceEnd || periodEnd;
+
         // 1. Get Effective Policy
         const policy = await this.policiesService.getEffectivePolicy(employeeId);
 
@@ -205,8 +217,8 @@ export class SalaryEngineService {
             where: {
                 employeeId,
                 date: {
-                    gte: periodStart,
-                    lte: periodEnd,
+                    gte: aStart,
+                    lte: aEnd,
                 },
                 OR: [
                     { salaryId: null },
@@ -275,7 +287,7 @@ export class SalaryEngineService {
         // 5.1 Calculate Period Basic Salary based on sessions and method
         // Frequency: Monthly -> Full Basic. Others -> Prorated by divisor.
         if (
-            calculationMethod !== PayrollCalculationMethod.SHIFT_ATTENDANCE_FLAT || true
+            calculationMethod !== PayrollCalculationMethod.SHIFT_ATTENDANCE_FLAT
         ) {
             if (payrollConfig?.frequency === PayCycleFrequency.MONTHLY) {
                 basicSalaryForPeriod = employeeBaseSalary;
@@ -322,9 +334,9 @@ export class SalaryEngineService {
                 employeeId,
                 status: LeaveStatus.APPROVED,
                 OR: [
-                    { startDate: { gte: periodStart, lte: periodEnd } },
-                    { endDate: { gte: periodStart, lte: periodEnd } },
-                    { AND: [{ startDate: { lte: periodStart } }, { endDate: { gte: periodEnd } }] }
+                    { startDate: { gte: aStart, lte: aEnd } },
+                    { endDate: { gte: aStart, lte: aEnd } },
+                    { AND: [{ startDate: { lte: aStart } }, { endDate: { gte: aEnd } }] }
                 ],
             },
         });
@@ -344,7 +356,7 @@ export class SalaryEngineService {
                 return value; // FIXED_AMOUNT
             };
 
-            for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
+            for (let d = new Date(aStart); d <= aEnd; d.setDate(d.getDate() + 1)) {
                 const dayStr = d.toISOString().split('T')[0];
                 const session = sessions.find(s => s.date.toISOString().split('T')[0] === dayStr);
 
@@ -611,7 +623,7 @@ export class SalaryEngineService {
         const netSalary = grossEarnings - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction + recAdj + finalLateDeductionForNet + lateAdj);
 
         // 11. Run Validations
-        const problems = await this.validateEmployeePayroll(employeeId, periodStart, periodEnd, policy);
+        const problems = await this.validateEmployeePayroll(employeeId, aStart, aEnd, policy);
 
         return {
             employeeId,
@@ -644,10 +656,13 @@ export class SalaryEngineService {
             otAdjustmentReason: existingSalary?.otAdjustmentReason,
             recoveryAdjustment: recAdj,
             recoveryAdjustmentReason: existingSalary?.recoveryAdjustmentReason,
+            attendanceStartDate: aStart,
+            attendanceEndDate: aEnd,
+            payDate: payDate || periodEnd,
         };
     }
 
-    async bulkGenerate(companyId: string, periodStart: Date, periodEnd: Date, employeeIds?: string[]) {
+    async bulkGenerate(companyId: string, periodStart: Date, periodEnd: Date, employeeIds?: string[], attendanceStart?: Date, attendanceEnd?: Date, payDate?: Date) {
         let targetEmployees: any[] = [];
         if (!employeeIds || employeeIds.length === 0) {
             targetEmployees = await this.prisma.employee.findMany({
@@ -664,7 +679,7 @@ export class SalaryEngineService {
         const previews: any[] = [];
         for (const emp of targetEmployees) {
             try {
-                const preview = await this.calculatePreview(companyId, periodStart, periodEnd, emp.id);
+                const preview = await this.calculatePreview(companyId, periodStart, periodEnd, emp.id, attendanceStart, attendanceEnd, payDate);
                 previews.push({
                     ...preview,
                     policyId: emp.policyId || 'DEFAULT',
@@ -691,7 +706,7 @@ export class SalaryEngineService {
             companyId,
             periodStartDate: p.periodStartDate,
             periodEndDate: p.periodEndDate,
-            payDate: new Date(), // Placeholder, usually set based on policy
+            payDate: p.payDate || new Date(), 
             basicSalary: p.basicSalary,
             otAmount: p.otAmount,
             otBreakdown: p.otBreakdown as any,
