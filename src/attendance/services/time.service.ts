@@ -14,6 +14,22 @@ export class TimeService {
     }
 
     /**
+     * Parses a date-time string (ISO or YYYY-MM-DD HH:mm:ss) into a UTC Date object,
+     * assuming the provided timezone if no offset is present in the string.
+     */
+    parseDateTimeWithTimezone(dateTimeStr: string, timezone: string): Date {
+        if (!dateTimeStr) return new Date();
+        
+        // If it already has a timezone indicator (Z or +/-XX:XX), use native parsing
+        if (dateTimeStr.includes('Z') || /([+-]\d{2}:\d{2}|[+-]\d{4})$/.test(dateTimeStr)) {
+            return new Date(dateTimeStr);
+        }
+
+        // Otherwise, parse it in the target timezone
+        return toDate(dateTimeStr, { timeZone: timezone });
+    }
+
+    /**
      * Gets the start of the day in UTC for a specific date relative to a timezone.
      */
     getStartOfDayInTimezone(date: Date, timezone: string): Date {

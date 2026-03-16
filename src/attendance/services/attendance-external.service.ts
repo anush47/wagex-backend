@@ -253,9 +253,8 @@ export class AttendanceExternalService {
             where: { id: employeeId },
             include: { company: true },
         });
-        const timezone = employeeData?.company?.timezone || 'UTC';
-
-        const eventTime = new Date(dto.eventTime);
+        const timezone = employeeData?.company?.timezone || 'Asia/Colombo';
+        const eventTime = this.timeService.parseDateTimeWithTimezone(dto.eventTime, timezone);
         let effectiveEventType = dto.eventType;
         let lastInEventTime: Date | undefined;
 
@@ -526,7 +525,7 @@ export class AttendanceExternalService {
         const empMap = new Map(employees.map(e => [e.employeeNo, e]));
         const results: any[] = [];
         const validEvents: any[] = [];
-        const timezone = company?.timezone || 'UTC';
+        const timezone = company?.timezone || 'Asia/Colombo';
 
         const lastStateMap = new Map<string, { eventTime: Date; eventType: EventType; sessionId?: string | null }>();
 
@@ -551,7 +550,7 @@ export class AttendanceExternalService {
                 continue;
             }
 
-            const eventTime = new Date(eventDto.eventTime);
+            const eventTime = this.timeService.parseDateTimeWithTimezone(eventDto.eventTime, timezone);
             let eventType = eventDto.eventType;
 
             if (!eventType) {

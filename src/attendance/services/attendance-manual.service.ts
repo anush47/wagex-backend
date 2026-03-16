@@ -56,11 +56,14 @@ export class AttendanceManualService {
         }
 
         // Create event
+        const timezone = employee.company?.timezone || 'Asia/Colombo';
+        const eventTime = this.timeService.parseDateTimeWithTimezone(dto.eventTime, timezone);
+
         const event = await this.prisma.attendanceEvent.create({
             data: {
                 employeeId,
                 companyId: employee.companyId,
-                eventTime: new Date(dto.eventTime),
+                eventTime,
                 eventType: dto.eventType || 'IN',
                 source,
                 device: dto.device || 'Manual Entry',
@@ -73,7 +76,7 @@ export class AttendanceManualService {
         });
 
         // Optimized processing: Fetch context in parallel
-        const eventDate = new Date(dto.eventTime);
+        const eventDate = eventTime;
         try {
             const [policy, leaves, holidays] = await Promise.all([
                 this.policiesService.getEffectivePolicy(employeeId),
@@ -190,19 +193,27 @@ export class AttendanceManualService {
             editFields.includes(key),
         );
 
+        // Resolve timezone
+        const employee = await this.prisma.employee.findUnique({
+            where: { id: session.employeeId },
+            include: { company: true },
+        });
+        if (!employee) throw new NotFoundException('Employee not found');
+        const timezone = employee.company?.timezone || 'Asia/Colombo';
+
         const updateData: any = {
             ...dto,
             checkInTime:
                 dto.checkInTime === null
                     ? null
                     : dto.checkInTime
-                        ? new Date(dto.checkInTime)
+                        ? this.timeService.parseDateTimeWithTimezone(dto.checkInTime, timezone)
                         : undefined,
             checkOutTime:
                 dto.checkOutTime === null
                     ? null
                     : dto.checkOutTime
-                        ? new Date(dto.checkOutTime)
+                        ? this.timeService.parseDateTimeWithTimezone(dto.checkOutTime, timezone)
                         : undefined,
             // Convert empty string shiftId to null
             shiftId: dto.shiftId === '' ? null : dto.shiftId,
@@ -212,17 +223,9 @@ export class AttendanceManualService {
             updateData.manuallyEdited = true;
         }
 
-        // Resolve timezone
-        const employee = await this.prisma.employee.findUnique({
-            where: { id: session.employeeId },
-            include: { company: true },
-        });
-        if (!employee) throw new NotFoundException('Employee not found');
-        const timezone = employee.company?.timezone || 'UTC';
-
         // Handle date shift if needed
-        if (dto.checkInTime) {
-            const dateObj = new Date(dto.checkInTime);
+        if (updateData.checkInTime) {
+            const dateObj = updateData.checkInTime;
             const newDate = this.timeService.getLogicalDate(dateObj, timezone);
 
             if (newDate.getTime() !== session.date.getTime()) {
