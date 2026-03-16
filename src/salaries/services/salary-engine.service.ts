@@ -528,8 +528,8 @@ export class SalaryEngineService {
                 }
             } else if (comp.systemType === PayrollComponentSystemType.ETF_EMPLOYER) {
                 // ETF is employer-only contribution, use employerValue for calculation
-                amount = (currentTotalEarnings * (comp.employerValue || 0)) / 100;
-                (comp as any).employerAmount = amount;
+                amount = 0; // Employee portion is 0
+                (comp as any).employerAmount = (currentTotalEarnings * (comp.employerValue || 0)) / 100;
             }
 
             processedComponents.push({
@@ -619,7 +619,7 @@ export class SalaryEngineService {
         // Add holiday pay adjustment to the statutory base
         currentTotalEarnings += hPayAdjustment;
 
-        const grossEarnings = basicSalaryForPeriod + totalAdditions + totalOtAmount + otAdj + hPayAdjustment;
+        const grossEarnings = basicSalaryForPeriod + totalAdditions + otAdj + hPayAdjustment;
         const netSalary = grossEarnings - (totalComponentDeductions + finalNoPayDeductionForNet + taxAmount + totalAdvanceDeduction + recAdj + finalLateDeductionForNet + lateAdj);
 
         // 11. Run Validations

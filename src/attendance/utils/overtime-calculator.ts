@@ -138,9 +138,10 @@ export function calculateOvertimeAmount(
     // Determine OT type based on multiplier
     let type: 'NONE' | 'NORMAL' | 'DOUBLE' | 'TRIPLE' = 'NORMAL';
     const baseMultiplier = sortedTiers[0]?.multiplier || 1;
-    if (baseMultiplier >= 2.5) type = 'TRIPLE';
-    else if (baseMultiplier >= 1.5) type = 'DOUBLE';
-    else type = 'NORMAL';
+    if (baseMultiplier >= 3.0) type = 'TRIPLE';
+    else if (baseMultiplier >= 2.0) type = 'DOUBLE';
+    else if (baseMultiplier >= 1.0) type = 'NORMAL';
+    else type = 'NONE';
 
     return {
         hours: eligibleMinutes / 60,
