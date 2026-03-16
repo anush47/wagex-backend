@@ -85,6 +85,9 @@ export class LeavesService {
     async createRequest(dto: CreateLeaveRequestDto): Promise<LeaveRequest> {
         this.logger.log(`Creating leave request for employee ${dto.employeeId}`);
 
+        // Normalize holidayId
+        const holidayId = dto.holidayId && dto.holidayId !== "" ? dto.holidayId : null;
+
         // Validate employee exists
         const employee = await this.prisma.employee.findUnique({
             where: { id: dto.employeeId }
@@ -136,10 +139,8 @@ export class LeavesService {
                 status: {
                     in: [LeaveStatus.PENDING, LeaveStatus.APPROVED]
                 },
-                OR: [
-                    { startDate: { lte: new Date(dto.endDate) } },
-                    { endDate: { gte: new Date(dto.startDate) } }
-                ]
+                startDate: { lte: new Date(dto.endDate) },
+                endDate: { gte: new Date(dto.startDate) }
             }
         });
 
@@ -190,12 +191,12 @@ export class LeavesService {
 
         // Validate Holiday Substitution
         if (leaveType.isHolidayReplacement) {
-            if (!dto.holidayId) {
+            if (!holidayId) {
                 throw new BadRequestException("This leave type requires selecting the holiday you worked on.");
             }
 
             const holiday = await this.prisma.holiday.findUnique({
-                where: { id: dto.holidayId }
+                where: { id: holidayId }
             });
 
             if (!holiday) {
@@ -222,7 +223,7 @@ export class LeavesService {
             const alreadyUsed = await this.prisma.leaveRequest.findFirst({
                 where: {
                     employeeId: dto.employeeId,
-                    holidayId: dto.holidayId,
+                    holidayId: holidayId,
                     status: { in: [LeaveStatus.PENDING, LeaveStatus.APPROVED] }
                 }
             });
@@ -248,7 +249,7 @@ export class LeavesService {
                 reason: dto.reason,
                 documents: dto.documents || [],
                 status: LeaveStatus.PENDING,
-                holidayId: dto.holidayId
+                holidayId: holidayId
             }
         });
     }
