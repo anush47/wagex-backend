@@ -11,6 +11,8 @@ export class AuditService {
         resourceId?: string;
         userId?: string;
         ipAddress?: string;
+        userAgent?: string;
+        companyId?: string;
         details?: any;
     }) {
         // Fire and forget (don't await) to not block main thread
@@ -21,6 +23,8 @@ export class AuditService {
                 resourceId: data.resourceId,
                 userId: data.userId,
                 ipAddress: data.ipAddress,
+                userAgent: data.userAgent,
+                companyId: data.companyId,
                 details: data.details,
             },
         }).catch(err => console.error('Audit Log Failed:', err));

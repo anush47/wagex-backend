@@ -14,8 +14,13 @@ export class HttpLoggerMiddleware implements NestMiddleware {
             const { statusCode } = response;
             const duration = Date.now() - start;
 
+            // Middleware runs before guards, but the finish event happens after processing
+            // so request.user should be populated if the request was authenticated.
+            const user = (request as any).user;
+            const userId = user?.id || 'Guest';
+
             this.logger.log(
-                `${method} ${originalUrl} ${statusCode} ${duration}ms - ${userAgent} ${ip}`
+                `${method} ${originalUrl} ${statusCode} ${duration}ms - ${ip} - User: ${userId}`
             );
 
             // Log body for mutative requests to help debug

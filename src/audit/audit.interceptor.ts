@@ -16,10 +16,22 @@ export class AuditInterceptor implements NestInterceptor {
             return next.handle().pipe(
                 tap((data) => {
                     const user = req.user;
-                    // Extract resource more significantly? e.g. /api/v1/companies -> companies
-                    // Assuming /api/v1/RESOURCE/...
+                    // Path parsing: /api/v1/resource/...
                     const paths = req.path.split('/').filter(p => p.length > 0);
-                    const resource = paths.length > 2 ? paths[2] : paths[0];
+                    const resource = paths.length > 2 ? paths[2] : (paths[0] || 'unknown');
+
+                    const userAgent = req.get('user-agent');
+                    
+                    // Smart Extraction of Company ID
+                    let companyId = req.params.companyId || req.body.companyId || req.query.companyId;
+                    
+                    // If entity is company itself, id param is likely the companyId
+                    if (!companyId && resource === 'companies' && req.params.id) {
+                        companyId = req.params.id;
+                    }
+
+                    // Extract Resource ID (e.g. for updates or deletes)
+                    const resourceId = req.params.id || (data && data.id) || null;
 
                     const details: any = {
                         path: req.path,
@@ -41,8 +53,11 @@ export class AuditInterceptor implements NestInterceptor {
                     this.auditService.logAction({
                         action: method,
                         entity: resource,
+                        resourceId: resourceId?.toString(),
                         userId: user?.id,
                         ipAddress: req.ip,
+                        userAgent,
+                        companyId,
                         details,
                     });
                 }),
