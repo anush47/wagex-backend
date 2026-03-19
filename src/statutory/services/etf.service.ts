@@ -12,9 +12,9 @@ export class EtfService {
 
     const where: any = {
       companyId,
-      periodStartDate: {
+      periodEndDate: {
         gte: new Date(year, month - 1, 1),
-        lte: new Date(year, month - 1, 31),
+        lte: new Date(year, month, 0, 23, 59, 59, 999),
       },
       etfRecords: {
         none: {},

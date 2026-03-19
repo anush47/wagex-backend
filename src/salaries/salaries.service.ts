@@ -128,24 +128,28 @@ export class SalariesService {
         if (companyId) where.companyId = companyId;
         if (employeeId) where.employeeId = employeeId;
         if (status) where.status = status;
-        if (startDate || endDate) {
-            where.periodStartDate = {};
-            if (startDate) where.periodStartDate.gte = new Date(startDate);
-            if (endDate) where.periodStartDate.lte = new Date(endDate);
-        } else if (query.year) {
-            const y = query.year;
-            const m = query.month;
-            if (m) {
-                where.periodStartDate = {
-                    gte: new Date(y, m - 1, 1),
-                    lte: new Date(y, m - 1, 31),
+
+        // Date Filtering Logic
+        // Prefer Month/Year for Salaries Tab consistency, but support range if no month/year provided
+        const yearInt = query.year ? parseInt(String(query.year)) : undefined;
+        const monthInt = query.month ? parseInt(String(query.month)) : undefined;
+
+        if (yearInt) {
+            if (monthInt) {
+                where.periodEndDate = {
+                    gte: new Date(yearInt, monthInt - 1, 1),
+                    lte: new Date(yearInt, monthInt, 0, 23, 59, 59, 999),
                 };
             } else {
-                where.periodStartDate = {
-                    gte: new Date(y, 0, 1),
-                    lte: new Date(y, 11, 31),
+                where.periodEndDate = {
+                    gte: new Date(yearInt, 0, 1),
+                    lte: new Date(yearInt, 11, 31, 23, 59, 59, 999),
                 };
             }
+        } else if (query.startDate || query.endDate) {
+            where.periodEndDate = {};
+            if (query.startDate) where.periodEndDate.gte = new Date(query.startDate);
+            if (query.endDate) where.periodEndDate.lte = new Date(query.endDate);
         }
 
         if (query.search) {
@@ -168,9 +172,21 @@ export class SalariesService {
                 where,
                 skip,
                 take: limit,
-                orderBy: { periodStartDate: 'desc' },
+                orderBy: { periodEndDate: 'desc' },
                 include: { 
-                    employee: { select: { fullName: true, employeeNo: true } },
+                    employee: { 
+                        select: { 
+                            fullName: true, 
+                            employeeNo: true, 
+                            basicSalary: true,
+                            policy: {
+                                select: {
+                                    name: true,
+                                    settings: true
+                                }
+                            }
+                        } 
+                    },
                     approvedBy: { select: { fullName: true } },
                     payments: true
                 },
