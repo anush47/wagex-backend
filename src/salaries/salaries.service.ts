@@ -30,10 +30,13 @@ export class SalariesService {
         for (const preview of previews) {
             const salary = await this.prisma.$transaction(async (tx) => {
                 // 1. Upsert Salary Draft
+                const startDate = new Date(preview.periodStartDate);
                 const salaryData = {
                     companyId: companyId,
                     employeeId: preview.employeeId,
-                    periodStartDate: new Date(preview.periodStartDate),
+                    month: startDate.getMonth() + 1,
+                    year: startDate.getFullYear(),
+                    periodStartDate: startDate,
                     periodEndDate: new Date(preview.periodEndDate),
                     payDate: preview.payDate || new Date(),
                     basicSalary: preview.basicSalary,

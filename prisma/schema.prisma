@@ -30,6 +30,7 @@ model Company {
   memberships        UserCompany[]
   epfRecords         EpfRecord[]
   etfRecords         EtfRecord[]
+  documentTemplates  DocumentTemplate[]
 
   // Statutory Defaults
   defaultStatutoryPaymentMethod PaymentMethod? @default(BANK_TRANSFER)
@@ -370,6 +371,8 @@ model Salary {
   id                       String              @id @default(uuid())
   employeeId               String
   companyId                String
+  month                    Int?
+  year                     Int?
   periodStartDate          DateTime
   periodEndDate            DateTime
   payDate                  DateTime
@@ -409,7 +412,7 @@ model Salary {
   etfRecords               EtfRecord[]         @relation("EtfSalaries")
 
   @@unique([employeeId, periodStartDate, periodEndDate])
-  @@index([companyId, periodStartDate, periodEndDate])
+  @@index([companyId, month, year])
   @@index([status])
   @@map("salaries")
 }
@@ -511,6 +514,33 @@ model EtfRecord {
 
   @@index([companyId, month, year])
   @@map("etf_records")
+}
+
+model DocumentTemplate {
+  id          String       @id @default(uuid())
+  companyId   String?
+  name        String
+  description String?
+  type        DocumentType
+  html        String
+  css         String?      @default("")
+  config      Json?        @default("{}")
+  isActive    Boolean      @default(false)
+  isDefault   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  company     Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("document_templates")
+}
+
+enum DocumentType {
+  PAYSLIP
+  SALARY_SHEET
+  ATTENDANCE_REPORT
+  EPF_FORM
+  ETF_FORM
 }
 
 enum PaymentStatus {

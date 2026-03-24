@@ -27,6 +27,7 @@ import { SalariesModule } from './salaries/salaries.module';
 import { AdvancesModule } from './advances/advances.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StatutoryModule } from './statutory/statutory.module';
+import { TemplatesModule } from './templates/templates.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
 
@@ -55,6 +56,7 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
     SalariesModule,
     AdvancesModule,
     PaymentsModule,
+    TemplatesModule,
   ],
   controllers: [AppController],
   providers: [
