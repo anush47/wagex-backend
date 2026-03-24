@@ -95,18 +95,8 @@ export class EtfService {
       }
     }
 
-    // Ensure only one ETF record exists per month/year per company
-    const existingRecord = await this.prisma.etfRecord.findFirst({
-      where: {
-        companyId: data.companyId,
-        month: data.month,
-        year: data.year,
-      },
-    });
-
-    if (existingRecord) {
-      throw new Error(`An ETF record already exists for ${data.month}/${data.year}.`);
-    }
+    // Removed single record per month check to allow multiple batches.
+     // Salaries are already checked for existing links above.
 
     // Fetch company defaults for statutory details
     const company = await this.prisma.company.findUnique({

@@ -188,7 +188,9 @@ export class SalariesService {
                         } 
                     },
                     approvedBy: { select: { fullName: true } },
-                    payments: true
+                    payments: true,
+                    epfRecords: { select: { id: true } },
+                    etfRecords: { select: { id: true } }
                 },
             }),
             this.prisma.salary.count({ where }),
@@ -200,7 +202,13 @@ export class SalariesService {
     async findOne(id: string) {
         const salary = await this.prisma.salary.findUnique({
             where: { id },
-            include: { employee: true, payments: true, approvedBy: { select: { fullName: true } } },
+            include: { 
+                employee: true, 
+                payments: true, 
+                approvedBy: { select: { fullName: true } },
+                epfRecords: true,
+                etfRecords: true
+            },
         });
         if (!salary) throw new NotFoundException(`Salary ${id} not found`);
         return salary;

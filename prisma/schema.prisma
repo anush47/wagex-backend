@@ -483,7 +483,7 @@ model EpfRecord {
   company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   salaries Salary[] @relation("EpfSalaries")
 
-  @@unique([companyId, month, year])
+  @@index([companyId, month, year])
   @@map("epf_records")
 }
 
@@ -509,7 +509,7 @@ model EtfRecord {
   company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   salaries Salary[] @relation("EtfSalaries")
 
-  @@unique([companyId, month, year])
+  @@index([companyId, month, year])
   @@map("etf_records")
 }
 
