@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTemplateDto, UpdateTemplateDto, TemplateQueryDto } from './dto/template.dto';
 import * as Handlebars from 'handlebars';
-import { DocumentType } from '@prisma/client';
+import { DocumentType, TemplateStatus } from '@prisma/client';
 import { TemplatesDataService } from './templates-data.service';
 
 @Injectable()
@@ -66,9 +66,33 @@ export class TemplatesService {
   }
 
   async update(id: string, dto: UpdateTemplateDto) {
+    const template = await this.findOne(id);
+
+    // Rule: Approved templates are IMMUTABLE for content
+    if (template.status === 'APPROVED') {
+      const isTryingToEditContent = dto.html || dto.css || dto.config || dto.name || dto.description;
+      if (isTryingToEditContent) {
+        throw new BadRequestException('Approved layouts are locked and cannot be edited. Create a new draft to make changes.');
+      }
+    }
+
+    // Rule: Activation only for Approved
+    const newActiveState = dto.isActive !== undefined ? dto.isActive : template.isActive;
+    const isApproved = (dto.status || template.status) === 'APPROVED';
+    if (newActiveState && !isApproved) {
+      throw new BadRequestException('Only approved layouts can be set as active.');
+    }
+
+    // Rule: Publication reset
+    const newStatus = dto.status || template.status;
+    const finalDto = { ...dto };
+    if (newStatus === 'PENDING') {
+      finalDto.isActive = false;
+    }
+
     return this.prisma.documentTemplate.update({
       where: { id },
-      data: dto,
+      data: finalDto as any,
     });
   }
 

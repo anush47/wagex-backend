@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsBoolean, IsObject } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { DocumentType } from '@prisma/client';
+import { DocumentType, TemplateStatus } from '@prisma/client';
 
 export class CreateTemplateDto {
   @ApiProperty()
@@ -30,10 +30,15 @@ export class CreateTemplateDto {
   @IsObject()
   config?: any;
 
+  @ApiPropertyOptional({ enum: ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'] })
+  @IsOptional()
+  @IsEnum(['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'])
+  status?: TemplateStatus;
+
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
-  companyId?: string;
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class UpdateTemplateDto {
@@ -71,6 +76,11 @@ export class UpdateTemplateDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  @ApiPropertyOptional({ enum: ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'] })
+  @IsOptional()
+  @IsEnum(['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'])
+  status?: TemplateStatus;
 }
 
 export class TemplateQueryDto {
@@ -88,4 +98,9 @@ export class TemplateQueryDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ enum: ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'] })
+  @IsOptional()
+  @IsEnum(['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'])
+  status?: TemplateStatus;
 }
