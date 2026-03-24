@@ -526,8 +526,9 @@ model DocumentTemplate {
   css         String?      @default("")
   config      Json?        @default("{}")
   isActive    Boolean      @default(false)
-  isDefault   Boolean      @default(false)
-  createdAt   DateTime     @default(now())
+  isDefault   Boolean        @default(false)
+  status      TemplateStatus @default(DRAFT)
+  createdAt   DateTime       @default(now())
   updatedAt   DateTime     @updatedAt
   company     Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -633,6 +634,13 @@ enum SalaryStatus {
   APPROVED
   PARTIALLY_PAID
   PAID
+}
+
+enum TemplateStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum AdvanceStatus {
