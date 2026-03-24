@@ -130,7 +130,13 @@ export class SalariesService {
         const where: any = {};
         if (companyId) where.companyId = companyId;
         if (employeeId) where.employeeId = employeeId;
-        if (status) where.status = status;
+        if (status) {
+            if (typeof status === 'string' && status.includes(',')) {
+                where.status = { in: status.split(',') };
+            } else {
+                where.status = status;
+            }
+        }
 
         // Date Filtering Logic
         // Prefer Month/Year for Salaries Tab consistency, but support range if no month/year provided

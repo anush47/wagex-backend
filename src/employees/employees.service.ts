@@ -91,7 +91,11 @@ export class EmployeesService {
 
     // Status filter - default excludes DELETED
     if (status && status !== 'ALL') {
-      where.status = status;
+      if (typeof status === 'string' && status.includes(',')) {
+        where.status = { in: status.split(',') };
+      } else {
+        where.status = status;
+      }
     } else if (!status) {
       // Default: exclude DELETED employees
       where.status = { not: 'DELETED' };
