@@ -32,8 +32,13 @@ export class TemplatesService {
   }
 
   async create(dto: CreateTemplateDto) {
+    const finalDto = {
+      ...dto,
+      status: dto.status || TemplateStatus.DRAFT,
+      isActive: false, // Force false on create to prevent bypass
+    };
     return this.prisma.documentTemplate.create({
-      data: dto,
+      data: finalDto as any,
     });
   }
 
@@ -67,26 +72,25 @@ export class TemplatesService {
 
   async update(id: string, dto: UpdateTemplateDto) {
     const template = await this.findOne(id);
+    const finalDto = { ...dto };
+    const newStatus = dto.status || template.status;
+    const newActiveState = dto.isActive !== undefined ? dto.isActive : template.isActive;
 
-    // Rule: Approved templates are IMMUTABLE for content
+    // RULE 1: Approved templates are IMMUTABLE for content
     if (template.status === 'APPROVED') {
       const isTryingToEditContent = dto.html || dto.css || dto.config || dto.name || dto.description;
       if (isTryingToEditContent) {
-        throw new BadRequestException('Approved layouts are locked and cannot be edited. Create a new draft to make changes.');
+        throw new BadRequestException('Approved layouts are immutable. Create a copy to make changes.');
       }
     }
 
-    // Rule: Activation only for Approved
-    const newActiveState = dto.isActive !== undefined ? dto.isActive : template.isActive;
-    const isApproved = (dto.status || template.status) === 'APPROVED';
-    if (newActiveState && !isApproved) {
-      throw new BadRequestException('Only approved layouts can be set as active.');
+    // RULE 2: Only Approved layouts can be Active
+    if (newActiveState && newStatus !== 'APPROVED') {
+      throw new BadRequestException('Only approved layouts can be activated for production use.');
     }
 
-    // Rule: Publication reset
-    const newStatus = dto.status || template.status;
-    const finalDto = { ...dto };
-    if (newStatus === 'PENDING') {
+    // RULE 3: Transition to non-approved always resets activation status
+    if (newStatus !== 'APPROVED') {
       finalDto.isActive = false;
     }
 
