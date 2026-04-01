@@ -45,9 +45,6 @@ export class Company implements PrismaCompany {
   @ApiPropertyOptional()
   statutoryBranchCode: string | null;
 
-  @ApiPropertyOptional()
-  statutoryBranchName: string | null;
-
   @ApiProperty({ type: () => [UserCompany], description: 'Company memberships/users' })
   memberships?: UserCompany[];
 
