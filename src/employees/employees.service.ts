@@ -107,9 +107,24 @@ export class EmployeesService {
       this.prisma.employee.count({ where }),
       this.prisma.employee.findMany({
         where,
-        include: {
-          details: true,
-          department: true,
+        select: {
+          id: true,
+          employeeNo: true,
+          fullName: true,
+          nameWithInitials: true,
+          email: true,
+          phone: true,
+          designation: true,
+          status: true,
+          joinedDate: true,
+          basicSalary: true,
+          departmentId: true,
+          department: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           manager: {
             select: { id: true, fullName: true, employeeNo: true },
           },
@@ -134,11 +149,38 @@ export class EmployeesService {
   async findMe(userId: string): Promise<Employee> {
     const employee = await this.prisma.employee.findFirst({
       where: { userId },
-      include: {
-        details: true,
-        department: true,
-        company: true,
-        policy: true,
+      select: {
+        id: true,
+        employeeNo: true,
+        fullName: true,
+        nameWithInitials: true,
+        email: true,
+        phone: true,
+        designation: true,
+        address: true,
+        nic: true,
+        status: true,
+        basicSalary: true,
+        joinedDate: true,
+        companyId: true,
+        departmentId: true,
+        details: {
+          select: {
+            bankName: true,
+            bankBranch: true,
+            accountNumber: true,
+            maritalStatus: true,
+            nationality: true,
+            emergencyContactName: true,
+            emergencyContactPhone: true,
+          },
+        },
+        department: {
+          select: { id: true, name: true },
+        },
+        company: {
+          select: { id: true, name: true, timezone: true },
+        },
       },
     });
 
@@ -184,6 +226,9 @@ export class EmployeesService {
       nationality,
       emergencyContactName,
       emergencyContactPhone,
+      department, // Ignore relation objects from frontend
+      manager, // Ignore relation objects from frontend
+      policy, // Ignore relation objects from frontend
       ...dto
     } = updateEmployeeDto;
 

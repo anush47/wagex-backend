@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePolicyDto } from './dto/create-policy.dto';
 import { UpdatePolicyDto } from './dto/update-policy.dto';
@@ -78,34 +78,39 @@ export class PoliciesService {
   }
 
   async getDefaultPolicy(companyId: string) {
-    const policy = await this.prisma.policy.findFirst({
-      where: { companyId, isDefault: true },
-    });
-
-    if (!policy) {
-      // Ensure at least one exists and is default
-      const existingAny = await this.prisma.policy.findFirst({
-        where: { companyId },
+    try {
+      const policy = await this.prisma.policy.findFirst({
+        where: { companyId, isDefault: true },
       });
 
-      if (existingAny) {
-        // Mark the first one as default if none is default
-        return this.prisma.policy.update({
-          where: { id: existingAny.id },
-          data: { isDefault: true },
+      if (!policy) {
+        // Ensure at least one exists and is default
+        const existingAny = await this.prisma.policy.findFirst({
+          where: { companyId },
+        });
+
+        if (existingAny) {
+          // Mark the first one as default if none is default
+          return this.prisma.policy.update({
+            where: { id: existingAny.id },
+            data: { isDefault: true },
+          });
+        }
+
+        // Create new default with full template
+        return this.create({
+          companyId,
+          name: 'Company Default',
+          isDefault: true,
+          settings: DEFAULT_POLICY_SETTINGS as any,
         });
       }
 
-      // Create new default with full template
-      return this.create({
-        companyId,
-        name: 'Company Default',
-        isDefault: true,
-        settings: DEFAULT_POLICY_SETTINGS as any,
-      });
+      return policy;
+    } catch (error) {
+      this.logger.error(`Failed to get/create default policy for company ${companyId}`, error.stack);
+      throw new InternalServerErrorException(`Unable to retrieve company policy settings`);
     }
-
-    return policy;
   }
 
   async update(id: string, updatePolicyDto: UpdatePolicyDto) {
@@ -135,7 +140,6 @@ export class PoliciesService {
 
     if (policy.isDefault) {
       // Check if there are other policies that could become default?
-      // Better to prevent deletion of the last default or require a replacement.
       const count = await this.prisma.policy.count({ where: { companyId: policy.companyId } });
       if (count > 1) {
         // Not ideal, but we let it happen or prompt user in frontend to set another as default.
@@ -152,9 +156,15 @@ export class PoliciesService {
   async getEffectivePolicy(employeeId: string): Promise<PolicySettingsDto> {
     const employee = await this.prisma.employee.findUnique({
       where: { id: employeeId },
-      include: {
-        policy: true, // Assigned template
-        company: true,
+      select: {
+        id: true,
+        companyId: true,
+        policyId: true,
+        policy: {
+          select: {
+            settings: true,
+          },
+        },
       },
     });
 
@@ -168,51 +178,62 @@ export class PoliciesService {
     const assignedSettings = (employee.policy?.settings as unknown as PolicySettingsDto) || {};
 
     // 3. Merge: Default <- Assigned
-    // We use a custom merge to ensure arrays (rules, components) are replaced, not merged by index
-    const effectivePolicy = merge({}, companySettings, assignedSettings);
-
-    // Explicitly replace arrays from assigned settings if they exist to prevent index-based merging
-    if (assignedSettings.shifts?.list) {
-      (effectivePolicy as any).shifts = { ...effectivePolicy.shifts, list: assignedSettings.shifts.list };
-    }
-    if (assignedSettings.payrollConfiguration?.otRules) {
-      (effectivePolicy as any).payrollConfiguration = {
-        ...effectivePolicy.payrollConfiguration,
-        otRules: assignedSettings.payrollConfiguration.otRules,
-      };
-    }
-    if (assignedSettings.salaryComponents?.components) {
-      (effectivePolicy as any).salaryComponents = {
-        ...effectivePolicy.salaryComponents,
-        components: assignedSettings.salaryComponents.components,
-      };
-    }
-    if (assignedSettings.leaves?.leaveTypes) {
-      (effectivePolicy as any).leaves = { ...effectivePolicy.leaves, leaveTypes: assignedSettings.leaves.leaveTypes };
-    }
-
-    return effectivePolicy;
+    return this.mergeEffectivePolicy(companySettings, assignedSettings);
   }
 
   /**
    * Detail view of effective policy resolution
    */
   async getEffectivePolicyDetail(employeeId: string) {
+    this.logger.log(`Resolving effective policy detail for employee: ${employeeId}`);
+
+    // ⚠️ SINGLE QUERY optimization: Fetch employee, assigned policy, AND company default policy in one go
     const employee = await this.prisma.employee.findUnique({
       where: { id: employeeId },
-      include: {
-        policy: true,
-        company: true,
+      select: {
+        id: true,
+        fullName: true,
+        companyId: true,
+        policyId: true,
+        policy: {
+          select: {
+            id: true,
+            name: true,
+            settings: true,
+          },
+        },
+        company: {
+          select: {
+            policies: {
+              where: { isDefault: true },
+              select: {
+                id: true,
+                name: true,
+                settings: true,
+              },
+            },
+          },
+        },
       },
     });
 
     if (!employee) throw new NotFoundException(`Employee ${employeeId} not found`);
 
-    const defaultPolicy = await this.getDefaultPolicy(employee.companyId);
-    const companySettings = (defaultPolicy?.settings as unknown as PolicySettingsDto) || {};
-    const assignedSettings = (employee.policy?.settings as unknown as PolicySettingsDto) || {};
+    // Extract company default policy from the nested fetch
+    const defaultPolicy = employee.company?.policies?.[0];
+    
+    // Validate settings is a valid object
+    const companySettings =
+      defaultPolicy?.settings && typeof defaultPolicy.settings === 'object'
+        ? (defaultPolicy.settings as unknown as PolicySettingsDto)
+        : ({} as PolicySettingsDto);
 
-    const effective = await this.getEffectivePolicy(employeeId);
+    const assignedSettings =
+      employee.policy?.settings && typeof employee.policy.settings === 'object'
+        ? (employee.policy.settings as unknown as PolicySettingsDto)
+        : ({} as PolicySettingsDto);
+
+    const effective = this.mergeEffectivePolicy(companySettings, assignedSettings);
 
     return {
       effective,
@@ -248,39 +269,59 @@ export class PoliciesService {
     });
 
     const companyPolicyMap = new Map(
-      defaultPolicies.map((p) => [p.companyId, p.settings as unknown as PolicySettingsDto]),
+      defaultPolicies.map((p) => [p.companyId, (p.settings as unknown as PolicySettingsDto) || {}]),
     );
+
     const result = new Map<string, PolicySettingsDto>();
 
     for (const employee of employees) {
       const companySettings = companyPolicyMap.get(employee.companyId) || {};
       const assignedSettings = (employee.policy?.settings as unknown as PolicySettingsDto) || {};
 
-      // Same merge logic as getEffectivePolicy
-      const effective = merge({}, companySettings, assignedSettings);
-
-      if (assignedSettings.shifts?.list) {
-        (effective as any).shifts = { ...effective.shifts, list: assignedSettings.shifts.list };
-      }
-      if (assignedSettings.payrollConfiguration?.otRules) {
-        (effective as any).payrollConfiguration = {
-          ...effective.payrollConfiguration,
-          otRules: assignedSettings.payrollConfiguration.otRules,
-        };
-      }
-      if (assignedSettings.salaryComponents?.components) {
-        (effective as any).salaryComponents = {
-          ...effective.salaryComponents,
-          components: assignedSettings.salaryComponents.components,
-        };
-      }
-      if (assignedSettings.leaves?.leaveTypes) {
-        (effective as any).leaves = { ...effective.leaves, leaveTypes: assignedSettings.leaves.leaveTypes };
-      }
-
+      const effective = this.mergeEffectivePolicy(companySettings, assignedSettings);
       result.set(employee.id, effective);
     }
 
     return result;
+  }
+
+  /**
+   * Internal merging logic for policies
+   */
+  private mergeEffectivePolicy(
+    companySettings: PolicySettingsDto,
+    assignedSettings: PolicySettingsDto,
+  ): PolicySettingsDto {
+    try {
+      // 1. Shallow copy to avoid mutating inputs
+      // 2. Merge: Default <- Assigned
+      // We use lodash merge to combine objects deeply
+      const effectivePolicy = merge({}, companySettings, assignedSettings);
+
+      // Explicitly replace arrays from assigned settings if they exist to prevent index-based merging
+      if (assignedSettings.shifts?.list) {
+        (effectivePolicy as any).shifts = { ...effectivePolicy.shifts, list: assignedSettings.shifts.list };
+      }
+      if (assignedSettings.payrollConfiguration?.otRules) {
+        (effectivePolicy as any).payrollConfiguration = {
+          ...effectivePolicy.payrollConfiguration,
+          otRules: assignedSettings.payrollConfiguration.otRules,
+        };
+      }
+      if (assignedSettings.salaryComponents?.components) {
+        (effectivePolicy as any).salaryComponents = {
+          ...effectivePolicy.salaryComponents,
+          components: assignedSettings.salaryComponents.components,
+        };
+      }
+      if (assignedSettings.leaves?.leaveTypes) {
+        (effectivePolicy as any).leaves = { ...effectivePolicy.leaves, leaveTypes: assignedSettings.leaves.leaveTypes };
+      }
+
+      return effectivePolicy;
+    } catch (error) {
+      this.logger.error('Policy merging failed', error.stack);
+      throw new InternalServerErrorException('Failed to merge policy settings');
+    }
   }
 }

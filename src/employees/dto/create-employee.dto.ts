@@ -165,4 +165,14 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsUUID()
   policyId?: string;
+
+  // Relation objects sent by frontend (to be ignored)
+  @IsOptional()
+  department?: any;
+
+  @IsOptional()
+  manager?: any;
+
+  @IsOptional()
+  policy?: any;
 }

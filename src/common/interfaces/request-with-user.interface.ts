@@ -3,7 +3,7 @@ import { User, UserCompany } from '@prisma/client';
 
 export interface RequestWithUser extends Request {
   user: User & {
-    memberships?: (UserCompany & { company: any })[];
+    memberships?: (UserCompany & { company?: any })[];
     employees?: { id: string; companyId: string }[];
     isGuest?: boolean;
   };

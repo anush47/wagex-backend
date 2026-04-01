@@ -3,14 +3,18 @@ import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from './permissions.decorator';
 import { Role } from '@prisma/client';
 import { RequestWithUser } from '../common/interfaces/request-with-user.interface';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   private readonly logger = new Logger(PermissionsGuard.name);
 
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private reflector: Reflector,
+    private prisma: PrismaService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredPermissions = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -46,7 +50,12 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('companyId is required for permission-protected operations.');
     }
 
+    // Fetch ONLY the specific membership for this user and company
+    const membershipStart = Date.now();
+    
+    // 1. Use pre-fetched memberships from Auth Strategy (Saved DB Roundtrip)
     const membership = user.memberships?.find((m) => m.companyId === companyId);
+    
     if (!membership) {
       this.logger.warn(`Permission check failed: No membership found for user ${user.id} in company ${companyId}`);
       throw new ForbiddenException('No membership found for this company.');

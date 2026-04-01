@@ -48,9 +48,33 @@ export class UsersService {
         skip,
         take: limit,
         orderBy,
-        include: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          emailVerified: true,
+          image: true,
+          nameWithInitials: true,
+          fullName: true,
+          address: true,
+          phone: true,
+          role: true,
+          active: true,
+          createdAt: true,
+          updatedAt: true,
           memberships: {
-            include: { company: true },
+            select: {
+              id: true,
+              companyId: true,
+              role: true,
+              active: true,
+              company: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
           },
         },
       }),
@@ -58,7 +82,7 @@ export class UsersService {
     ]);
 
     return {
-      data,
+      data: data as unknown as User[],
       meta: {
         page,
         limit,
@@ -71,9 +95,34 @@ export class UsersService {
   async findOne(id: string): Promise<User> {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        emailVerified: true,
+        image: true,
+        nameWithInitials: true,
+        fullName: true,
+        address: true,
+        phone: true,
+        role: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
         memberships: {
-          include: { company: true },
+          select: {
+            id: true,
+            companyId: true,
+            role: true,
+            active: true,
+            permissions: true,
+            company: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
         },
       },
     });
@@ -83,18 +132,45 @@ export class UsersService {
       throw new NotFoundException(`User with ID "${id}" not found`);
     }
 
-    return user;
+    return user as unknown as User;
   }
 
   async findOneByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { email },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        emailVerified: true,
+        image: true,
+        nameWithInitials: true,
+        fullName: true,
+        address: true,
+        phone: true,
+        role: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
         memberships: {
-          include: { company: true },
+          select: {
+            id: true,
+            companyId: true,
+            role: true,
+            active: true,
+            permissions: true,
+            company: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
         },
       },
     });
+
+    return user as unknown as User | null;
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {

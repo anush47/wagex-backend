@@ -21,15 +21,24 @@ export class BetterAuthStrategy extends PassportStrategy(Strategy, 'better-auth'
       throw new UnauthorizedException('Invalid Session');
     }
 
-    // Fetch full user from local DB with relations, similar to SupabaseStrategy
+    // Fetch user from local DB with optimized select
     const user = await this.prisma.user.findUnique({
       where: { id: session.user.id },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
         memberships: {
-          include: { company: true },
-        },
-        employees: {
-          select: { id: true, companyId: true },
+          select: {
+            id: true,
+            companyId: true,
+            role: true,
+            active: true,
+            permissions: true,
+          },
         },
       },
     });

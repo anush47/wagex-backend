@@ -17,9 +17,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // Log all errors (>= 400)
     if (httpStatus >= 400) {
+      const errorDetails =
+        exception instanceof Error
+          ? {
+              name: exception.name,
+              message: exception.message,
+            }
+          : exception;
+
       this.logger.error(
         `Filter: ${httpStatus} error at ${httpAdapter.getRequestUrl(ctx.getRequest())}: ${JSON.stringify(message)}`,
       );
+
+      // Log the full exception details for debugging (only for 500 errors)
+      if (httpStatus >= 500) {
+        this.logger.error('Exception details:', JSON.stringify(errorDetails, null, 2));
+        if (exception instanceof Error && exception.stack) {
+          this.logger.error('Stack trace:', exception.stack);
+        }
+      }
     }
 
     const responseBody = {
