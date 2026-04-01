@@ -40,9 +40,7 @@ export class EtfService {
 
     const previewItems = salaries.map((salary) => {
       const components = (salary.components as any[]) || [];
-      const etfEmployer = components.find(
-        (c) => c.systemType === PayrollComponentSystemType.ETF_EMPLOYER,
-      );
+      const etfEmployer = components.find((c) => c.systemType === PayrollComponentSystemType.ETF_EMPLOYER);
 
       // Calculate liable earnings from the employer contribution amount
       let liableEarnings = 0;
@@ -62,10 +60,7 @@ export class EtfService {
       };
     });
 
-    const totalContribution = previewItems.reduce(
-      (sum, item) => sum + item.totalContribution,
-      0,
-    );
+    const totalContribution = previewItems.reduce((sum, item) => sum + item.totalContribution, 0);
 
     return {
       month,
@@ -89,14 +84,12 @@ export class EtfService {
       });
 
       if (alreadyLinked) {
-        throw new Error(
-          `Salary for ${alreadyLinked.employee.fullName} is already linked to an ETF record.`,
-        );
+        throw new Error(`Salary for ${alreadyLinked.employee.fullName} is already linked to an ETF record.`);
       }
     }
 
     // Removed single record per month check to allow multiple batches.
-     // Salaries are already checked for existing links above.
+    // Salaries are already checked for existing links above.
 
     // Fetch company defaults for statutory details
     const company = await this.prisma.company.findUnique({
@@ -138,9 +131,7 @@ export class EtfService {
 
     if (query.search) {
       const search = query.search;
-      where.OR = [
-        { remarks: { contains: search, mode: 'insensitive' } },
-      ];
+      where.OR = [{ remarks: { contains: search, mode: 'insensitive' } }];
 
       // If search is a number, try to match month or year
       const searchNum = parseInt(search);

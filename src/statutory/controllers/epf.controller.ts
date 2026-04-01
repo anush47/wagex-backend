@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { EpfService } from '../services/epf.service';
 import { CreateEpfDto, EpfQueryDto, GenerateEpfDto, UpdateEpfDto } from '../dto/epf.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
@@ -10,28 +10,19 @@ export class EpfController {
 
   @Post(':companyId/epf/preview')
   @ApiOperation({ summary: 'Generate EPF preview' })
-  generatePreview(
-    @Param('companyId') companyId: string,
-    @Body() dto: GenerateEpfDto
-  ) {
+  generatePreview(@Param('companyId') companyId: string, @Body() dto: GenerateEpfDto) {
     return this.epfService.generatePreview({ ...dto, companyId });
   }
 
   @Post(':companyId/epf')
   @ApiOperation({ summary: 'Create EPF record' })
-  create(
-    @Param('companyId') companyId: string,
-    @Body() dto: CreateEpfDto
-  ) {
+  create(@Param('companyId') companyId: string, @Body() dto: CreateEpfDto) {
     return this.epfService.create({ ...dto, companyId } as any);
   }
 
   @Get(':companyId/epf')
   @ApiOperation({ summary: 'Get all EPF records' })
-  findAll(
-    @Param('companyId') companyId: string,
-    @Query() query: EpfQueryDto
-  ) {
+  findAll(@Param('companyId') companyId: string, @Query() query: EpfQueryDto) {
     return this.epfService.findAll({ ...query, companyId });
   }
 

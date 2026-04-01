@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TimeService } from './time.service';
-import { AttendanceEvent, EventType } from '@prisma/client';
+import { AttendanceEvent } from '@prisma/client';
 import { ShiftSelectionService } from './shift-selection.service';
 
 export interface SessionGroup {
@@ -20,7 +20,7 @@ export class SessionGroupingService {
     private readonly prisma: PrismaService,
     private readonly timeService: TimeService,
     private readonly shiftSelectionService: ShiftSelectionService,
-  ) { }
+  ) {}
 
   /**
    * Groups attendance events into logical sessions based on time proximity
@@ -33,16 +33,14 @@ export class SessionGroupingService {
     timezone: string,
   ): Promise<SessionGroup[]> {
     // Sort events chronologically
-    const sortedEvents = [...events].sort(
-      (a, b) => a.eventTime.getTime() - b.eventTime.getTime()
-    );
+    const sortedEvents = [...events].sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime());
 
     // Group events into sessions based on 24-hour gaps
     const sessionGroups = this.groupEventsByTimeProximity(sortedEvents);
 
     // Process each group into a session structure
     const sessionGroupsProcessed: SessionGroup[] = await Promise.all(
-      sessionGroups.map(group => this.processEventGroup(group, referenceDate, timezone))
+      sessionGroups.map((group) => this.processEventGroup(group, referenceDate, timezone)),
     );
 
     return sessionGroupsProcessed;
@@ -79,7 +77,7 @@ export class SessionGroupingService {
         shouldSplit = true;
       }
       // Rule 4: Gap between IN and the next OUT (Shift duration)
-      // We allow up to 24h for a single shift duration. 
+      // We allow up to 24h for a single shift duration.
       // If it's longer than 24h, it's probably an error or separate days.
       else if (prevEvent.eventType === 'IN' && currentEvent.eventType === 'OUT' && gapHours > 28) {
         shouldSplit = true;
@@ -100,11 +98,12 @@ export class SessionGroupingService {
   /**
    * Process a group of events into session data structure
    */
-  private async processEventGroup(events: AttendanceEvent[], referenceDate: Date, timezone: string): Promise<SessionGroup> {
+  private async processEventGroup(
+    events: AttendanceEvent[],
+    referenceDate: Date,
+    timezone: string,
+  ): Promise<SessionGroup> {
     const sortedEvents = [...events].sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime());
-
-    const inEvents = sortedEvents.filter(e => e.eventType === 'IN');
-    const outEvents = sortedEvents.filter(e => e.eventType === 'OUT');
 
     const firstIn = events.find((e) => e.eventType === 'IN')?.eventTime;
     const lastOut = events
@@ -119,33 +118,47 @@ export class SessionGroupingService {
         const current = sortedEvents[i];
         const next = sortedEvents[i + 1];
         // If we have OUT followed by IN between our first and last markers, it's a break
-        if (current.eventType === 'OUT' && next.eventType === 'IN' &&
-          current.eventTime >= firstIn && next.eventTime <= lastOut) {
+        if (
+          current.eventType === 'OUT' &&
+          next.eventType === 'IN' &&
+          current.eventTime >= firstIn &&
+          next.eventTime <= lastOut
+        ) {
           additionalInOutPairs.push({ in: current.eventTime, out: next.eventTime });
         }
       }
     }
 
     // Use TimeService to get the logical date for this session in the target timezone
-    let sessionDate = this.timeService.getLogicalDate(firstIn || referenceDate, timezone);
+    const sessionDate = this.timeService.getLogicalDate(firstIn || referenceDate, timezone);
 
     // Apply Shift Date Offset (e.g. for night shifts starting yesterday)
     if (firstIn) {
       const { dateOffset } = await this.shiftSelectionService.getEffectiveShift(
         events[0].employeeId,
         firstIn,
-        timezone
+        timezone,
       );
 
       if (dateOffset !== 0) {
         sessionDate.setUTCDate(sessionDate.getUTCDate() + dateOffset);
-        this.logger.log(`[GROUPING] Applied dateOffset ${dateOffset} to sessionDate. New date: ${sessionDate.toISOString()}`);
+        this.logger.log(
+          `[GROUPING] Applied dateOffset ${dateOffset} to sessionDate. New date: ${sessionDate.toISOString()}`,
+        );
       }
     }
 
-    this.logger.log(`[GROUPING] Processed group: start = ${firstIn?.toISOString()}, end = ${lastOut?.toISOString()}, pairs = ${additionalInOutPairs.length} `);
+    this.logger.log(
+      `[GROUPING] Processed group: start = ${firstIn?.toISOString()}, end = ${lastOut?.toISOString()}, pairs = ${additionalInOutPairs.length} `,
+    );
 
-    return { events: sortedEvents, firstIn: firstIn || null, lastOut: lastOut || null, additionalInOutPairs, sessionDate };
+    return {
+      events: sortedEvents,
+      firstIn: firstIn || null,
+      lastOut: lastOut || null,
+      additionalInOutPairs,
+      sessionDate,
+    };
   }
 
   /**

@@ -6,23 +6,23 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentsController {
-    constructor(private readonly paymentsService: PaymentsService) { }
+  constructor(private readonly paymentsService: PaymentsService) {}
 
-    @Post()
-    @ApiOperation({ summary: 'Record a new payment' })
-    create(@Body() dto: CreatePaymentDto) {
-        return this.paymentsService.create(dto);
-    }
+  @Post()
+  @ApiOperation({ summary: 'Record a new payment' })
+  create(@Body() dto: CreatePaymentDto) {
+    return this.paymentsService.create(dto);
+  }
 
-    @Get()
-    @ApiOperation({ summary: 'Get all payments for a company' })
-    findAll(@Query('companyId') companyId: string) {
-        return this.paymentsService.findAll(companyId);
-    }
+  @Get()
+  @ApiOperation({ summary: 'Get all payments for a company' })
+  findAll(@Query('companyId') companyId: string) {
+    return this.paymentsService.findAll(companyId);
+  }
 
-    @Delete(':id')
-    @ApiOperation({ summary: 'Delete a payment' })
-    remove(@Param('id') id: string) {
-        return this.paymentsService.remove(id);
-    }
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a payment' })
+  remove(@Param('id') id: string) {
+    return this.paymentsService.remove(id);
+  }
 }

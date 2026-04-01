@@ -1,44 +1,51 @@
-import { Controller, Post, Body, UseGuards, Request, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Request as NestRequest,
+  BadRequestException,
+  Logger,
+  All,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { validate as isUuid } from 'uuid';
+import * as express from 'express';
 import { RegisterDto } from './dto/register.dto';
 import { AuthService } from './auth.service';
 import { SkipUserCheck } from './skip-user-check.decorator';
+import { AllowInactive } from './allow-inactive.decorator';
+import { auth } from './better-auth';
+import { toNodeHandler } from 'better-auth/node';
+import { Public } from './public.decorator';
+import * as RequestWithUserNamespace from '../common/interfaces/request-with-user.interface';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-    private readonly logger = new Logger(AuthController.name);
+  private readonly logger = new Logger(AuthController.name);
 
-    constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
-    @Post('change-password')
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Change password' })
-    @ApiResponse({ status: 200, description: 'Password change handled by Supabase or internal.' })
-    changePassword(@Body() body: any) {
-        return { message: 'Use Supabase Client SDK for password change.' };
+  @Post('register-profile')
+  @SkipUserCheck()
+  @AllowInactive()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update User Profile' })
+  @ApiResponse({ status: 201, description: 'User profile updated in database.' })
+  async register(@NestRequest() req: RequestWithUserNamespace.RequestWithUser, @Body() dto: RegisterDto) {
+    const user = req.user;
+    if (!user || !user.id) {
+      throw new BadRequestException('Invalid session');
     }
 
-    @Post('register')
-    @SkipUserCheck()
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Register User from Supabase Token' })
-    @ApiResponse({ status: 201, description: 'User profile created in database.' })
-    async register(@Request() req, @Body() dto: RegisterDto) {
-        const { email, sub: id, isGuest } = req.user;
+    // Delegate business logic to Service
+    return this.authService.registerUser(user.id, user.email, dto);
+  }
 
-        // Validate Supabase UID
-        if (!id || !isUuid(id)) {
-            this.logger.error(`UUID validation failed. id: ${id}, type: ${typeof id}`);
-            throw new BadRequestException('Invalid Supabase UID');
-        }
-
-        if (!isGuest) {
-            throw new BadRequestException('User already registered.');
-        }
-
-        // Delegate business logic to Service
-        return this.authService.registerUser(id, email, dto);
-    }
+  @Public()
+  @All('*path')
+  async handleBetterAuth(@Req() req: express.Request, @Res() res: express.Response) {
+    return toNodeHandler(auth.handler)(req, res);
+  }
 }

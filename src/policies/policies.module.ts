@@ -4,8 +4,8 @@ import { PoliciesController } from './policies.controller';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Module({
-    controllers: [PoliciesController],
-    providers: [PoliciesService, PrismaService],
-    exports: [PoliciesService],
+  controllers: [PoliciesController],
+  providers: [PoliciesService, PrismaService],
+  exports: [PoliciesService],
 })
-export class PoliciesModule { }
+export class PoliciesModule {}

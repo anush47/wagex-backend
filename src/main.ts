@@ -17,11 +17,13 @@ async function bootstrap() {
   app.use(urlencoded({ limit: '50mb', extended: true }));
 
   // Global Validation Pipe
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-    forbidNonWhitelisted: true,
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   // Security Headers
   app.use(helmet());
@@ -32,7 +34,10 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor());
 
   // CORS Setup
-  app.enableCors();
+  app.enableCors({
+    origin: true, // or your frontend URL
+    credentials: true,
+  });
 
   // Global API Prefix
   app.setGlobalPrefix('api/v1');

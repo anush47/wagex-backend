@@ -35,10 +35,12 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100, // 100 requests per minute
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100, // 100 requests per minute
+      },
+    ]),
     PrismaModule,
     UsersModule,
     AuthModule,
@@ -88,13 +90,11 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor, // Audit Logging
-    }
+    },
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(HttpLoggerMiddleware)
-      .forRoutes('*');
+    consumer.apply(HttpLoggerMiddleware).forRoutes('*');
   }
 }

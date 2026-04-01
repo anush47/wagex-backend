@@ -8,6 +8,6 @@ import { AuditModule } from '../audit/audit.module';
 @Module({
   imports: [ConfigModule, AuditModule],
   providers: [StorageService],
-  controllers: [StorageController]
+  controllers: [StorageController],
 })
-export class StorageModule { }
+export class StorageModule {}

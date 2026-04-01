@@ -11,7 +11,7 @@ import { DEFAULT_EMPLOYER_PERMISSIONS } from '../auth/permissions';
 export class CompaniesService {
   private readonly logger = new Logger(CompaniesService.name);
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
     this.logger.log(`Creating new company: ${createCompanyDto.name}`);
@@ -42,8 +42,8 @@ export class CompaniesService {
           companyId: company.id,
           role: 'EMPLOYER',
           permissions: DEFAULT_EMPLOYER_PERMISSIONS,
-          active: true // The creator should have immediate access
-        }
+          active: true, // The creator should have immediate access
+        },
       });
 
       return company;
@@ -61,7 +61,7 @@ export class CompaniesService {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' as const } },
         { address: { contains: search, mode: 'insensitive' as const } },
-        { employerNumber: { contains: search, mode: 'insensitive' as const } }
+        { employerNumber: { contains: search, mode: 'insensitive' as const } },
       ];
     }
 
@@ -79,7 +79,7 @@ export class CompaniesService {
 
     const [data, total] = await Promise.all([
       this.prisma.company.findMany({ where, skip, take: limit, orderBy }),
-      this.prisma.company.count({ where })
+      this.prisma.company.count({ where }),
     ]);
 
     return {
@@ -88,8 +88,8 @@ export class CompaniesService {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -108,7 +108,7 @@ export class CompaniesService {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' as const } },
         { address: { contains: search, mode: 'insensitive' as const } },
-        { employerNumber: { contains: search, mode: 'insensitive' as const } }
+        { employerNumber: { contains: search, mode: 'insensitive' as const } },
       ];
     }
 
@@ -126,7 +126,7 @@ export class CompaniesService {
 
     const [data, total] = await Promise.all([
       this.prisma.company.findMany({ where, skip, take: limit, orderBy }),
-      this.prisma.company.count({ where })
+      this.prisma.company.count({ where }),
     ]);
 
     return {
@@ -135,8 +135,8 @@ export class CompaniesService {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 

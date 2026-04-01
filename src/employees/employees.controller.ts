@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Query, Request, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  Put,
+  Query,
+  Request,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
@@ -8,6 +20,7 @@ import { Role } from '@prisma/client';
 import { Permission } from '../auth/permissions';
 import { Permissions } from '../auth/permissions.decorator';
 import { QueryDto } from '../common/dto/query.dto';
+import * as RequestWithUserNamespace from '../common/interfaces/request-with-user.interface';
 
 @ApiTags('Employees')
 @ApiBearerAuth()
@@ -15,21 +28,19 @@ import { QueryDto } from '../common/dto/query.dto';
 export class EmployeesController {
   private readonly logger = new Logger(EmployeesController.name);
 
-  constructor(private readonly employeesService: EmployeesService) { }
+  constructor(private readonly employeesService: EmployeesService) {}
 
   @Post()
   @Roles(Role.ADMIN, Role.EMPLOYER)
   @Permissions(Permission.MANAGE_EMPLOYEES)
   @ApiOperation({ summary: 'Create employee' })
   @ApiResponse({ status: 201, description: 'Employee created.' })
-  async create(@Body() createEmployeeDto: CreateEmployeeDto, @Request() req) {
+  async create(@Body() createEmployeeDto: CreateEmployeeDto, @Request() req: RequestWithUserNamespace.RequestWithUser) {
     const user = req.user;
 
     // Tenancy Check for Employer
     if (user.role === Role.EMPLOYER) {
-      const hasAccess = user.memberships?.some(
-        (m) => m.companyId === createEmployeeDto.companyId,
-      );
+      const hasAccess = user.memberships?.some((m) => m.companyId === createEmployeeDto.companyId);
       if (!hasAccess) {
         throw new ForbiddenException('You do not have access to this company.');
       }
@@ -42,7 +53,7 @@ export class EmployeesController {
   @Roles(Role.ADMIN, Role.EMPLOYER, Role.EMPLOYEE)
   @ApiOperation({ summary: 'Get current employee profile' })
   @ApiResponse({ status: 200, description: 'Return current employee.' })
-  async getMe(@Request() req) {
+  async getMe(@Request() req: RequestWithUserNamespace.RequestWithUser) {
     return this.employeesService.findMe(req.user.id);
   }
 
@@ -52,7 +63,7 @@ export class EmployeesController {
   @ApiOperation({ summary: 'List employees' })
   @ApiResponse({ status: 200, description: 'Return employees.' })
   @ApiQuery({ name: 'companyId', required: false, type: String })
-  findAll(@Query() queryDto: QueryDto, @Request() req) {
+  findAll(@Query() queryDto: QueryDto, @Request() req: RequestWithUserNamespace.RequestWithUser) {
     return this.employeesService.findAll(queryDto.companyId, queryDto, req.user);
   }
 
@@ -60,15 +71,13 @@ export class EmployeesController {
   @Roles(Role.ADMIN, Role.EMPLOYER)
   @ApiOperation({ summary: 'Get employee by ID' })
   @ApiResponse({ status: 200, description: 'Return employee.' })
-  async findOne(@Param('id') id: string, @Request() req) {
+  async findOne(@Param('id') id: string, @Request() req: RequestWithUserNamespace.RequestWithUser) {
     const user = req.user;
     const employee = await this.employeesService.findOne(id);
 
     // Tenancy Check: Ensure employer owns this employee's company
     if (user.role === Role.EMPLOYER) {
-      const hasAccess = user.memberships?.some(
-        (m) => m.companyId === employee.companyId,
-      );
+      const hasAccess = user.memberships?.some((m) => m.companyId === employee.companyId);
       if (!hasAccess) {
         throw new ForbiddenException('You do not have access to this employee.');
       }
@@ -84,16 +93,14 @@ export class EmployeesController {
   async update(
     @Param('id') id: string,
     @Body() updateEmployeeDto: UpdateEmployeeDto,
-    @Request() req,
+    @Request() req: RequestWithUserNamespace.RequestWithUser,
   ) {
     const user = req.user;
     const employee = await this.employeesService.findOne(id);
 
     // Tenancy & Permission Checks
     if (user.role === Role.EMPLOYER) {
-      const hasAccess = user.memberships?.some(
-        (m) => m.companyId === employee.companyId,
-      );
+      const hasAccess = user.memberships?.some((m) => m.companyId === employee.companyId);
       if (!hasAccess) {
         throw new ForbiddenException('You do not have access to this employee.');
       }
@@ -109,7 +116,7 @@ export class EmployeesController {
       // Restrict fields for employees (prevent them from changing salary, status, etc.)
       const restrictedFields = ['basicSalary', 'status', 'employeeNo', 'companyId', 'userId', 'canSelfEdit'];
       for (const field of restrictedFields) {
-        if (updateEmployeeDto[field] !== undefined) {
+        if ((updateEmployeeDto as any)[field] !== undefined) {
           throw new ForbiddenException(`You are not allowed to modify the field: ${field}`);
         }
       }
@@ -123,15 +130,13 @@ export class EmployeesController {
   @Permissions(Permission.MANAGE_EMPLOYEES)
   @ApiOperation({ summary: 'Delete employee' })
   @ApiResponse({ status: 200, description: 'Employee deleted.' })
-  async remove(@Param('id') id: string, @Request() req) {
+  async remove(@Param('id') id: string, @Request() req: RequestWithUserNamespace.RequestWithUser) {
     const user = req.user;
     const employee = await this.employeesService.findOne(id);
 
     // Tenancy Check
     if (user.role === Role.EMPLOYER) {
-      const hasAccess = user.memberships?.some(
-        (m) => m.companyId === employee.companyId,
-      );
+      const hasAccess = user.memberships?.some((m) => m.companyId === employee.companyId);
       if (!hasAccess) {
         throw new ForbiddenException('You do not have access to this employee.');
       }
@@ -145,13 +150,13 @@ export class EmployeesController {
   @Permissions(Permission.MANAGE_EMPLOYEES)
   @ApiOperation({ summary: 'Provision user account for employee' })
   @ApiResponse({ status: 201, description: 'User created/linked.' })
-  async provisionUser(@Param('id') id: string, @Request() req) {
+  async provisionUser(@Param('id') id: string, @Request() req: RequestWithUserNamespace.RequestWithUser) {
     // 1. Verify Access
     const user = req.user;
     const employee = await this.employeesService.findOne(id);
 
     if (user.role === Role.EMPLOYER) {
-      const hasAccess = user.memberships?.some(m => m.companyId === employee.companyId);
+      const hasAccess = user.memberships?.some((m) => m.companyId === employee.companyId);
       if (!hasAccess) {
         throw new ForbiddenException('You do not have access to this employee.');
       }
@@ -166,12 +171,12 @@ export class EmployeesController {
   @Permissions(Permission.MANAGE_EMPLOYEES)
   @ApiOperation({ summary: 'Unlink user account from employee' })
   @ApiResponse({ status: 200, description: 'User unlinked.' })
-  async deprovisionUser(@Param('id') id: string, @Request() req) {
+  async deprovisionUser(@Param('id') id: string, @Request() req: RequestWithUserNamespace.RequestWithUser) {
     const user = req.user;
     const employee = await this.employeesService.findOne(id);
 
     if (user.role === Role.EMPLOYER) {
-      const hasAccess = user.memberships?.some(m => m.companyId === employee.companyId);
+      const hasAccess = user.memberships?.some((m) => m.companyId === employee.companyId);
       if (!hasAccess) {
         throw new ForbiddenException('You do not have access to this employee.');
       }

@@ -1,7 +1,7 @@
 export interface ApiResponse<T> {
-    statusCode: number;
-    message: string;
-    data: T;
-    timestamp: string;
-    path: string;
+  statusCode: number;
+  message: string;
+  data: T;
+  timestamp: string;
+  path: string;
 }

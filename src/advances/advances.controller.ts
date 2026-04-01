@@ -6,41 +6,41 @@ import { CreateSalaryAdvanceDto } from './dto/create-advance.dto';
 @ApiTags('advances')
 @Controller('advances')
 export class AdvancesController {
-    constructor(private readonly advancesService: AdvancesService) { }
+  constructor(private readonly advancesService: AdvancesService) {}
 
-    @Post()
-    @ApiOperation({ summary: 'Create a new salary advance' })
-    create(@Body() dto: CreateSalaryAdvanceDto) {
-        return this.advancesService.create(dto);
-    }
+  @Post()
+  @ApiOperation({ summary: 'Create a new salary advance' })
+  create(@Body() dto: CreateSalaryAdvanceDto) {
+    return this.advancesService.create(dto);
+  }
 
-    @Get()
-    @ApiOperation({ summary: 'Get all advances for a company' })
-    findAll(@Query('companyId') companyId: string) {
-        return this.advancesService.findAll(companyId);
-    }
+  @Get()
+  @ApiOperation({ summary: 'Get all advances for a company' })
+  findAll(@Query('companyId') companyId: string) {
+    return this.advancesService.findAll(companyId);
+  }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get advance by ID' })
-    findOne(@Param('id') id: string) {
-        return this.advancesService.findOne(id);
-    }
+  @Get(':id')
+  @ApiOperation({ summary: 'Get advance by ID' })
+  findOne(@Param('id') id: string) {
+    return this.advancesService.findOne(id);
+  }
 
-    @Patch(':id/approve')
-    @ApiOperation({ summary: 'Approve an advance' })
-    approve(@Param('id') id: string) {
-        return this.advancesService.approve(id);
-    }
+  @Patch(':id/approve')
+  @ApiOperation({ summary: 'Approve an advance' })
+  approve(@Param('id') id: string) {
+    return this.advancesService.approve(id);
+  }
 
-    @Delete(':id')
-    @ApiOperation({ summary: 'Delete an advance' })
-    remove(@Param('id') id: string) {
-        return this.advancesService.remove(id);
-    }
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete an advance' })
+  remove(@Param('id') id: string) {
+    return this.advancesService.remove(id);
+  }
 
-    @Delete()
-    @ApiOperation({ summary: 'Bulk delete advances' })
-    bulkRemove(@Body('ids') ids: string[]) {
-        return this.advancesService.bulkRemove(ids);
-    }
+  @Delete()
+  @ApiOperation({ summary: 'Bulk delete advances' })
+  bulkRemove(@Body('ids') ids: string[]) {
+    return this.advancesService.bulkRemove(ids);
+  }
 }

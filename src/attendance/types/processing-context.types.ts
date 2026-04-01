@@ -1,18 +1,18 @@
-import { PolicySettingsDto } from '../../policies/dto/policy-settings.dto';
-import { AttendanceEvent, Holiday, LeaveRequest, Employee, Company } from '@prisma/client';
+import { PolicySettingsDto, ShiftDto } from '../../policies/dto/policy-settings.dto';
+import { Holiday, Employee, Company, LeaveRequest } from '@prisma/client';
 
 export interface ProcessingContext {
-    employee?: Employee & { company?: Company };
-    policy?: PolicySettingsDto;
-    leaves?: any[]; // Simplified for now, can be specific Leave type
-    holidays?: Holiday[];
-    shift?: any;
-    timezone?: string;
+  employee?: Employee & { company?: Company };
+  policy?: PolicySettingsDto;
+  leaves?: LeaveRequest[];
+  holidays?: Holiday[];
+  shift?: ShiftDto;
+  timezone?: string;
 }
 
 export interface BulkProcessingContext {
-    employees: Map<string, Employee & { company: Company }>;
-    policies: Map<string, PolicySettingsDto>;
-    leaves: Map<string, any[]>; // employeeId -> leaves
-    holidays: Map<string, Holiday[]>; // calendarId -> holidays
+  employees: Map<string, Employee & { company: Company }>;
+  policies: Map<string, PolicySettingsDto>;
+  leaves: Map<string, LeaveRequest[]>; // employeeId -> leaves
+  holidays: Map<string, Holiday[]>; // calendarId -> holidays
 }

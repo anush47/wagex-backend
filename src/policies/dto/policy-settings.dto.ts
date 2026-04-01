@@ -1,4 +1,4 @@
-import { IsOptional, ValidateNested } from 'class-validator';
+import { IsOptional, ValidateNested, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -18,43 +18,57 @@ export * from './working-days-policy.dto';
 export * from './leaves-policy.dto';
 
 export class PolicySettingsDto {
-    @ApiPropertyOptional({ type: ShiftsConfigDto, description: 'Shifts configuration' })
-    @IsOptional()
-    @ValidateNested()
-    @Type(() => ShiftsConfigDto)
-    shifts?: ShiftsConfigDto;
+  @ApiPropertyOptional({ example: 'Default Policy' })
+  @IsOptional()
+  @IsString()
+  name?: string;
 
-    @ApiPropertyOptional({ type: AttendanceConfigDto, description: 'Attendance tracking, geofencing, and approval rules' })
-    @IsOptional()
-    @ValidateNested()
-    @Type(() => AttendanceConfigDto)
-    attendance?: AttendanceConfigDto;
+  @ApiPropertyOptional({ type: ShiftsConfigDto, description: 'Shifts configuration' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ShiftsConfigDto)
+  shifts?: ShiftsConfigDto;
 
-    @ApiPropertyOptional({ type: SalaryComponentsConfigDto, description: 'Salary components (additions/deductions) configuration' })
-    @IsOptional()
-    @ValidateNested()
-    @Type(() => SalaryComponentsConfigDto)
-    salaryComponents?: SalaryComponentsConfigDto;
+  @ApiPropertyOptional({
+    type: AttendanceConfigDto,
+    description: 'Attendance tracking, geofencing, and approval rules',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AttendanceConfigDto)
+  attendance?: AttendanceConfigDto;
 
-    @ApiPropertyOptional({ type: PayrollSettingsConfigDto, description: 'Global payroll settings (cycles, dates, logic)' })
-    @IsOptional()
-    @ValidateNested()
-    @Type(() => PayrollSettingsConfigDto)
-    payrollConfiguration?: PayrollSettingsConfigDto;
+  @ApiPropertyOptional({
+    type: SalaryComponentsConfigDto,
+    description: 'Salary components (additions/deductions) configuration',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SalaryComponentsConfigDto)
+  salaryComponents?: SalaryComponentsConfigDto;
 
-    @ApiPropertyOptional({ type: WorkingDaysConfigDto, description: 'Working days configuration' })
-    @IsOptional()
-    @ValidateNested()
-    @Type(() => WorkingDaysConfigDto)
-    workingDays?: WorkingDaysConfigDto;
+  @ApiPropertyOptional({
+    type: PayrollSettingsConfigDto,
+    description: 'Global payroll settings (cycles, dates, logic)',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PayrollSettingsConfigDto)
+  payrollConfiguration?: PayrollSettingsConfigDto;
 
-    @ApiPropertyOptional({ type: LeavesConfigDto, description: 'Leaves configuration' })
-    @IsOptional()
-    @ValidateNested()
-    @Type(() => LeavesConfigDto)
-    leaves?: LeavesConfigDto;
+  @ApiPropertyOptional({ type: WorkingDaysConfigDto, description: 'Working days configuration' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WorkingDaysConfigDto)
+  workingDays?: WorkingDaysConfigDto;
 
-    @ApiPropertyOptional({ example: 'uuid-calendar', description: 'Assigned Calendar ID' })
-    @IsOptional()
-    calendarId?: string;
+  @ApiPropertyOptional({ type: LeavesConfigDto, description: 'Leaves configuration' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LeavesConfigDto)
+  leaves?: LeavesConfigDto;
+
+  @ApiPropertyOptional({ example: 'uuid-calendar', description: 'Assigned Calendar ID' })
+  @IsOptional()
+  calendarId?: string;
 }

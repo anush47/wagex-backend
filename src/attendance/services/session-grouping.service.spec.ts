@@ -30,7 +30,7 @@ describe('SessionGroupingService', () => {
         sessionId: null,
         manualOverride: false,
         remark: '',
-        metadata: {}
+        metadata: {},
       },
       {
         id: '2',
@@ -50,7 +50,7 @@ describe('SessionGroupingService', () => {
         sessionId: null,
         manualOverride: false,
         remark: '',
-        metadata: {}
+        metadata: {},
       },
       {
         id: '3',
@@ -70,7 +70,7 @@ describe('SessionGroupingService', () => {
         sessionId: null,
         manualOverride: false,
         remark: '',
-        metadata: {}
+        metadata: {},
       },
       {
         id: '4',
@@ -90,8 +90,8 @@ describe('SessionGroupingService', () => {
         sessionId: null,
         manualOverride: false,
         remark: '',
-        metadata: {}
-      }
+        metadata: {},
+      },
     ];
 
     const result = await sessionGroupingService.groupEventsIntoSessions('emp1', events, new Date('2023-01-01'));
@@ -123,7 +123,7 @@ describe('SessionGroupingService', () => {
         sessionId: null,
         manualOverride: false,
         remark: '',
-        metadata: {}
+        metadata: {},
       },
       {
         id: '2',
@@ -143,7 +143,7 @@ describe('SessionGroupingService', () => {
         sessionId: null,
         manualOverride: false,
         remark: '',
-        metadata: {}
+        metadata: {},
       },
       {
         id: '3',
@@ -163,7 +163,7 @@ describe('SessionGroupingService', () => {
         sessionId: null,
         manualOverride: false,
         remark: '',
-        metadata: {}
+        metadata: {},
       },
       {
         id: '4',
@@ -183,8 +183,8 @@ describe('SessionGroupingService', () => {
         sessionId: null,
         manualOverride: false,
         remark: '',
-        metadata: {}
-      }
+        metadata: {},
+      },
     ];
 
     const result = await sessionGroupingService.groupEventsIntoSessions('emp1', events, new Date('2023-01-02'));
@@ -214,7 +214,7 @@ describe('SessionGroupingService', () => {
         sessionId: null,
         manualOverride: false,
         remark: '',
-        metadata: {}
+        metadata: {},
       },
       {
         id: '2',
@@ -234,8 +234,8 @@ describe('SessionGroupingService', () => {
         sessionId: null,
         manualOverride: false,
         remark: '',
-        metadata: {}
-      }
+        metadata: {},
+      },
     ];
 
     const result = await sessionGroupingService.groupEventsIntoSessions('emp1', events, new Date('2023-01-01'));

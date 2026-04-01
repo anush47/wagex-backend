@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { EtfService } from '../services/etf.service';
 import { CreateEtfDto, EtfQueryDto, GenerateEtfDto, UpdateEtfDto } from '../dto/etf.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
@@ -10,28 +10,19 @@ export class EtfController {
 
   @Post(':companyId/etf/preview')
   @ApiOperation({ summary: 'Generate ETF preview' })
-  generatePreview(
-    @Param('companyId') companyId: string,
-    @Body() dto: GenerateEtfDto
-  ) {
+  generatePreview(@Param('companyId') companyId: string, @Body() dto: GenerateEtfDto) {
     return this.etfService.generatePreview({ ...dto, companyId });
   }
 
   @Post(':companyId/etf')
   @ApiOperation({ summary: 'Create ETF record' })
-  create(
-    @Param('companyId') companyId: string,
-    @Body() dto: CreateEtfDto
-  ) {
+  create(@Param('companyId') companyId: string, @Body() dto: CreateEtfDto) {
     return this.etfService.create({ ...dto, companyId } as any);
   }
 
   @Get(':companyId/etf')
   @ApiOperation({ summary: 'Get all ETF records' })
-  findAll(
-    @Param('companyId') companyId: string,
-    @Query() query: EtfQueryDto
-  ) {
+  findAll(@Param('companyId') companyId: string, @Query() query: EtfQueryDto) {
     return this.etfService.findAll({ ...query, companyId });
   }
 

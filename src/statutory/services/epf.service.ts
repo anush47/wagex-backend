@@ -41,9 +41,7 @@ export class EpfService {
 
     const previewItems = salaries.map((salary) => {
       const components = (salary.components as any[]) || [];
-      const epfEmployee = components.find(
-        (c) => c.systemType === PayrollComponentSystemType.EPF_EMPLOYEE,
-      );
+      const epfEmployee = components.find((c) => c.systemType === PayrollComponentSystemType.EPF_EMPLOYEE);
 
       // Total Liable Earnings for EPF is usually the base for these percentages
       // We can derive it: amount / (value / 100)
@@ -56,9 +54,7 @@ export class EpfService {
 
       // Employer contribution is stored as employerAmount on the EPF_EMPLOYEE component
       // OR as a separate EPF_EMPLOYER component
-      const epfEmployer = components.find(
-        (c) => c.systemType === PayrollComponentSystemType.EPF_EMPLOYER,
-      );
+      const epfEmployer = components.find((c) => c.systemType === PayrollComponentSystemType.EPF_EMPLOYER);
       const employerContribution = epfEmployer?.amount || epfEmployee?.employerAmount || 0;
 
       return {
@@ -72,10 +68,7 @@ export class EpfService {
       };
     });
 
-    const totalContribution = previewItems.reduce(
-      (sum, item) => sum + item.totalContribution,
-      0,
-    );
+    const totalContribution = previewItems.reduce((sum, item) => sum + item.totalContribution, 0);
 
     return {
       month,
@@ -105,14 +98,12 @@ export class EpfService {
       });
 
       if (alreadyLinked) {
-        throw new Error(
-          `Salary for ${alreadyLinked.employee.fullName} is already linked to an EPF record.`,
-        );
+        throw new Error(`Salary for ${alreadyLinked.employee.fullName} is already linked to an EPF record.`);
       }
     }
 
     // Removed single record per month check to allow multiple batches.
-     // Salaries are already checked for existing links above.
+    // Salaries are already checked for existing links above.
 
     // Fetch company defaults for statutory details
     const company = await this.prisma.company.findUnique({

@@ -4,9 +4,9 @@ import { AdvancesController } from './advances.controller';
 import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
-    imports: [PaymentsModule],
-    controllers: [AdvancesController],
-    providers: [AdvancesService],
-    exports: [AdvancesService],
+  imports: [PaymentsModule],
+  controllers: [AdvancesController],
+  providers: [AdvancesService],
+  exports: [AdvancesService],
 })
-export class AdvancesModule { }
+export class AdvancesModule {}

@@ -5,17 +5,22 @@ import { PrismaService } from '../prisma/prisma.service';
 import { User } from './entities/user.entity';
 import { QueryDto } from '../common/dto/query.dto';
 import { PaginatedResponse } from '../common/interfaces/paginated-response.interface';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     this.logger.log(`Creating new user: ${createUserDto.email}`);
+    const { id, ...data } = createUserDto;
     return this.prisma.user.create({
-      data: createUserDto,
+      data: {
+        id: id || crypto.randomUUID(),
+        ...data,
+      },
     });
   }
 
@@ -24,13 +29,15 @@ export class UsersService {
     const skip = (page - 1) * limit;
 
     // Build where clause for search
-    const where = search ? {
-      OR: [
-        { email: { contains: search, mode: 'insensitive' as const } },
-        { nameWithInitials: { contains: search, mode: 'insensitive' as const } },
-        { fullName: { contains: search, mode: 'insensitive' as const } },
-      ]
-    } : {};
+    const where = search
+      ? {
+          OR: [
+            { email: { contains: search, mode: 'insensitive' as const } },
+            { nameWithInitials: { contains: search, mode: 'insensitive' as const } },
+            { fullName: { contains: search, mode: 'insensitive' as const } },
+          ],
+        }
+      : {};
 
     // Build orderBy clause
     const orderBy: any = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
@@ -43,11 +50,11 @@ export class UsersService {
         orderBy,
         include: {
           memberships: {
-            include: { company: true }
-          }
-        }
+            include: { company: true },
+          },
+        },
       }),
-      this.prisma.user.count({ where })
+      this.prisma.user.count({ where }),
     ]);
 
     return {
@@ -56,8 +63,8 @@ export class UsersService {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -66,9 +73,9 @@ export class UsersService {
       where: { id },
       include: {
         memberships: {
-          include: { company: true }
-        }
-      }
+          include: { company: true },
+        },
+      },
     });
 
     if (!user) {
@@ -84,9 +91,9 @@ export class UsersService {
       where: { email },
       include: {
         memberships: {
-          include: { company: true }
-        }
-      }
+          include: { company: true },
+        },
+      },
     });
   }
 

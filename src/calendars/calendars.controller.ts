@@ -9,23 +9,23 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 @Controller('calendars')
 export class CalendarsController {
-    constructor(private readonly calendarsService: CalendarsService) { }
+  constructor(private readonly calendarsService: CalendarsService) {}
 
-    @Get()
-    @ApiOperation({ summary: 'List all global calendars' })
-    findAllCalendars() {
-        return this.calendarsService.findAllCalendars();
-    }
+  @Get()
+  @ApiOperation({ summary: 'List all global calendars' })
+  findAllCalendars() {
+    return this.calendarsService.findAllCalendars();
+  }
 
-    @Get('holidays')
-    @ApiOperation({ summary: 'List holidays with filtering and pagination' })
-    findHolidays(@Query() query: HolidayQueryDto) {
-        return this.calendarsService.findHolidays(query);
-    }
+  @Get('holidays')
+  @ApiOperation({ summary: 'List holidays with filtering and pagination' })
+  findHolidays(@Query() query: HolidayQueryDto) {
+    return this.calendarsService.findHolidays(query);
+  }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get a specific calendar details' })
-    findOneCalendar(@Param('id') id: string) {
-        return this.calendarsService.findOneCalendar(id);
-    }
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a specific calendar details' })
+  findOneCalendar(@Param('id') id: string) {
+    return this.calendarsService.findOneCalendar(id);
+  }
 }

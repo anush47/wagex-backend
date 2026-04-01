@@ -4,9 +4,9 @@ import { CalendarsController } from './calendars.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-    imports: [PrismaModule],
-    controllers: [CalendarsController],
-    providers: [CalendarsService],
-    exports: [CalendarsService]
+  imports: [PrismaModule],
+  controllers: [CalendarsController],
+  providers: [CalendarsService],
+  exports: [CalendarsService],
 })
-export class CalendarsModule { }
+export class CalendarsModule {}

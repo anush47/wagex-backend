@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, ForbiddenException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Request, ForbiddenException, Query } from '@nestjs/common';
 import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
@@ -7,13 +7,12 @@ import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { Permissions } from '../auth/permissions.decorator';
 import { Permission } from '../auth/permissions';
-import { QueryDto } from '../common/dto/query.dto';
 
 @ApiTags('Departments')
 @ApiBearerAuth()
 @Controller('departments')
 export class DepartmentsController {
-  constructor(private readonly departmentsService: DepartmentsService) { }
+  constructor(private readonly departmentsService: DepartmentsService) {}
 
   @Post()
   @Roles(Role.ADMIN, Role.EMPLOYER)
@@ -25,7 +24,7 @@ export class DepartmentsController {
 
     // Tenancy Check
     if (user.role === Role.EMPLOYER) {
-      const hasAccess = user.memberships?.some(m => m.companyId === createDepartmentDto.companyId);
+      const hasAccess = user.memberships?.some((m) => m.companyId === createDepartmentDto.companyId);
       if (!hasAccess) {
         throw new ForbiddenException('You do not have access to this company.');
       }
@@ -45,7 +44,7 @@ export class DepartmentsController {
     // Tenancy Check
     if (user.role !== Role.ADMIN) {
       // Employer or Employee must belong to the company
-      const hasAccess = user.memberships?.some(m => m.companyId === companyId);
+      const hasAccess = user.memberships?.some((m) => m.companyId === companyId);
       // For employees, we might need to check their employment record if memberships are not synced for all employees yet
       // But assuming memberships are the source of truth for access:
       if (!hasAccess) {
@@ -67,7 +66,7 @@ export class DepartmentsController {
 
     // Tenancy Check
     if (user.role !== Role.ADMIN) {
-      const hasAccess = user.memberships?.some(m => m.companyId === dept.companyId);
+      const hasAccess = user.memberships?.some((m) => m.companyId === dept.companyId);
       if (!hasAccess) throw new ForbiddenException('Access denied');
     }
 
@@ -84,12 +83,12 @@ export class DepartmentsController {
     const user = req.user;
 
     if (user.role === Role.EMPLOYER) {
-      const hasAccess = user.memberships?.some(m => m.companyId === dept.companyId);
+      const hasAccess = user.memberships?.some((m) => m.companyId === dept.companyId);
       if (!hasAccess) throw new ForbiddenException('Access denied');
 
       // If changing companyId (rare), check target too
       if (updateDepartmentDto.companyId && updateDepartmentDto.companyId !== dept.companyId) {
-        const targetAccess = user.memberships?.some(m => m.companyId === updateDepartmentDto.companyId);
+        const targetAccess = user.memberships?.some((m) => m.companyId === updateDepartmentDto.companyId);
         if (!targetAccess) throw new ForbiddenException('Access denied to target company');
       }
     }
@@ -106,7 +105,7 @@ export class DepartmentsController {
     const user = req.user;
 
     if (user.role === Role.EMPLOYER) {
-      const hasAccess = user.memberships?.some(m => m.companyId === dept.companyId);
+      const hasAccess = user.memberships?.some((m) => m.companyId === dept.companyId);
       if (!hasAccess) throw new ForbiddenException('Access denied');
     }
 

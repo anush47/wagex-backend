@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class DepartmentsService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createDepartmentDto: CreateDepartmentDto) {
     return this.prisma.department.create({
@@ -21,14 +21,14 @@ export class DepartmentsService {
           select: {
             id: true,
             nameWithInitials: true,
-            photo: true
-          }
+            photo: true,
+          },
         },
         _count: {
-          select: { employees: true }
-        }
+          select: { employees: true },
+        },
       },
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' },
     });
   }
 
@@ -40,10 +40,10 @@ export class DepartmentsService {
           select: {
             id: true,
             nameWithInitials: true,
-            photo: true
-          }
-        }
-      }
+            photo: true,
+          },
+        },
+      },
     });
 
     if (!department) {

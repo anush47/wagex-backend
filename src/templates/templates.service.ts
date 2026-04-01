@@ -45,7 +45,7 @@ export class TemplatesService {
   async findAll(query: TemplateQueryDto) {
     const { companyId, type, isActive } = query;
     const where: any = { type };
-    
+
     if (isActive !== undefined) {
       where.isActive = isActive;
     }
@@ -53,10 +53,7 @@ export class TemplatesService {
     return this.prisma.documentTemplate.findMany({
       where: {
         ...where,
-        OR: [
-          { companyId: null },
-          ...(companyId ? [{ companyId }] : []),
-        ],
+        OR: [{ companyId: null }, ...(companyId ? [{ companyId }] : [])],
       },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
@@ -109,7 +106,7 @@ export class TemplatesService {
   async render(templateId: string, resourceId: string) {
     const template = await this.findOne(templateId);
     const data = await this.dataService.getData(template.type, resourceId);
-    
+
     const compiledHtml = Handlebars.compile(template.html);
     const renderedHtml = compiledHtml(data);
 
@@ -120,7 +117,7 @@ export class TemplatesService {
       metadata: {
         type: template.type,
         name: template.name,
-      }
+      },
     };
   }
 
@@ -131,41 +128,41 @@ export class TemplatesService {
       case DocumentType.PAYSLIP:
         return {
           employee: {
-              fullName: "John Doe",
-              employeeNo: "EMP-001",
-              designation: "Software Engineer",
-              department: { name: "Engineering" },
-              company: { name: "Wagex Solutions" }
+            fullName: 'John Doe',
+            employeeNo: 'EMP-001',
+            designation: 'Software Engineer',
+            department: { name: 'Engineering' },
+            company: { name: 'Wagex Solutions' },
           },
-          periodStartDate: "2024-03-01",
-          periodEndDate: "2024-03-31",
-          basicSalary: 50000.00,
-          netSalary: 45000.00,
+          periodStartDate: '2024-03-01',
+          periodEndDate: '2024-03-31',
+          basicSalary: 50000.0,
+          netSalary: 45000.0,
           components: [
-              { name: "EPF 8%", amount: 4000, category: "DEDUCTION" },
-              { name: "Travel Allowance", amount: 5000, category: "ADDITION" }
-          ]
+            { name: 'EPF 8%', amount: 4000, category: 'DEDUCTION' },
+            { name: 'Travel Allowance', amount: 5000, category: 'ADDITION' },
+          ],
         };
       case DocumentType.SALARY_SHEET:
         return {
-          company: { name: "Wagex Solutions" },
+          company: { name: 'Wagex Solutions' },
           month: 3,
           year: 2024,
           totals: { basic: 500000, net: 450000, count: 10 },
           salaries: [
-            { employee: { fullName: "John Doe", employeeNo: "EMP-001" }, basicSalary: 50000, netSalary: 45000 },
-            { employee: { fullName: "Jane Smith", employeeNo: "EMP-002" }, basicSalary: 60000, netSalary: 55000 }
-          ]
+            { employee: { fullName: 'John Doe', employeeNo: 'EMP-001' }, basicSalary: 50000, netSalary: 45000 },
+            { employee: { fullName: 'Jane Smith', employeeNo: 'EMP-002' }, basicSalary: 60000, netSalary: 55000 },
+          ],
         };
       case DocumentType.ATTENDANCE_REPORT:
         return {
-          employee: { fullName: "John Doe", employeeNo: "EMP-001" },
+          employee: { fullName: 'John Doe', employeeNo: 'EMP-001' },
           month: 3,
           year: 2024,
           logs: [
-            { date: "2024-03-01", checkIn: "08:00 AM", checkOut: "05:00 PM", status: "PRESENT" },
-            { date: "2024-03-02", checkIn: "08:15 AM", checkOut: "05:10 PM", status: "PRESENT" }
-          ]
+            { date: '2024-03-01', checkIn: '08:00 AM', checkOut: '05:00 PM', status: 'PRESENT' },
+            { date: '2024-03-02', checkIn: '08:15 AM', checkOut: '05:10 PM', status: 'PRESENT' },
+          ],
         };
       default:
         return {};

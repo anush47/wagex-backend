@@ -1,14 +1,26 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Request, Logger, ForbiddenException, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  Put,
+  Request,
+  Logger,
+  ForbiddenException,
+  Query,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { User } from './entities/user.entity';
 import { QueryDto } from '../common/dto/query.dto';
 import { AllowInactive } from '../auth/allow-inactive.decorator';
+import * as RequestWithUserNamespace from '../common/interfaces/request-with-user.interface';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -16,7 +28,7 @@ import { AllowInactive } from '../auth/allow-inactive.decorator';
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
   @Roles(Role.ADMIN)
@@ -39,25 +51,30 @@ export class UsersController {
   @AllowInactive()
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, type: User })
-  async getMe(@Request() req): Promise<User> {
-    const user = req.user;
-    // req.user is populated by Jwt/Supabase strategy and contains the full user object
-    // But we might want to fetch fresh data or just return the token payload user
-    // Usually best to fetch to get latest
-    return this.usersService.findOne(user.id);
+  async getMe(@Request() req: RequestWithUserNamespace.RequestWithUser): Promise<User> {
+    const user = await this.usersService.findOne(req.user.id);
+
+    // Distinguish between Incomplete Profile and Inactive Account
+    // Profile is incomplete if essential fields are missing
+    if (!user.fullName || !user.nameWithInitials) {
+      this.logger.warn(`User ${user.id} has not completed their profile.`);
+      throw new ForbiddenException('PROFILE_INCOMPLETE');
+    }
+
+    return user;
   }
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.EMPLOYER)
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiResponse({ status: 200, type: User })
-  async findOne(@Param('id') id: string, @Request() req): Promise<User> {
+  async findOne(@Param('id') id: string, @Request() req: RequestWithUserNamespace.RequestWithUser): Promise<User> {
     const user = req.user;
 
     // Security check: If not Admin, can only see self
     if (user.role !== Role.ADMIN && user.id !== id) {
       this.logger.warn(`User ${user.id} attempted to access profile of user ${id}`);
-      throw new ForbiddenException('You can only access your own profile.');
+      throw new ForbiddenException('You do not have access to this profile.');
     }
 
     return this.usersService.findOne(id);
