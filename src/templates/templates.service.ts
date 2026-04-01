@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTemplateDto, UpdateTemplateDto, TemplateQueryDto } from './dto/template.dto';
 import * as Handlebars from 'handlebars';
@@ -6,11 +6,13 @@ import { DocumentType, TemplateStatus } from '@prisma/client';
 import { TemplatesDataService } from './templates-data.service';
 
 @Injectable()
-export class TemplatesService {
+export class TemplatesService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dataService: TemplatesDataService,
-  ) {
+  ) {}
+
+  onModuleInit() {
     this.registerHelpers();
   }
 
@@ -29,6 +31,28 @@ export class TemplatesService {
     });
 
     Handlebars.registerHelper('eq', (a, b) => a === b);
+
+    Handlebars.registerHelper('chunk', (arr: any[], size: number) => {
+      if (!Array.isArray(arr)) return [];
+      const chunks: any[][] = [];
+      for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
+      }
+      return chunks;
+    });
+
+    Handlebars.registerHelper('getAmount', (list: any[], name: string) => {
+      if (!Array.isArray(list)) return 0;
+      const item = list.find((i) => i.name === name);
+      return item ? item.amount : 0;
+    });
+
+    Handlebars.registerHelper('getCustomTotal', (totalsObj: any, name: string) => {
+      if (!totalsObj) return 0;
+      return totalsObj[name] || 0;
+    });
+
+    Handlebars.registerHelper('add', (a, b) => (a || 0) + (b || 0));
   }
 
   async create(dto: CreateTemplateDto) {
@@ -103,60 +127,140 @@ export class TemplatesService {
     });
   }
 
-  async render(templateId: string, resourceId: string) {
-    const template = await this.findOne(templateId);
-    const data = await this.dataService.getData(template.type, resourceId);
+  async render(templateId: string, resourceId: string, query: any = {}) {
+    const template = await this.prisma.documentTemplate.findUnique({
+      where: { id: templateId },
+    });
 
-    const compiledHtml = Handlebars.compile(template.html);
-    const renderedHtml = compiledHtml(data);
+    if (!template) {
+      throw new Error('Template not found');
+    }
+
+    const data = await this.dataService.getData(template.type, resourceId, query);
+    const html = template.html;
+
+    const compiledTemplate = Handlebars.compile(html);
+    const renderedHtml = compiledTemplate(data);
 
     return {
       html: renderedHtml,
       css: template.css,
-      config: template.config,
       metadata: {
-        type: template.type,
         name: template.name,
+        type: template.type,
+        config: template.config,
       },
     };
   }
 
-  async getVariables(type: DocumentType) {
-    // Return sample data or a list of available variables for each type
-    // This helps the frontend "easy to place" requirement
+  getVariables(type: DocumentType) {
+    const commonVariables = {
+      company: {
+        name: 'WageX (Pvt) Ltd',
+        address: '123 Business Road, Colombo 03',
+        phone: '+94 11 234 5678',
+        email: 'hello@wagex.com',
+        logo: 'https://wagex.com/logo.png',
+      },
+    };
+
     switch (type) {
       case DocumentType.PAYSLIP:
         return {
+          ...commonVariables,
           employee: {
+            id: 'EMP-UUID-001',
             fullName: 'John Doe',
             employeeNo: 'EMP-001',
+            memberNo: 'EMP-001',
+            nic: '199512345678',
             designation: 'Software Engineer',
             department: { name: 'Engineering' },
-            company: { name: 'Wagex Solutions' },
+            epfNo: '1234/E',
           },
-          periodStartDate: '2024-03-01',
-          periodEndDate: '2024-03-31',
-          basicSalary: 50000.0,
-          netSalary: 45000.0,
-          components: [
-            { name: 'EPF 8%', amount: 4000, category: 'DEDUCTION' },
-            { name: 'Travel Allowance', amount: 5000, category: 'ADDITION' },
-          ],
-        };
-      case DocumentType.SALARY_SHEET:
-        return {
-          company: { name: 'Wagex Solutions' },
           month: 3,
           year: 2024,
-          totals: { basic: 500000, net: 450000, count: 10 },
-          salaries: [
-            { employee: { fullName: 'John Doe', employeeNo: 'EMP-001' }, basicSalary: 50000, netSalary: 45000 },
-            { employee: { fullName: 'Jane Smith', employeeNo: 'EMP-002' }, basicSalary: 60000, netSalary: 55000 },
-          ],
+          periodStartDate: '2024-03-01',
+          periodEndDate: '2024-03-31',
+          payDate: '2024-03-31',
+          basicSalary: 120000.0,
+          grossSalary: 135000.0,
+          netSalary: 115000.0,
+          epfEmployee: 9600.0,
+          epfEmployer: 14400.0,
+          etfEmployer: 3600.0,
+          otPay: 10000.0,
+          holidayPay: 5000.0,
+          noPay: 0.0,
+          advanceDeduction: 5000.0,
+          lateDeduction: 0.0,
+          taxAmount: 5000.0,
+          additions: [{ name: 'Travel Allowance', amount: 5000 }],
+          deductions: [{ name: 'Medical Insurance', amount: 2000 }],
         };
+
+      case DocumentType.SALARY_SHEET:
+        return {
+          ...commonVariables,
+          month: 3,
+          year: 2024,
+          additionColumns: ['Travel Allowance', 'Performance Bonus'],
+          deductionColumns: ['Medical Insurance', 'Special Fund'],
+          salaries: Array.from({ length: 20 }).map((_, i) => ({
+            employee: { 
+              id: `EMP-UUID-00${i + 1}`,
+              fullName: i % 2 === 0 ? 'John Doe' : 'Jane Smith', 
+              employeeNo: `EMP-00${i + 1}`,
+              memberNo: `EMP-00${i + 1}`,
+              nic: `19951234567${i}`,
+              designation: i % 2 === 0 ? 'Software Engineer' : 'Product Designer',
+              department: { name: i % 2 === 0 ? 'Engineering' : 'Design' }
+            },
+            basicSalary: 120000.0,
+            grossSalary: 135000.0,
+            netSalary: 115000.0,
+            epfEmployee: 9600.0,
+            epfEmployer: 14400.0,
+            etfEmployer: 3600.0,
+            otPay: 10000.0,
+            holidayPay: 5000.0,
+            additions: [
+              { name: 'Travel Allowance', amount: 5000 },
+              { name: 'Performance Bonus', amount: 0 },
+            ],
+            deductions: [
+              { name: 'Medical Insurance', amount: 2000 },
+              { name: 'Special Fund', amount: 0 },
+            ],
+          })),
+          totals: {
+            basicSalary: 120000.0 * 20,
+            grossSalary: 135000.0 * 20,
+            netSalary: 115000.0 * 20,
+            epfEmployee: 9600.0 * 20,
+            epfEmployer: 14400.0 * 20,
+            etfEmployer: 3600.0 * 20,
+            otPay: 10000.0 * 20,
+            holidayPay: 5000.0 * 20,
+            customAdditions: { 'Travel Allowance': 5000 * 20, 'Performance Bonus': 0 },
+            customDeductions: { 'Medical Insurance': 2000 * 20, 'Special Fund': 0 },
+            totalAdditions: 15000.0 * 20,
+            totalDeductions: 20000.0 * 20,
+          },
+        };
+
       case DocumentType.ATTENDANCE_REPORT:
         return {
-          employee: { fullName: 'John Doe', employeeNo: 'EMP-001' },
+          ...commonVariables,
+          employee: { 
+            id: 'EMP-UUID-001',
+            fullName: 'John Doe', 
+            employeeNo: 'EMP-001',
+            memberNo: 'EMP-001',
+            nic: '199512345678',
+            designation: 'Software Engineer',
+            department: { name: 'Engineering' }
+          },
           month: 3,
           year: 2024,
           logs: [

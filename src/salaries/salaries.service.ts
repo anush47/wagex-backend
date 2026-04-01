@@ -170,6 +170,17 @@ export class SalariesService {
     }
     if (query.excludeEpf) where.epfRecords = { none: {} };
     if (query.excludeEtf) where.etfRecords = { none: {} };
+    if (query.policyIds) {
+      const policyIds = Array.isArray(query.policyIds)
+        ? query.policyIds
+        : typeof query.policyIds === 'string'
+        ? (query.policyIds as string).split(',')
+        : [];
+      if (policyIds.length > 0) {
+        // Correcting to use relation id filter which is more standard
+        where.employee = { ...(where.employee as object), policy: { id: { in: policyIds } } };
+      }
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.salary.findMany({

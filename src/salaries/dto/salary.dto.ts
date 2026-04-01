@@ -1,6 +1,6 @@
 import { IsArray, IsDateString, IsOptional, IsString, IsInt, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class GenerateSalaryDto {
   @ApiProperty({ example: 'company-uuid' })
@@ -104,6 +104,17 @@ export class SalaryQueryDto {
   @Type(() => Number)
   @IsInt()
   year?: number;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',');
+    return value;
+  })
+  @IsArray()
+  @IsString({ each: true })
+  policyIds?: string[];
 }
 
 export class SalarySaveItemDto {

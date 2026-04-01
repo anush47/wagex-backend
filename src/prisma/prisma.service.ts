@@ -16,8 +16,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     const pool = new Pool({
       connectionString,
-      max: 8, // Reduced to 8 to stay safely below Supabase's session limit (usually 15)
-      min: 2, // Reduced min to free up connections during low traffic
+      max: 5, // Reduced from 8 to 5 to stay safely below Supabase's session limit (usually 15)
+      min: 1, // Reduced min to 1 to free up connections during low traffic
       idleTimeoutMillis: 10000, // Faster idle release (10s)
       connectionTimeoutMillis: 5000, // Fail faster if we can't get a connection
       allowExitOnIdle: false,
