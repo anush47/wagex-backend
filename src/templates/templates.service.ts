@@ -13,46 +13,12 @@ export class TemplatesService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.registerHelpers();
+    this.registerHelpers(Handlebars);
   }
 
-  private registerHelpers() {
-    Handlebars.registerHelper('formatCurrency', (value) => {
-      if (typeof value !== 'number') return value;
-      return new Intl.NumberFormat('en-LK', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(value);
-    });
-
-    Handlebars.registerHelper('formatDate', (date, formatStr) => {
-      if (!date) return '';
-      return new Date(date).toLocaleDateString();
-    });
-
-    Handlebars.registerHelper('eq', (a, b) => a === b);
-
-    Handlebars.registerHelper('chunk', (arr: any[], size: number) => {
-      if (!Array.isArray(arr)) return [];
-      const chunks: any[][] = [];
-      for (let i = 0; i < arr.length; i += size) {
-        chunks.push(arr.slice(i, i + size));
-      }
-      return chunks;
-    });
-
-    Handlebars.registerHelper('getAmount', (list: any[], name: string) => {
-      if (!Array.isArray(list)) return 0;
-      const item = list.find((i) => i.name === name);
-      return item ? item.amount : 0;
-    });
-
-    Handlebars.registerHelper('getCustomTotal', (totalsObj: any, name: string) => {
-      if (!totalsObj) return 0;
-      return totalsObj[name] || 0;
-    });
-
-    Handlebars.registerHelper('add', (a, b) => (a || 0) + (b || 0));
+  private registerHelpers(instance: typeof Handlebars) {
+    // Standard helpers are now defined in the 'helpers' field of each template.
+    // This allows full customization per-template without backend redeployments.
   }
 
   async create(dto: CreateTemplateDto, user: any) {
@@ -95,11 +61,15 @@ export class TemplatesService implements OnModuleInit {
   }
 
   async findAll(query: TemplateQueryDto, user: any) {
-    const { companyId: requestedCompanyId, type, isActive } = query;
+    const { companyId: requestedCompanyId, type, isActive, status } = query;
     const where: any = { type };
 
     if (isActive !== undefined) {
       where.isActive = isActive;
+    }
+
+    if (status) {
+      where.status = status;
     }
 
     // Tenancy Check for Fetch
@@ -146,7 +116,7 @@ export class TemplatesService implements OnModuleInit {
 
     // Immutability for Approved Layouts
     if (template.status === 'APPROVED' && user.role !== 'ADMIN') {
-      const isTryingToEditContent = dto.html || dto.css || dto.config || dto.name || dto.description;
+      const isTryingToEditContent = dto.html || dto.css || dto.helpers || dto.config || dto.name || dto.description;
       if (isTryingToEditContent) {
         throw new BadRequestException('Approved layouts are immutable. Create a copy to make changes.');
       }
@@ -184,9 +154,23 @@ export class TemplatesService implements OnModuleInit {
     }
 
     const data = await this.dataService.getData(template.type, resourceId, query);
-    const html = template.html;
+    
+    // Create a local Handlebars instance to avoid helper collisions
+    const instance = (Handlebars as any).create?.() || Handlebars;
+    this.registerHelpers(instance);
 
-    const compiledTemplate = Handlebars.compile(html);
+    // Register custom helpers from template
+    if (template.helpers) {
+      try {
+        const registerCustom = new Function('Handlebars', template.helpers);
+        registerCustom(instance);
+      } catch (e) {
+        console.error('Custom helper registration failed:', e);
+      }
+    }
+
+    const html = template.html;
+    const compiledTemplate = instance.compile(html);
     const renderedHtml = compiledTemplate(data);
 
     return {

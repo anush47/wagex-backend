@@ -588,6 +588,7 @@ model DocumentTemplate {
   isActive    Boolean      @default(false)
   isDefault   Boolean        @default(false)
   status      TemplateStatus @default(DRAFT)
+  helpers     String?        @default("")
   createdAt   DateTime       @default(now())
   updatedAt   DateTime     @updatedAt
   company     Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)

@@ -27,6 +27,11 @@ export class CreateTemplateDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsString()
+  helpers?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsObject()
   config?: any;
 
@@ -66,6 +71,11 @@ export class UpdateTemplateDto {
   @IsOptional()
   @IsString()
   css?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  helpers?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
