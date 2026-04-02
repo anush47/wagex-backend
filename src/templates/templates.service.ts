@@ -243,7 +243,40 @@ export class TemplatesService implements OnModuleInit {
       basicSalary: 85000,
       remark: 'Excellent performance',
       photo: 'https://i.pravatar.cc/300',
-      department: { name: 'Technology' },
+      department: { 
+        id: 'dept-001',
+        name: 'Technology',
+        description: 'Software and Infrastructure',
+        createdAt: '2020-01-01T00:00:00Z',
+      },
+      manager: {
+        id: '00000000-0000-0000-0000-000000000002',
+        employeeNo: 2,
+        fullName: 'SARAH CHIEF',
+        designation: 'CTO',
+      },
+      policy: {
+        id: 'policy-001',
+        name: 'Standard Corporate Policy',
+        description: 'Standard 45-hour work week with 1.5x OT',
+        settings: {
+          otRate: 1.5,
+          workingDaysPerMonth: 22,
+          standardWorkHours: 8,
+          isEpfEnabled: true,
+          isEtfEnabled: true,
+          workingDays: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'],
+          payrollConfiguration: {
+            frequency: 'MONTHLY',
+          }
+        },
+        createdAt: '2020-01-01T00:00:00Z',
+        updatedAt: '2020-01-01T00:00:00Z',
+      },
+      createdAt: '2026-01-15T00:00:00Z',
+      updatedAt: '2026-03-31T00:00:00Z',
+      canSelfEdit: true,
+      files: [],
       details: {
         bankName: 'Sample Bank PLC',
         bankBranch: 'Main City',
@@ -255,6 +288,8 @@ export class TemplatesService implements OnModuleInit {
         nationality: 'Sri Lankan',
         emergencyContactName: 'Jane Doe',
         emergencyContactPhone: '+94 71 000 0000',
+        createdAt: '2026-01-15T00:00:00Z',
+        updatedAt: '2026-01-15T00:00:00Z',
       },
     };
 
@@ -268,19 +303,24 @@ export class TemplatesService implements OnModuleInit {
       logo: 'https://picsum.photos/400/200?grayscale',
       timezone: 'Asia/Colombo',
       employerNumber: 'EPF/00/0000',
+      startedDate: '2020-01-01',
+      defaultStatutoryPaymentMethod: 'BANK_TRANSFER',
       statutoryBankName: 'Central Bank',
       statutoryBankBranch: 'Colombo',
       statutoryBankCode: '7010',
       statutoryBranchCode: '001',
+      createdAt: '2020-01-01T00:00:00Z',
+      updatedAt: '2026-03-01T00:00:00Z',
+      files: [],
     };
 
     const sampleComponents = [
-      { id: 'comp-1', name: 'Fixed Allowance', type: 'FLAT_AMOUNT', amount: 15000, category: 'ADDITION', systemType: 'NONE', isStatutory: true },
-      { id: 'comp-2', name: 'Performance Bonus', type: 'FLAT_AMOUNT', amount: 5000, category: 'ADDITION', systemType: 'NONE', isStatutory: false },
-      { id: 'holiday-pay', name: 'Holiday Pay', type: 'FLAT_AMOUNT', amount: 4250, category: 'ADDITION', systemType: 'HOLIDAY_PAY', isStatutory: true },
-      { id: 'epf', name: 'EPF', type: 'PERCENTAGE_TOTAL_EARNINGS', value: 8, amount: 8340, category: 'DEDUCTION', systemType: 'EPF_EMPLOYEE', isStatutory: true, employerValue: 12, employerAmount: 12510 },
-      { id: 'etf', name: 'ETF', type: 'PERCENTAGE_TOTAL_EARNINGS', value: 0, amount: 0, category: 'DEDUCTION', systemType: 'ETF_EMPLOYER', isStatutory: true, employerValue: 3, employerAmount: 3127.5 },
-      { id: 'welfare', name: 'Staff Welfare', type: 'FLAT_AMOUNT', value: 500, amount: 500, category: 'DEDUCTION', systemType: 'NONE', isStatutory: false },
+      { id: 'comp-1', name: 'Fixed Allowance', type: 'FLAT_AMOUNT', amount: 15000, category: 'ADDITION', systemType: 'NONE', isStatutory: true, affectsTotalEarnings: true },
+      { id: 'comp-2', name: 'Performance Bonus', type: 'FLAT_AMOUNT', amount: 5000, category: 'ADDITION', systemType: 'NONE', isStatutory: false, affectsTotalEarnings: false },
+      { id: 'holiday-pay', name: 'Holiday Pay', type: 'FLAT_AMOUNT', amount: 4250, category: 'ADDITION', systemType: 'HOLIDAY_PAY', isStatutory: true, affectsTotalEarnings: true },
+      { id: 'epf', name: 'EPF', type: 'PERCENTAGE_TOTAL_EARNINGS', value: 8, amount: 8340, category: 'DEDUCTION', systemType: 'EPF_EMPLOYEE', isStatutory: true, affectsTotalEarnings: true, employerValue: 12, employerAmount: 12510 },
+      { id: 'etf', name: 'ETF', type: 'PERCENTAGE_TOTAL_EARNINGS', value: 0, amount: 0, category: 'DEDUCTION', systemType: 'ETF_EMPLOYER', isStatutory: true, affectsTotalEarnings: true, employerValue: 3, employerAmount: 3127.5 },
+      { id: 'welfare', name: 'Staff Welfare', type: 'FLAT_AMOUNT', value: 500, amount: 500, category: 'DEDUCTION', systemType: 'NONE', isStatutory: false, affectsTotalEarnings: false },
     ];
 
     const additionNames = ['Fixed Allowance', 'Performance Bonus', 'Holiday Pay'];
@@ -300,9 +340,12 @@ export class TemplatesService implements OnModuleInit {
             payDate: '2026-03-31',
             basicSalary: 85000,
             otAmount: 2500,
-            otBreakdown: [{ hours: 10, amount: 2500, rate: 250, type: 'NORMAL_OT' }],
+            otBreakdown: [
+              { hours: 8, amount: 2000, rate: 250, type: 'NORMAL_OT' },
+              { hours: 2, amount: 500, rate: 250, type: 'DOUBLE_OT' }
+            ],
             holidayPayAmount: 4250,
-            holidayPayBreakdown: [{ hours: 8, amount: 4250, holidayName: 'Public Holiday' }],
+            holidayPayBreakdown: [{ hours: 8, amount: 4250, holidayName: 'Public Holiday', affectsTotalEarnings: true }],
             noPayAmount: 0,
             noPayBreakdown: [],
             taxAmount: 0,
@@ -327,6 +370,13 @@ export class TemplatesService implements OnModuleInit {
             components: sampleComponents,
             additions: sampleComponents.filter(c => c.category === 'ADDITION'),
             deductions: sampleComponents.filter(c => c.category === 'DEDUCTION'),
+            approvedById: '00000000-0000-0000-0000-000000000000',
+            approvedAt: '2026-03-31T10:00:00Z',
+            payments: [
+              { id: 'pay-001', amount: 97910, date: '2026-03-31', paymentMethod: 'BANK_TRANSFER', referenceNo: 'TXN123456789', status: 'ACKNOWLEDGED' }
+            ],
+            createdAt: '2026-03-31T09:00:00Z',
+            updatedAt: '2026-03-31T10:00:00Z',
           }
         };
 
@@ -420,11 +470,36 @@ export class TemplatesService implements OnModuleInit {
             inApprovalStatus: 'APPROVED',
             outApprovalStatus: 'APPROVED',
             payrollStatus: 'PROCESSED',
-            remarks: '',
+            remarks: 'Perfect attendance',
+            shiftBreakMinutes: 60,
+            breakMinutes: 60,
+            checkInLocation: 'Main Entrance',
+            checkOutLocation: 'Main Entrance',
+            isEarlyLeave: false,
+            earlyLeaveMinutes: 0,
+            isOnLeave: false,
+            isHalfDay: false,
+            hasShortLeave: false,
+            autoCheckout: false,
+            manuallyEdited: false,
             metadata: {},
+            createdAt: `2026-03-${String(i+1).padStart(2, '0')}T09:00:00Z`,
+            updatedAt: `2026-03-${String(i+1).padStart(2, '0')}T17:40:00Z`,
           })),
           leaves: [
-            { id: 'leave-1', leaveTypeName: 'Annual Leave', type: 'FULL_DAY', startDate: '2026-03-10', endDate: '2026-03-10', days: 1, status: 'APPROVED', reason: 'Personal' }
+            { 
+              id: 'leave-1', 
+              leaveTypeName: 'Annual Leave', 
+              type: 'FULL_DAY', 
+              startDate: '2026-03-10', 
+              endDate: '2026-03-10', 
+              days: 1, 
+              status: 'APPROVED', 
+              reason: 'Personal trip',
+              responseReason: 'Enjoy!',
+              createdAt: '2026-03-01T10:00:00Z',
+              updatedAt: '2026-03-02T09:00:00Z'
+            }
           ],
           summary: {
             totalDays: 26,
