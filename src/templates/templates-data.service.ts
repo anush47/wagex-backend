@@ -108,7 +108,8 @@ export class TemplatesDataService {
 
     const processedSalary = this.processSalaryForTemplate(salary);
     return {
-      ...processedSalary,
+      salary: processedSalary,
+      employee: salary.employee,
       company: salary.employee.company,
     };
   }

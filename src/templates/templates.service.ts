@@ -226,99 +226,150 @@ export class TemplatesService implements OnModuleInit {
     // Variables are now served via the frontend sample-data.ts defaults.
     // This endpoint is kept for backwards compat but returns the same real-schema data.
     const commonEmployee = {
-      id: 'b7e20354-6638-469f-80bd-2d5e308008a4',
-      employeeNo: '1',
-      nic: '195675675758',
-      nameWithInitials: 'ANUSH',
-      fullName: 'ANUSHANGA SHARADA GALA',
-      designation: 'SSE',
-      address: '238/1, Thunandahena, Korathota, Kaduwela.',
-      phone: '+94717539478',
-      email: '',
+      id: '00000000-0000-0000-0000-000000000001',
+      employeeNo: 1,
+      nic: '200000000000',
+      nameWithInitials: 'J. DOE',
+      fullName: 'JOHN DOE',
+      designation: 'Senior Developer',
+      address: 'No. 45, Sample Road, City Area.',
+      phone: '+94 77 123 4567',
+      email: 'john.doe@example.com',
       employmentType: 'PERMANENT',
-      joinedDate: '2026-04-01',
+      joinedDate: '2026-01-15',
+      resignedDate: null,
       gender: 'MALE',
       status: 'ACTIVE',
-      basicSalary: 30000,
-      department: { name: 'Engineering' },
+      basicSalary: 85000,
+      remark: 'Excellent performance',
+      photo: 'https://i.pravatar.cc/300',
+      department: { name: 'Technology' },
       details: {
-        bankName: '',
-        bankBranch: '',
-        accountNumber: '',
+        bankName: 'Sample Bank PLC',
+        bankBranch: 'Main City',
+        accountNumber: '001122334455',
+        mothersName: 'JANE DOE SR',
+        fathersName: 'JOHN DOE SR',
         maritalStatus: 'SINGLE',
+        spouseName: '',
         nationality: 'Sri Lankan',
-        emergencyContactName: '',
-        emergencyContactPhone: '',
+        emergencyContactName: 'Jane Doe',
+        emergencyContactPhone: '+94 71 000 0000',
       },
     };
 
     const commonCompany = {
-      id: 'c1512d1b-9359-4e8b-b140-c9496a946ca1',
-      name: 'AKURU COLOUR GRAPHICS',
-      address: '473, Athurugiriya Rd., Malabe.',
-      phone: '+94 11 234 5678',
-      email: 'info@akuru.lk',
-      logo: '',
+      id: '00000000-0000-0000-0000-000000000000',
+      name: 'WageX Solutions (Pvt) Ltd',
+      active: true,
+      address: 'No. 123, Tech Plaza, Business District, Colombo 03.',
+      phone: '+94 11 200 0000',
+      email: 'contact@wagex.io',
+      logo: 'https://picsum.photos/400/200?grayscale',
       timezone: 'Asia/Colombo',
-      employerNumber: 'X/12345',
+      employerNumber: 'EPF/00/0000',
+      statutoryBankName: 'Central Bank',
+      statutoryBankBranch: 'Colombo',
+      statutoryBankCode: '7010',
+      statutoryBranchCode: '001',
     };
 
     const sampleComponents = [
-      { id: 'incentive', name: 'Incentive', type: 'FLAT_AMOUNT', amount: 1000, category: 'ADDITION', systemType: 'NONE', isStatutory: false },
-      { id: 'holiday-pay', name: 'Holiday Pay', type: 'FLAT_AMOUNT', amount: 2625, category: 'ADDITION', systemType: 'HOLIDAY_PAY', isStatutory: true },
-      { id: 'epf', name: 'EPF', type: 'PERCENTAGE_TOTAL_EARNINGS', value: 8, amount: 770, category: 'DEDUCTION', systemType: 'EPF_EMPLOYEE', isStatutory: true, employerValue: 12, employerAmount: 1155 },
-      { id: 'etf', name: 'ETF', type: 'PERCENTAGE_TOTAL_EARNINGS', value: 0, amount: 0, category: 'DEDUCTION', systemType: 'ETF_EMPLOYER', isStatutory: true, employerValue: 3, employerAmount: 288.75 },
-      { id: 'welfare', name: 'Welfare', type: 'FLAT_AMOUNT', value: 250, amount: 250, category: 'DEDUCTION', systemType: 'NONE', isStatutory: false },
+      { id: 'comp-1', name: 'Fixed Allowance', type: 'FLAT_AMOUNT', amount: 15000, category: 'ADDITION', systemType: 'NONE', isStatutory: true },
+      { id: 'comp-2', name: 'Performance Bonus', type: 'FLAT_AMOUNT', amount: 5000, category: 'ADDITION', systemType: 'NONE', isStatutory: false },
+      { id: 'holiday-pay', name: 'Holiday Pay', type: 'FLAT_AMOUNT', amount: 4250, category: 'ADDITION', systemType: 'HOLIDAY_PAY', isStatutory: true },
+      { id: 'epf', name: 'EPF', type: 'PERCENTAGE_TOTAL_EARNINGS', value: 8, amount: 8340, category: 'DEDUCTION', systemType: 'EPF_EMPLOYEE', isStatutory: true, employerValue: 12, employerAmount: 12510 },
+      { id: 'etf', name: 'ETF', type: 'PERCENTAGE_TOTAL_EARNINGS', value: 0, amount: 0, category: 'DEDUCTION', systemType: 'ETF_EMPLOYER', isStatutory: true, employerValue: 3, employerAmount: 3127.5 },
+      { id: 'welfare', name: 'Staff Welfare', type: 'FLAT_AMOUNT', value: 500, amount: 500, category: 'DEDUCTION', systemType: 'NONE', isStatutory: false },
     ];
 
-    const additionNames = ['Incentive', 'Holiday Pay'];
-    const deductionNames = ['EPF', 'ETF', 'Welfare'];
+    const additionNames = ['Fixed Allowance', 'Performance Bonus', 'Holiday Pay'];
+    const deductionNames = ['EPF', 'Staff Welfare'];
 
     switch (type) {
       case DocumentType.PAYSLIP:
         return {
           company: commonCompany,
           employee: commonEmployee,
-          month: 3,
-          year: 2026,
-          periodStartDate: '2026-03-01',
-          periodEndDate: '2026-03-31',
-          payDate: '2026-03-31',
-          basicSalary: 30000,
-          netSalary: 30000,
-          otAmount: 0,
-          holidayPayAmount: 2625,
-          noPayAmount: 23000,
-          taxAmount: 0,
-          advanceDeduction: 0,
-          lateDeduction: 0,
-          epfEmployee: 770,
-          epfEmployer: 1155,
-          etfEmployer: 288.75,
-          components: sampleComponents,
-          additions: sampleComponents.filter(c => c.category === 'ADDITION'),
-          deductions: sampleComponents.filter(c => c.category === 'DEDUCTION'),
-          otBreakdown: [],
-          holidayPayBreakdown: [{ hours: 10.5, amount: 2625, holidayName: 'Off Day OT' }],
-          noPayBreakdown: [
-            { type: 'ABSENCE', count: 23, amount: 23000, reason: 'Absence without leave' },
-          ],
+          salary: {
+            id: 'sal-001',
+            month: 3,
+            year: 2026,
+            periodStartDate: '2026-03-01',
+            periodEndDate: '2026-03-31',
+            payDate: '2026-03-31',
+            basicSalary: 85000,
+            otAmount: 2500,
+            otBreakdown: [{ hours: 10, amount: 2500, rate: 250, type: 'NORMAL_OT' }],
+            holidayPayAmount: 4250,
+            holidayPayBreakdown: [{ hours: 8, amount: 4250, holidayName: 'Public Holiday' }],
+            noPayAmount: 0,
+            noPayBreakdown: [],
+            taxAmount: 0,
+            advanceDeduction: 0,
+            netSalary: 97910,
+            status: 'APPROVED',
+            remarks: 'Standard monthly payroll run',
+            otAdjustment: 0,
+            otAdjustmentReason: '',
+            lateDeduction: 0,
+            lateAdjustment: 0,
+            lateAdjustmentReason: '',
+            holidayPayAdjustment: 0,
+            holidayPayAdjustmentReason: '',
+            recoveryAdjustment: 0,
+            recoveryAdjustmentReason: '',
+            advanceAdjustments: [],
+            // Statutory totals (mapped from components for convenience)
+            epfEmployee: 8340,
+            epfEmployer: 12510,
+            etfEmployer: 3127.5,
+            components: sampleComponents,
+            additions: sampleComponents.filter(c => c.category === 'ADDITION'),
+            deductions: sampleComponents.filter(c => c.category === 'DEDUCTION'),
+          }
         };
 
       case DocumentType.SALARY_SHEET: {
-        const buildRow = (i: number) => ({
-          employee: { ...commonEmployee, id: `emp-${i}`, employeeNo: String(i + 1), fullName: i % 2 === 0 ? 'ANUSHANGA SHARADA GALA' : 'JANE SMITH PERERA' },
-          basicSalary: 30000 + i * 5000,
-          netSalary: 28000 + i * 5000,
-          otAmount: i % 3 === 0 ? 2500 : 0,
-          holidayPayAmount: i % 2 === 0 ? 2625 : 0,
-          noPayAmount: i % 4 === 0 ? 1000 : 0,
-          epfEmployee: (30000 + i * 5000) * 0.08,
-          epfEmployer: (30000 + i * 5000) * 0.12,
-          etfEmployer: (30000 + i * 5000) * 0.03,
-          additionAmounts: Object.fromEntries(additionNames.map((n, j) => [n, j === 0 ? 1000 : 2625 * (i % 2)])),
-          deductionAmounts: Object.fromEntries(deductionNames.map(n => [n, n === 'EPF' ? (30000 + i * 5000) * 0.08 : n === 'ETF' ? (30000 + i * 5000) * 0.03 : 250])),
-        });
+        const buildRow = (i: number) => {
+          const basic = 60000 + (i * 10000);
+          const ot = i % 2 === 0 ? 3000 : 0;
+          const holidayPay = 4250;
+          const net = basic + ot + holidayPay + 15000 + 5000 + 4250 - (basic * 0.08) - 500;
+          
+          return {
+            employee: { 
+              ...commonEmployee, 
+              id: `emp-${i}`, 
+              employeeNo: `00${i + 1}`, 
+              fullName: i % 2 === 0 ? 'JOHN DOE' : 'JANE SMITH',
+              designation: i % 2 === 0 ? 'Senior Developer' : 'HR Manager',
+              department: { name: i % 2 === 0 ? 'Technology' : 'HR' },
+            },
+            // Flattened salary fields for worksheet rows to match template access
+            id: `sal-${i}`,
+            basicSalary: basic,
+            netSalary: net,
+            otAmount: ot,
+            holidayPayAmount: holidayPay,
+            noPayAmount: 0,
+            epfEmployee: basic * 0.08,
+            epfEmployer: basic * 0.12,
+            etfEmployer: basic * 0.03,
+            payDate: '2026-03-31',
+            status: 'APPROVED',
+            additionAmounts: {
+              "Fixed Allowance": 15000,
+              "Performance Bonus": 5000,
+              "Holiday Pay": 4250
+            },
+            deductionAmounts: {
+              "EPF": basic * 0.08,
+              "Staff Welfare": 500
+            },
+          };
+        };
+
         const salaries = Array.from({ length: 5 }, (_, i) => buildRow(i));
         return {
           company: commonCompany,
@@ -369,7 +420,12 @@ export class TemplatesService implements OnModuleInit {
             inApprovalStatus: 'APPROVED',
             outApprovalStatus: 'APPROVED',
             payrollStatus: 'PROCESSED',
+            remarks: '',
+            metadata: {},
           })),
+          leaves: [
+            { id: 'leave-1', leaveTypeName: 'Annual Leave', type: 'FULL_DAY', startDate: '2026-03-10', endDate: '2026-03-10', days: 1, status: 'APPROVED', reason: 'Personal' }
+          ],
           summary: {
             totalDays: 26,
             workingDays: 22,
