@@ -39,6 +39,11 @@ export class CreateTemplateDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  companyId?: string;
 }
 
 export class UpdateTemplateDto {
@@ -81,6 +86,11 @@ export class UpdateTemplateDto {
   @IsOptional()
   @IsEnum(['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'])
   status?: TemplateStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  companyId?: string;
 }
 
 export class TemplateQueryDto {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, OnModuleInit, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTemplateDto, UpdateTemplateDto, TemplateQueryDto } from './dto/template.dto';
 import * as Handlebars from 'handlebars';
@@ -55,9 +55,37 @@ export class TemplatesService implements OnModuleInit {
     Handlebars.registerHelper('add', (a, b) => (a || 0) + (b || 0));
   }
 
-  async create(dto: CreateTemplateDto) {
+  async create(dto: CreateTemplateDto, user: any) {
+    let companyId = dto.companyId;
+
+    // Inference Logic
+    if (!companyId && user.role === 'EMPLOYER') {
+      const memberships = user.memberships || [];
+      if (memberships.length === 1) {
+        companyId = memberships[0].companyId;
+      } else if (memberships.length > 1) {
+        throw new BadRequestException('Multiple companies found. Please specify companyId.');
+      } else {
+        throw new ForbiddenException('You do not belong to any company.');
+      }
+    }
+
+    // Security/Tenancy Check
+    if (companyId && user.role === 'EMPLOYER') {
+      const hasAccess = user.memberships?.some((m: any) => m.companyId === companyId);
+      if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this company.');
+      }
+    }
+
+    // Admins can create global templates (companyId: null)
+    if (!companyId && user.role !== 'ADMIN') {
+        throw new BadRequestException('Only admins can create global templates.');
+    }
+
     const finalDto = {
       ...dto,
+      companyId,
       status: dto.status || TemplateStatus.DRAFT,
       isActive: false, // Force false on create to prevent bypass
     };
@@ -66,51 +94,69 @@ export class TemplatesService implements OnModuleInit {
     });
   }
 
-  async findAll(query: TemplateQueryDto) {
-    const { companyId, type, isActive } = query;
+  async findAll(query: TemplateQueryDto, user: any) {
+    const { companyId: requestedCompanyId, type, isActive } = query;
     const where: any = { type };
 
     if (isActive !== undefined) {
       where.isActive = isActive;
     }
 
+    // Tenancy Check for Fetch
+    const accessibleCompanyId = user.role === 'ADMIN' 
+      ? requestedCompanyId 
+      : requestedCompanyId || user.memberships?.[0]?.companyId; // Employer must pick a context
+
+    if (user.role === 'EMPLOYER' && accessibleCompanyId) {
+       const hasAccess = user.memberships?.some((m: any) => m.companyId === accessibleCompanyId);
+       if (!hasAccess) {
+         throw new ForbiddenException('You do not have access to this company.');
+       }
+    }
+
     return this.prisma.documentTemplate.findMany({
       where: {
         ...where,
-        OR: [{ companyId: null }, ...(companyId ? [{ companyId }] : [])],
+        OR: [{ companyId: null }, ...(accessibleCompanyId ? [{ companyId: accessibleCompanyId }] : [])],
       },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: any) {
     const template = await this.prisma.documentTemplate.findUnique({
       where: { id },
     });
     if (!template) throw new NotFoundException('Template not found');
+
+    // Tenancy Check
+    if (template.companyId && user.role === 'EMPLOYER') {
+        const hasAccess = user.memberships?.some((m: any) => m.companyId === template.companyId);
+        if (!hasAccess) throw new ForbiddenException('No access to this template');
+    }
+
     return template;
   }
 
-  async update(id: string, dto: UpdateTemplateDto) {
-    const template = await this.findOne(id);
+  async update(id: string, dto: UpdateTemplateDto, user: any) {
+    const template = await this.findOne(id, user);
     const finalDto = { ...dto };
     const newStatus = dto.status || template.status;
     const newActiveState = dto.isActive !== undefined ? dto.isActive : template.isActive;
 
-    // RULE 1: Approved templates are IMMUTABLE for content
-    if (template.status === 'APPROVED') {
+    // Immutability for Approved Layouts
+    if (template.status === 'APPROVED' && user.role !== 'ADMIN') {
       const isTryingToEditContent = dto.html || dto.css || dto.config || dto.name || dto.description;
       if (isTryingToEditContent) {
         throw new BadRequestException('Approved layouts are immutable. Create a copy to make changes.');
       }
     }
 
-    // RULE 2: Only Approved layouts can be Active
+    // Role checks for activation
     if (newActiveState && newStatus !== 'APPROVED') {
-      throw new BadRequestException('Only approved layouts can be activated for production use.');
+      throw new BadRequestException('Only approved layouts can be activated.');
     }
 
-    // RULE 3: Transition to non-approved always resets activation status
     if (newStatus !== 'APPROVED') {
       finalDto.isActive = false;
     }
@@ -121,7 +167,8 @@ export class TemplatesService implements OnModuleInit {
     });
   }
 
-  async remove(id: string) {
+  async remove(id: string, user: any) {
+    await this.findOne(id, user);
     return this.prisma.documentTemplate.delete({
       where: { id },
     });
