@@ -144,6 +144,44 @@ export class TemplatesService implements OnModuleInit {
     });
   }
 
+  async getLiveData(type: DocumentType, resourceId?: string, user?: any, query?: any) {
+    if (!resourceId) {
+      return this.getVariables(type);
+    }
+
+    // Security & Tenancy Validation
+    if (user && user.role !== 'ADMIN') {
+        const parts = resourceId.split('_');
+        let companyIdToCheck: string | null = null;
+        
+        switch (type) {
+            case DocumentType.PAYSLIP: {
+                const salary = await this.prisma.salary.findUnique({
+                    where: { id: resourceId },
+                    include: { employee: { select: { companyId: true } } }
+                });
+                companyIdToCheck = salary?.employee?.companyId || null;
+                break;
+            }
+            case DocumentType.SALARY_SHEET:
+                companyIdToCheck = parts[0];
+                break;
+            case DocumentType.ATTENDANCE_REPORT:
+                companyIdToCheck = parts[0];
+                break;
+        }
+
+        if (companyIdToCheck) {
+            const hasAccess = user.memberships?.some((m: any) => m.companyId === companyIdToCheck);
+            if (!hasAccess) {
+                throw new ForbiddenException('No access to this data context.');
+            }
+        }
+    }
+
+    return this.dataService.getData(type, resourceId, query);
+  }
+
   async render(templateId: string, resourceId: string, query: any = {}) {
     const template = await this.prisma.documentTemplate.findUnique({
       where: { id: templateId },

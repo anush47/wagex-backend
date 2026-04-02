@@ -33,6 +33,17 @@ export class TemplatesController {
     return this.templatesService.getVariables(type);
   }
 
+  @Get('live-data/:type')
+  @ApiOperation({ summary: 'Get live sample data for a document type' })
+  getLiveData(
+    @Param('type') type: DocumentType,
+    @Query('resourceId') resourceId: string,
+    @Request() req: RequestWithUserNamespace.RequestWithUser,
+    @Query() query: any
+  ) {
+    return this.templatesService.getLiveData(type, resourceId, req.user, query);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a single template' })
   findOne(@Param('id') id: string, @Request() req: RequestWithUserNamespace.RequestWithUser) {
