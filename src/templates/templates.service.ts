@@ -512,6 +512,110 @@ export class TemplatesService implements OnModuleInit {
           },
         };
 
+      case DocumentType.EPF_FORM: {
+        const epfSalaries = Array.from({ length: 5 }, (_, i) => {
+          const basic = 60000 + i * 10000;
+          return {
+            employee: {
+              ...commonEmployee,
+              id: `emp-${i}`,
+              employeeNo: `00${i + 1}`,
+              fullName: i % 2 === 0 ? 'JOHN DOE' : 'JANE SMITH',
+              memberNo: `EPF/MBR/00${i + 1}`,
+            },
+            id: `sal-${i}`,
+            basicSalary: basic,
+            grossEarnings: basic + 24250,
+            netSalary: basic + 24250 - basic * 0.08 - 500,
+            epfEmployee: basic * 0.08,
+            epfEmployer: basic * 0.12,
+            payDate: '2026-03-31',
+            status: 'APPROVED',
+          };
+        });
+        return {
+          company: commonCompany,
+          month: 3,
+          year: 2026,
+          periodStartDate: '2026-03-01',
+          periodEndDate: '2026-03-31',
+          payDate: '2026-03-31',
+          epfRecord: {
+            id: 'epf-001',
+            month: 3,
+            year: 2026,
+            referenceNo: 'EPF/REF/2026/03/001',
+            totalContribution: epfSalaries.reduce((s, r) => s + r.epfEmployee + r.epfEmployer, 0),
+            totalEmployeeContribution: epfSalaries.reduce((s, r) => s + r.epfEmployee, 0),
+            totalEmployerContribution: epfSalaries.reduce((s, r) => s + r.epfEmployer, 0),
+            surcharge: 0,
+            paidDate: null,
+            paymentMethod: 'BANK_TRANSFER',
+            bankName: commonCompany.statutoryBankName,
+            bankBranch: commonCompany.statutoryBankBranch,
+            bankCode: commonCompany.statutoryBankCode,
+            branchCode: commonCompany.statutoryBranchCode,
+            chequeNo: null,
+            remarks: '',
+          },
+          salaries: epfSalaries,
+          totals: {
+            totalEmployeeContribution: epfSalaries.reduce((s, r) => s + r.epfEmployee, 0),
+            totalEmployerContribution: epfSalaries.reduce((s, r) => s + r.epfEmployer, 0),
+            totalContribution: epfSalaries.reduce((s, r) => s + r.epfEmployee + r.epfEmployer, 0),
+          },
+        };
+      }
+
+      case DocumentType.ETF_FORM: {
+        const etfSalaries = Array.from({ length: 5 }, (_, i) => {
+          const basic = 60000 + i * 10000;
+          return {
+            employee: {
+              ...commonEmployee,
+              id: `emp-${i}`,
+              employeeNo: `00${i + 1}`,
+              fullName: i % 2 === 0 ? 'JOHN DOE' : 'JANE SMITH',
+              memberNo: `ETF/MBR/00${i + 1}`,
+            },
+            id: `sal-${i}`,
+            basicSalary: basic,
+            grossEarnings: basic + 24250,
+            netSalary: basic + 24250 - basic * 0.08 - 500,
+            etfEmployer: basic * 0.03,
+            payDate: '2026-03-31',
+            status: 'APPROVED',
+          };
+        });
+        return {
+          company: commonCompany,
+          month: 3,
+          year: 2026,
+          periodStartDate: '2026-03-01',
+          periodEndDate: '2026-03-31',
+          payDate: '2026-03-31',
+          etfRecord: {
+            id: 'etf-001',
+            month: 3,
+            year: 2026,
+            totalContribution: etfSalaries.reduce((s, r) => s + r.etfEmployer, 0),
+            surcharge: 0,
+            paidDate: null,
+            paymentMethod: 'BANK_TRANSFER',
+            bankName: commonCompany.statutoryBankName,
+            bankBranch: commonCompany.statutoryBankBranch,
+            bankCode: commonCompany.statutoryBankCode,
+            branchCode: commonCompany.statutoryBranchCode,
+            chequeNo: null,
+            remarks: '',
+          },
+          salaries: etfSalaries,
+          totals: {
+            totalContribution: etfSalaries.reduce((s, r) => s + r.etfEmployer, 0),
+          },
+        };
+      }
+
       default:
         return {};
     }
