@@ -185,120 +185,164 @@ export class TemplatesService implements OnModuleInit {
   }
 
   getVariables(type: DocumentType) {
-    const commonVariables = {
-      company: {
-        name: 'WageX (Pvt) Ltd',
-        address: '123 Business Road, Colombo 03',
-        phone: '+94 11 234 5678',
-        email: 'hello@wagex.com',
-        logo: 'https://wagex.com/logo.png',
+    // Variables are now served via the frontend sample-data.ts defaults.
+    // This endpoint is kept for backwards compat but returns the same real-schema data.
+    const commonEmployee = {
+      id: 'b7e20354-6638-469f-80bd-2d5e308008a4',
+      employeeNo: '1',
+      nic: '195675675758',
+      nameWithInitials: 'ANUSH',
+      fullName: 'ANUSHANGA SHARADA GALA',
+      designation: 'SSE',
+      address: '238/1, Thunandahena, Korathota, Kaduwela.',
+      phone: '+94717539478',
+      email: '',
+      employmentType: 'PERMANENT',
+      joinedDate: '2026-04-01',
+      gender: 'MALE',
+      status: 'ACTIVE',
+      basicSalary: 30000,
+      department: { name: 'Engineering' },
+      details: {
+        bankName: '',
+        bankBranch: '',
+        accountNumber: '',
+        maritalStatus: 'SINGLE',
+        nationality: 'Sri Lankan',
+        emergencyContactName: '',
+        emergencyContactPhone: '',
       },
     };
+
+    const commonCompany = {
+      id: 'c1512d1b-9359-4e8b-b140-c9496a946ca1',
+      name: 'AKURU COLOUR GRAPHICS',
+      address: '473, Athurugiriya Rd., Malabe.',
+      phone: '+94 11 234 5678',
+      email: 'info@akuru.lk',
+      logo: '',
+      timezone: 'Asia/Colombo',
+      employerNumber: 'X/12345',
+    };
+
+    const sampleComponents = [
+      { id: 'incentive', name: 'Incentive', type: 'FLAT_AMOUNT', amount: 1000, category: 'ADDITION', systemType: 'NONE', isStatutory: false },
+      { id: 'holiday-pay', name: 'Holiday Pay', type: 'FLAT_AMOUNT', amount: 2625, category: 'ADDITION', systemType: 'HOLIDAY_PAY', isStatutory: true },
+      { id: 'epf', name: 'EPF', type: 'PERCENTAGE_TOTAL_EARNINGS', value: 8, amount: 770, category: 'DEDUCTION', systemType: 'EPF_EMPLOYEE', isStatutory: true, employerValue: 12, employerAmount: 1155 },
+      { id: 'etf', name: 'ETF', type: 'PERCENTAGE_TOTAL_EARNINGS', value: 0, amount: 0, category: 'DEDUCTION', systemType: 'ETF_EMPLOYER', isStatutory: true, employerValue: 3, employerAmount: 288.75 },
+      { id: 'welfare', name: 'Welfare', type: 'FLAT_AMOUNT', value: 250, amount: 250, category: 'DEDUCTION', systemType: 'NONE', isStatutory: false },
+    ];
+
+    const additionNames = ['Incentive', 'Holiday Pay'];
+    const deductionNames = ['EPF', 'ETF', 'Welfare'];
 
     switch (type) {
       case DocumentType.PAYSLIP:
         return {
-          ...commonVariables,
-          employee: {
-            id: 'EMP-UUID-001',
-            fullName: 'John Doe',
-            employeeNo: 'EMP-001',
-            memberNo: 'EMP-001',
-            nic: '199512345678',
-            designation: 'Software Engineer',
-            department: { name: 'Engineering' },
-            epfNo: '1234/E',
-          },
+          company: commonCompany,
+          employee: commonEmployee,
           month: 3,
-          year: 2024,
-          periodStartDate: '2024-03-01',
-          periodEndDate: '2024-03-31',
-          payDate: '2024-03-31',
-          basicSalary: 120000.0,
-          grossSalary: 135000.0,
-          netSalary: 115000.0,
-          epfEmployee: 9600.0,
-          epfEmployer: 14400.0,
-          etfEmployer: 3600.0,
-          otPay: 10000.0,
-          holidayPay: 5000.0,
-          noPay: 0.0,
-          advanceDeduction: 5000.0,
-          lateDeduction: 0.0,
-          taxAmount: 5000.0,
-          additions: [{ name: 'Travel Allowance', amount: 5000 }],
-          deductions: [{ name: 'Medical Insurance', amount: 2000 }],
+          year: 2026,
+          periodStartDate: '2026-03-01',
+          periodEndDate: '2026-03-31',
+          payDate: '2026-03-31',
+          basicSalary: 30000,
+          netSalary: 30000,
+          otAmount: 0,
+          holidayPayAmount: 2625,
+          noPayAmount: 23000,
+          taxAmount: 0,
+          advanceDeduction: 0,
+          lateDeduction: 0,
+          epfEmployee: 770,
+          epfEmployer: 1155,
+          etfEmployer: 288.75,
+          components: sampleComponents,
+          additions: sampleComponents.filter(c => c.category === 'ADDITION'),
+          deductions: sampleComponents.filter(c => c.category === 'DEDUCTION'),
+          otBreakdown: [],
+          holidayPayBreakdown: [{ hours: 10.5, amount: 2625, holidayName: 'Off Day OT' }],
+          noPayBreakdown: [
+            { type: 'ABSENCE', count: 23, amount: 23000, reason: 'Absence without leave' },
+          ],
         };
 
-      case DocumentType.SALARY_SHEET:
+      case DocumentType.SALARY_SHEET: {
+        const buildRow = (i: number) => ({
+          employee: { ...commonEmployee, id: `emp-${i}`, employeeNo: String(i + 1), fullName: i % 2 === 0 ? 'ANUSHANGA SHARADA GALA' : 'JANE SMITH PERERA' },
+          basicSalary: 30000 + i * 5000,
+          netSalary: 28000 + i * 5000,
+          otAmount: i % 3 === 0 ? 2500 : 0,
+          holidayPayAmount: i % 2 === 0 ? 2625 : 0,
+          noPayAmount: i % 4 === 0 ? 1000 : 0,
+          epfEmployee: (30000 + i * 5000) * 0.08,
+          epfEmployer: (30000 + i * 5000) * 0.12,
+          etfEmployer: (30000 + i * 5000) * 0.03,
+          additionAmounts: Object.fromEntries(additionNames.map((n, j) => [n, j === 0 ? 1000 : 2625 * (i % 2)])),
+          deductionAmounts: Object.fromEntries(deductionNames.map(n => [n, n === 'EPF' ? (30000 + i * 5000) * 0.08 : n === 'ETF' ? (30000 + i * 5000) * 0.03 : 250])),
+        });
+        const salaries = Array.from({ length: 5 }, (_, i) => buildRow(i));
         return {
-          ...commonVariables,
+          company: commonCompany,
           month: 3,
-          year: 2024,
-          additionColumns: ['Travel Allowance', 'Performance Bonus'],
-          deductionColumns: ['Medical Insurance', 'Special Fund'],
-          salaries: Array.from({ length: 20 }).map((_, i) => ({
-            employee: { 
-              id: `EMP-UUID-00${i + 1}`,
-              fullName: i % 2 === 0 ? 'John Doe' : 'Jane Smith', 
-              employeeNo: `EMP-00${i + 1}`,
-              memberNo: `EMP-00${i + 1}`,
-              nic: `19951234567${i}`,
-              designation: i % 2 === 0 ? 'Software Engineer' : 'Product Designer',
-              department: { name: i % 2 === 0 ? 'Engineering' : 'Design' }
-            },
-            basicSalary: 120000.0,
-            grossSalary: 135000.0,
-            netSalary: 115000.0,
-            epfEmployee: 9600.0,
-            epfEmployer: 14400.0,
-            etfEmployer: 3600.0,
-            otPay: 10000.0,
-            holidayPay: 5000.0,
-            additions: [
-              { name: 'Travel Allowance', amount: 5000 },
-              { name: 'Performance Bonus', amount: 0 },
-            ],
-            deductions: [
-              { name: 'Medical Insurance', amount: 2000 },
-              { name: 'Special Fund', amount: 0 },
-            ],
-          })),
+          year: 2026,
+          periodStartDate: '2026-03-01',
+          periodEndDate: '2026-03-31',
+          additionColumns: additionNames,
+          deductionColumns: deductionNames,
+          salaries,
           totals: {
-            basicSalary: 120000.0 * 20,
-            grossSalary: 135000.0 * 20,
-            netSalary: 115000.0 * 20,
-            epfEmployee: 9600.0 * 20,
-            epfEmployer: 14400.0 * 20,
-            etfEmployer: 3600.0 * 20,
-            otPay: 10000.0 * 20,
-            holidayPay: 5000.0 * 20,
-            customAdditions: { 'Travel Allowance': 5000 * 20, 'Performance Bonus': 0 },
-            customDeductions: { 'Medical Insurance': 2000 * 20, 'Special Fund': 0 },
-            totalAdditions: 15000.0 * 20,
-            totalDeductions: 20000.0 * 20,
+            basicSalary: salaries.reduce((s, r) => s + r.basicSalary, 0),
+            netSalary: salaries.reduce((s, r) => s + r.netSalary, 0),
+            otAmount: salaries.reduce((s, r) => s + r.otAmount, 0),
+            epfEmployee: salaries.reduce((s, r) => s + r.epfEmployee, 0),
+            epfEmployer: salaries.reduce((s, r) => s + r.epfEmployer, 0),
+            etfEmployer: salaries.reduce((s, r) => s + r.etfEmployer, 0),
+            holidayPayAmount: salaries.reduce((s, r) => s + r.holidayPayAmount, 0),
+            noPayAmount: salaries.reduce((s, r) => s + r.noPayAmount, 0),
+            additionAmounts: Object.fromEntries(additionNames.map(n => [n, salaries.reduce((s, r) => s + (r.additionAmounts[n] || 0), 0)])),
+            deductionAmounts: Object.fromEntries(deductionNames.map(n => [n, salaries.reduce((s, r) => s + (r.deductionAmounts[n] || 0), 0)])),
           },
         };
+      }
 
       case DocumentType.ATTENDANCE_REPORT:
         return {
-          ...commonVariables,
-          employee: { 
-            id: 'EMP-UUID-001',
-            fullName: 'John Doe', 
-            employeeNo: 'EMP-001',
-            memberNo: 'EMP-001',
-            nic: '199512345678',
-            designation: 'Software Engineer',
-            department: { name: 'Engineering' }
-          },
+          company: commonCompany,
+          employee: commonEmployee,
           month: 3,
-          year: 2024,
-          logs: [
-            { date: '2024-03-01', checkIn: '08:00 AM', checkOut: '05:00 PM', status: 'PRESENT' },
-            { date: '2024-03-02', checkIn: '08:15 AM', checkOut: '05:10 PM', status: 'PRESENT' },
-          ],
+          year: 2026,
+          periodStartDate: '2026-03-01',
+          periodEndDate: '2026-03-31',
+          logs: Array.from({ length: 5 }, (_, i) => ({
+            id: `att-${i}`,
+            date: `2026-03-${String(i + 1).padStart(2, '0')}`,
+            shiftName: 'Standard Shift',
+            shiftStartTime: '09:00',
+            shiftEndTime: '17:00',
+            checkInTime: `2026-03-${String(i + 1).padStart(2, '0')} 09:10:00`,
+            checkOutTime: `2026-03-${String(i + 1).padStart(2, '0')} 17:40:00`,
+            totalMinutes: 690,
+            workMinutes: 630,
+            overtimeMinutes: i % 3 === 0 ? 90 : 0,
+            isLate: i % 5 === 0,
+            lateMinutes: i % 5 === 0 ? 10 : 0,
+            workDayStatus: 'WORKING_DAY',
+            inApprovalStatus: 'APPROVED',
+            outApprovalStatus: 'APPROVED',
+            payrollStatus: 'PROCESSED',
+          })),
+          summary: {
+            totalDays: 26,
+            workingDays: 22,
+            presentDays: 21,
+            absentDays: 1,
+            lateDays: 3,
+            overtimeMinutes: 540,
+            leavesTaken: 1,
+          },
         };
+
       default:
         return {};
     }
