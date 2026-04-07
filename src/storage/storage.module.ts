@@ -9,5 +9,6 @@ import { AuditModule } from '../audit/audit.module';
   imports: [ConfigModule, AuditModule],
   providers: [StorageService],
   controllers: [StorageController],
+  exports: [StorageService],
 })
 export class StorageModule {}

@@ -1,29 +1,86 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DocumentType } from '@prisma/client';
+import { StorageService } from '../storage/storage.service';
+import { format } from 'date-fns';
 
 @Injectable()
 export class TemplatesDataService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService
+  ) {}
 
   async getData(type: DocumentType, compositeId: string, query: any = {}) {
     const parts = compositeId.split('_');
+    let data : any;
 
     switch (type) {
       case DocumentType.PAYSLIP:
-        return this.getSalaryData(compositeId);
+        data = await this.getSalaryData(compositeId);
+        break;
       case DocumentType.SALARY_SHEET: {
         const [companyId, month, year] = parts;
         const ids = query.ids ? query.ids.split(',') : [];
-        return this.getSalarySheetData(companyId, parseInt(month), parseInt(year), ids);
+        data = await this.getSalarySheetData(companyId, parseInt(month), parseInt(year), ids);
+        break;
       }
       case DocumentType.ATTENDANCE_REPORT: {
         const [companyId, employeeId, startDate, endDate] = parts;
-        return this.getAttendanceData(companyId, employeeId, startDate, endDate);
+        data = await this.getAttendanceData(companyId, employeeId, startDate, endDate);
+        break;
       }
       default:
         throw new Error('Unsupported document type for data fetching');
     }
+
+    if (data) {
+      // Find company object (could be root or nested in employee)
+      let company = data.company;
+      if (!company && data.employee?.company) {
+        company = data.employee.company;
+      }
+
+      if (company) {
+        company.logo = await this.getPrintLogo(company);
+      }
+      
+      // Also resolve employee photos if present
+      if (data.employee) {
+        data.employee.photo = await this.resolveStorageUrl(data.employee.photo);
+      }
+      if (data.salaries) {
+        for (const s of data.salaries) {
+          if (s.employee) {
+            s.employee.photo = await this.resolveStorageUrl(s.employee.photo);
+          }
+        }
+      }
+    }
+
+    return data;
+  }
+
+  private async resolveStorageUrl(keyOrUrl: string | null): Promise<string | null> {
+    if (!keyOrUrl) return null;
+    if (keyOrUrl.startsWith('http') || keyOrUrl.startsWith('blob:')) return keyOrUrl;
+    
+    try {
+      return await this.storageService.getSignedUrl(keyOrUrl);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  private async getPrintLogo(company: any): Promise<string | null> {
+    const files = Array.isArray(company.files) ? company.files : [];
+    // Loosen the type check as JSON metadata might vary, prioritize the exact name "logo_print"
+    const printLogoFile = files.find((f: any) => 
+      f.name === 'logo_print' || 
+      (f.name?.startsWith('logo_print') && /\.(webp|png|jpg|jpeg)$/i.test(f.url || ''))
+    );
+    const rawKey = printLogoFile?.url || printLogoFile?.key || company.logo || null;
+    return this.resolveStorageUrl(rawKey);
   }
 
   private processSalaryForTemplate(salary: any) {
@@ -69,6 +126,14 @@ export class TemplatesDataService {
     const totalDeductions = totalCustomDeductions + epfEmployee + advanceDeduction + lateDeduction + taxAmount + noPay;
 
     const grossSalary = (salary.basicSalary || 0) + totalAdditions;
+    const netSalary = grossSalary - totalDeductions;
+
+    // Provide additionAmounts and deductionAmounts objects for easier template access (matches sample data)
+    const additionAmounts: Record<string, number> = {};
+    additions.forEach(a => additionAmounts[a.name] = a.amount);
+    
+    const deductionAmounts: Record<string, number> = {};
+    deductions.forEach(d => deductionAmounts[d.name] = d.amount);
 
     return {
       ...salary,
@@ -83,11 +148,14 @@ export class TemplatesDataService {
       taxAmount,
       additions,
       deductions,
+      additionAmounts,
+      deductionAmounts,
       totalAdditions,
       totalDeductions,
       grossSalary,
+      netSalary,
     };
-  }
+}
 
   private async getSalaryData(salaryId: string) {
     const salary = await this.prisma.salary.findUnique({
@@ -111,6 +179,11 @@ export class TemplatesDataService {
       salary: processedSalary,
       employee: salary.employee,
       company: salary.employee.company,
+      month: salary.month,
+      year: salary.year,
+      periodStartDate: format(new Date(salary.periodStartDate), 'yyyy-MM-dd'),
+      periodEndDate: format(new Date(salary.periodEndDate), 'yyyy-MM-dd'),
+      payDate: format(new Date(salary.payDate), 'yyyy-MM-dd'),
     };
   }
 
@@ -150,9 +223,9 @@ export class TemplatesDataService {
 
     const totals: any = {
       basicSalary: 0,
-      otPay: 0,
-      holidayPay: 0,
-      noPay: 0,
+      otAmount: 0,
+      holidayPayAmount: 0,
+      noPayAmount: 0,
       epfEmployee: 0,
       epfEmployer: 0,
       etfEmployer: 0,
@@ -163,19 +236,19 @@ export class TemplatesDataService {
       totalDeductions: 0,
       grossSalary: 0,
       netSalary: 0,
-      customAdditions: {},
-      customDeductions: {},
+      additionAmounts: {},
+      deductionAmounts: {},
       count: processedSalaries.length,
     };
 
-    additionColumns.forEach((name) => (totals.customAdditions[name] = 0));
-    deductionColumns.forEach((name) => (totals.customDeductions[name] = 0));
+    additionColumns.forEach((name) => (totals.additionAmounts[name] = 0));
+    deductionColumns.forEach((name) => (totals.deductionAmounts[name] = 0));
 
     processedSalaries.forEach((s) => {
       totals.basicSalary += s.basicSalary || 0;
-      totals.otPay += s.otPay || 0;
-      totals.holidayPay += s.holidayPay || 0;
-      totals.noPay += s.noPay || 0;
+      totals.otAmount += s.otPay || 0;
+      totals.holidayPayAmount += s.holidayPay || 0;
+      totals.noPayAmount += s.noPay || 0;
       totals.epfEmployee += s.epfEmployee || 0;
       totals.epfEmployer += s.epfEmployer || 0;
       totals.etfEmployer += s.etfEmployer || 0;
@@ -187,14 +260,20 @@ export class TemplatesDataService {
       totals.grossSalary += s.grossSalary || 0;
       totals.netSalary += s.netSalary || 0;
 
-      s.additions.forEach((a) => (totals.customAdditions[a.name] += a.amount));
-      s.deductions.forEach((d) => (totals.customDeductions[d.name] += d.amount));
+      s.additions.forEach((a) => (totals.additionAmounts[a.name] += a.amount));
+      s.deductions.forEach((d) => (totals.deductionAmounts[d.name] += d.amount));
     });
+
+    const firstSal = rawSalaries[0];
+    const periodStartDate = firstSal ? format(new Date(firstSal.periodStartDate), 'yyyy-MM-dd') : '';
+    const periodEndDate = firstSal ? format(new Date(firstSal.periodEndDate), 'yyyy-MM-dd') : '';
 
     return {
       company,
       month,
       year,
+      periodStartDate,
+      periodEndDate,
       salaries: processedSalaries,
       additionColumns,
       deductionColumns,
