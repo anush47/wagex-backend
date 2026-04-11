@@ -174,7 +174,9 @@ export class AttendanceManualService {
       'isBreakOverrideActive',
     ];
 
-    const hasEditField = Object.keys(dto).some((key) => editFields.includes(key));
+    const hasEditField = Object.keys(dto).some((key) => 
+      editFields.includes(key) && dto[key as keyof UpdateSessionDto] !== undefined
+    );
 
     const employee = await this.prisma.employee.findUnique({
       where: { id: session.employeeId },
