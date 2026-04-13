@@ -161,7 +161,16 @@ export class EmployeesService {
         designation: true,
         address: true,
         nic: true,
+        canSelfEdit: true,
+        status: true,
+        gender: true,
+        employmentType: true,
+        photo: true,
+        files: true,
         joinedDate: true,
+        resignedDate: true,
+        remark: true,
+        basicSalary: true,
         companyId: true,
         departmentId: true,
         details: {
@@ -170,6 +179,9 @@ export class EmployeesService {
             bankBranch: true,
             accountNumber: true,
             maritalStatus: true,
+            mothersName: true,
+            fathersName: true,
+            spouseName: true,
             nationality: true,
             emergencyContactName: true,
             emergencyContactPhone: true,
@@ -216,7 +228,15 @@ export class EmployeesService {
   async update(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee> {
     const source = updateEmployeeDto.details || updateEmployeeDto;
     const {
-      active,
+      details: _,
+      department: _dept,
+      manager: _mgr,
+      policy: _pol,
+      companyId: _compId, // Exclude companyId from update
+      departmentId,
+      managerId,
+      policyId,
+      // Separate detail fields
       bankName,
       bankBranch,
       accountNumber,
@@ -227,21 +247,23 @@ export class EmployeesService {
       nationality,
       emergencyContactName,
       emergencyContactPhone,
-    } = source;
-
-    const { 
-      details: _,
-      department, // Ignore relation objects from frontend
-      manager, // Ignore relation objects from frontend
-      policy, // Ignore relation objects from frontend
-      ...dto 
+      // Date fields
+      joinedDate,
+      resignedDate,
+      active,
+      ...employeeData
     } = updateEmployeeDto;
 
     // Prepare data
     const data: any = {
-      ...dto,
-      joinedDate: updateEmployeeDto.joinedDate ? new Date(updateEmployeeDto.joinedDate) : undefined,
-      resignedDate: updateEmployeeDto.resignedDate ? new Date(updateEmployeeDto.resignedDate) : undefined,
+      ...employeeData,
+      joinedDate: joinedDate ? new Date(joinedDate) : undefined,
+      resignedDate: resignedDate ? new Date(resignedDate) : undefined,
+      // Handle relations as connectors
+      department: departmentId !== undefined ? (departmentId ? { connect: { id: departmentId } } : { disconnect: true }) : undefined,
+      manager: managerId !== undefined ? (managerId ? { connect: { id: managerId } } : { disconnect: true }) : undefined,
+      policy: policyId !== undefined ? (policyId ? { connect: { id: policyId } } : { disconnect: true }) : undefined,
+      
       // Nested update for details
       details: {
         upsert: {
