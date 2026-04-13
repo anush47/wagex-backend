@@ -214,6 +214,78 @@ export class SalariesService {
     return { items, total, page, limit };
   }
 
+
+  async findMySalaries(userId: string, query: SalaryQueryDto) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { userId },
+    });
+
+    if (!employee) throw new NotFoundException('Employee record not found for current user');
+
+    const { page = 1, limit = 20 } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.SalaryWhereInput = {
+      employeeId: employee.id,
+      status: {
+        in: [SalaryStatus.APPROVED, SalaryStatus.PARTIALLY_PAID, SalaryStatus.PAID],
+      },
+    };
+
+    // Date filters
+    const yearInt = query.year ? parseInt(String(query.year)) : undefined;
+    const monthInt = query.month ? parseInt(String(query.month)) : undefined;
+
+    if (yearInt) {
+      if (monthInt) {
+        where.periodEndDate = {
+          gte: new Date(yearInt, monthInt - 1, 1),
+          lte: new Date(yearInt, monthInt, 0, 23, 59, 59, 999),
+        };
+      } else {
+        where.periodEndDate = {
+          gte: new Date(yearInt, 0, 1),
+          lte: new Date(yearInt, 11, 31, 23, 59, 59, 999),
+        };
+      }
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.salary.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { periodEndDate: 'desc' },
+        include: {
+          employee: {
+            select: {
+              fullName: true,
+              employeeNo: true,
+              policy: {
+                select: {
+                  settings: true,
+                },
+              },
+            },
+          },
+          approvedBy: { select: { fullName: true } },
+          payments: {
+            orderBy: { date: 'desc' },
+          },
+        },
+      }),
+      this.prisma.salary.count({ where }),
+    ]);
+
+    // Sanitize items - remove "no pay" details as requested
+    const sanitizedItems = items.map((item) => {
+      const { noPayAmount, noPayBreakdown, ...rest } = item as any;
+      return rest;
+    });
+
+    return { items: sanitizedItems, total, page, limit };
+  }
+
   async findOne(id: string) {
     const salary = await this.prisma.salary.findUnique({
       where: { id },
@@ -292,6 +364,7 @@ export class SalariesService {
       throw error;
     }
   }
+
 
   async approve(id: string, userId: string) {
     const existing = await this.prisma.salary.findUnique({ where: { id } });

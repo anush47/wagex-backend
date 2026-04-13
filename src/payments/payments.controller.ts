@@ -1,12 +1,25 @@
-import { Controller, Get, Post, Delete, Body, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Query, Param, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import * as RequestWithUserNamespace from '../common/interfaces/request-with-user.interface';
 
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Get('me')
+  @ApiOperation({ summary: 'Get current employee payments' })
+  findMyPayments(@Request() req: RequestWithUserNamespace.RequestWithUser) {
+    return this.paymentsService.findMyPayments(req.user.id);
+  }
+
+  @Post(':id/acknowledge')
+  @ApiOperation({ summary: 'Acknowledge payment receipt' })
+  acknowledge(@Param('id') id: string, @Request() req: RequestWithUserNamespace.RequestWithUser) {
+    return this.paymentsService.acknowledge(id, req.user.id);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Record a new payment' })

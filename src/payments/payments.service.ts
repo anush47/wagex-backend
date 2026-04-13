@@ -139,4 +139,61 @@ export class PaymentsService {
       return { success: true };
     });
   }
+
+  async findMyPayments(userId: string) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { userId },
+    });
+
+    if (!employee) throw new NotFoundException('Employee record not found for current user');
+
+    return this.prisma.payment.findMany({
+      where: {
+        OR: [
+          { salary: { employeeId: employee.id } },
+          { advance: { employeeId: employee.id } },
+        ],
+      },
+      include: {
+        salary: { select: { periodStartDate: true, periodEndDate: true, netSalary: true } },
+        advance: { select: { date: true, totalAmount: true, reason: true } },
+      },
+      orderBy: { date: 'desc' },
+    });
+  }
+
+  async acknowledge(id: string, userId: string) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { userId },
+    });
+
+    if (!employee) throw new NotFoundException('Employee record not found for current user');
+
+    const payment = await this.prisma.payment.findUnique({
+      where: { id },
+      include: {
+        salary: true,
+        advance: true,
+      },
+    });
+
+    if (!payment) throw new NotFoundException(`Payment ${id} not found`);
+
+    // Safety check: Does this payment belong to the employee?
+    const isOwner =
+      payment.salary?.employeeId === employee.id || 
+      payment.advance?.employeeId === employee.id;
+
+    if (!isOwner) {
+      throw new BadRequestException('You do not have permission to acknowledge this payment');
+    }
+
+    return this.prisma.payment.update({
+      where: { id },
+      data: {
+        status: PaymentStatus.ACKNOWLEDGED,
+        acknowledgedAt: new Date(),
+      },
+    });
+  }
 }

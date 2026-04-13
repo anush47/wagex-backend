@@ -1,12 +1,19 @@
-import { Controller, Get, Post, Body, Param, Patch, Query, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Query, Delete, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AdvancesService } from './advances.service';
 import { CreateSalaryAdvanceDto } from './dto/create-advance.dto';
+import * as RequestWithUserNamespace from '../common/interfaces/request-with-user.interface';
 
 @ApiTags('advances')
 @Controller('advances')
 export class AdvancesController {
   constructor(private readonly advancesService: AdvancesService) {}
+
+  @Get('me')
+  @ApiOperation({ summary: 'Get current employee advances' })
+  findMyAdvances(@Request() req: RequestWithUserNamespace.RequestWithUser) {
+    return this.advancesService.findMyAdvances(req.user.id);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create a new salary advance' })

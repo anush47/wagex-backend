@@ -64,6 +64,22 @@ export class AdvancesService {
     });
   }
 
+  async findMyAdvances(userId: string) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { userId },
+    });
+
+    if (!employee) throw new NotFoundException('Employee record not found for current user');
+
+    return this.prisma.salaryAdvance.findMany({
+      where: { employeeId: employee.id },
+      include: {
+        payments: true,
+      },
+      orderBy: { date: 'desc' },
+    });
+  }
+
   async findOne(id: string) {
     const advance = await this.prisma.salaryAdvance.findUnique({
       where: { id },

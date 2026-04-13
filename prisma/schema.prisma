@@ -513,6 +513,7 @@ model Payment {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   status        PaymentStatus  @default(PENDING_ACKNOWLEDGEMENT)
+  acknowledgedAt DateTime?
   advance       SalaryAdvance? @relation(fields: [advanceId], references: [id])
   company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   salary        Salary?        @relation(fields: [salaryId], references: [id])

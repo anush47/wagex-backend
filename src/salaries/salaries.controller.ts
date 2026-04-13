@@ -9,6 +9,11 @@ import { SalaryGroupPreview, SalaryPreview } from './interfaces/salary-calculati
 @Controller('salaries')
 export class SalariesController {
   constructor(private readonly salariesService: SalariesService) {}
+  @Get('me')
+  @ApiOperation({ summary: 'Get current employee salaries' })
+  findMySalaries(@Query() query: SalaryQueryDto, @Request() req: RequestWithUserNamespace.RequestWithUser) {
+    return this.salariesService.findMySalaries(req.user.id, query);
+  }
 
   @Post('generate-preview')
   @ApiOperation({ summary: 'Generate salary previews without saving' })
