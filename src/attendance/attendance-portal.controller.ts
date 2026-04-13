@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards, Request, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AttendancePortalService } from './services/attendance-portal.service';
 import { SessionQueryDto } from './dto/session.dto';
@@ -20,6 +20,13 @@ export class AttendancePortalController {
   @ApiOperation({ summary: 'Get current employee attendance log' })
   async getSessions(@Request() req: RequestWithUserNamespace.RequestWithUser, @Query() query: SessionQueryDto) {
     return this.portalService.getEmployeeSessions(req.user.id, req.user.memberships?.[0]?.companyId || '', query);
+  }
+
+  @Get('sessions/:id/events')
+  @Roles(Role.EMPLOYEE)
+  @ApiOperation({ summary: 'Get events for a specific employee attendance session' })
+  async getSessionEvents(@Request() req: RequestWithUserNamespace.RequestWithUser, @Param('id') id: string) {
+    return this.portalService.getEmployeeSessionEvents(req.user.id, id);
   }
 
   @Get('status')

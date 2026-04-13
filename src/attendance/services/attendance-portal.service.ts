@@ -47,6 +47,32 @@ export class AttendancePortalService {
   }
 
   /**
+   * Get events for a specific session belonging to the employee
+   */
+  async getEmployeeSessionEvents(userId: string, sessionId: string) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    // Verify session ownership
+    const session = await this.prisma.attendanceSession.findFirst({
+      where: {
+        id: sessionId,
+        employeeId: employee.id,
+      },
+    });
+
+    if (!session) {
+      throw new ForbiddenException('You do not have permission to view events for this session.');
+    }
+
+    return this.queryService.getSessionEvents(sessionId);
+  }
+
+  /**
    * Get current attendance status for the portal dashboard
    */
   async getAttendanceStatus(userId: string) {
