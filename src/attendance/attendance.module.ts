@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AttendanceManualController, AttendanceExternalController } from './attendance.controller';
+import { AttendancePortalController } from './attendance-portal.controller';
+import { AttendancePortalService } from './services/attendance-portal.service';
 import { ShiftSelectionService } from './services/shift-selection.service';
 import { AttendanceCalculationService } from './services/attendance-calculation.service';
 import { AttendanceProcessingService } from './services/attendance-processing.service';
@@ -16,7 +18,7 @@ import { AttendanceHolidayService } from './services/attendance-holiday.service'
 
 @Module({
   imports: [PoliciesModule],
-  controllers: [AttendanceManualController, AttendanceExternalController],
+  controllers: [AttendanceManualController, AttendanceExternalController, AttendancePortalController],
   providers: [
     ShiftSelectionService,
     AttendanceCalculationService,
@@ -24,6 +26,7 @@ import { AttendanceHolidayService } from './services/attendance-holiday.service'
     LeaveIntegrationService,
     SessionGroupingService,
     AttendanceExternalService,
+    AttendancePortalService,
     AttendanceManualService,
     AttendanceQueryService,
     TimeService,

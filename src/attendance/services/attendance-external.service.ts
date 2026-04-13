@@ -318,7 +318,7 @@ export class AttendanceExternalService {
     };
   }
 
-  private async determineEventType(
+  public async determineEventType(
     employeeId: string,
     eventTime: Date,
     timezone: string,
