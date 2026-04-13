@@ -28,6 +28,7 @@ import { AdvancesModule } from './advances/advances.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StatutoryModule } from './statutory/statutory.module';
 import { TemplatesModule } from './templates/templates.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
 
@@ -59,6 +60,7 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
     AdvancesModule,
     PaymentsModule,
     TemplatesModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [
