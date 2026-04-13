@@ -312,10 +312,28 @@ export class EmployeesService {
   }
 
   async remove(id: string): Promise<void> {
-    // Soft delete
+    const employee = await this.prisma.employee.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    });
+
+    // If there's a linked user, deprovision them first (delete the account)
+    if (employee?.userId) {
+      try {
+        await this.deprovisionUser(id);
+      } catch (error) {
+        this.logger.error(`Failed to deprovision user during employee removal: ${error.message}`);
+        // Continue with employee deletion even if deprovisioning fails
+      }
+    }
+
+    // Soft delete the employee
     await this.prisma.employee.update({
       where: { id },
-      data: { status: 'DELETED' },
+      data: { 
+        status: 'DELETED',
+        userId: null // Ensure it's unlinked
+      },
     });
   }
 
@@ -412,6 +430,7 @@ export class EmployeesService {
   async deprovisionUser(employeeId: string) {
     const employee = await this.prisma.employee.findUnique({
       where: { id: employeeId },
+      select: { id: true, userId: true },
     });
 
     if (!employee || !employee.userId) {
@@ -420,22 +439,31 @@ export class EmployeesService {
 
     const userId = employee.userId;
 
-    // Remove from auth system (this will cascade to Account and Session in our schema)
+    // Remove from auth system
+    // Due to onDelete: Cascade in schema.prisma, this will successfully delete:
+    // - Sessions (Better Auth default)
+    // - Accounts (Better Auth default)
+    // - UserCompany memberships (Our added cascade)
+    // - Notifications (Our added cascade)
     try {
       await this.prisma.user.delete({
         where: { id: userId },
       });
-      this.logger.log(`Deleted user account for userId: ${userId}`);
+      this.logger.log(`Successfully deleted user account for userId: ${userId}`);
     } catch (error) {
-      this.logger.error(`Failed to delete user from database: ${error.message}`);
+      this.logger.error(`Failed to delete user account: ${error.message}`);
+      // If user is already gone but still linked, we should still unlink
+      if (error.code !== 'P2025') {
+        throw new BadRequestException(`Failed to delete user account: ${error.message}`);
+      }
     }
 
-    // Unlink employee
+    // Unlink employee immediately
     await this.prisma.employee.update({
       where: { id: employeeId },
       data: { userId: null },
     });
 
-    return { message: 'User deprovisioned and unlinked.' };
+    return { message: 'User account deleted and employee unlinked.' };
   }
 }
