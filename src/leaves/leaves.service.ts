@@ -12,9 +12,18 @@ export class LeavesService {
   private readonly logger = new Logger(LeavesService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    public readonly prisma: PrismaService,
     private readonly policiesService: PoliciesService,
   ) {}
+
+  /**
+   * Helper to fetch employee by userId
+   */
+  async getEmployeeByUserId(userId: string) {
+    return this.prisma.employee.findFirst({
+      where: { userId },
+    });
+  }
 
   /**
    * Calculate available leave balances for an employee
@@ -301,7 +310,7 @@ export class LeavesService {
   /**
    * Get single leave request
    */
-  async findOne(id: string): Promise<LeaveRequest> {
+  async findOne(id: string) {
     const request = await this.prisma.leaveRequest.findUnique({
       where: { id },
       include: {

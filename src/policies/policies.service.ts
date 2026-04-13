@@ -11,7 +11,7 @@ import { DEFAULT_POLICY_SETTINGS } from './constants/default-policy.template';
 export class PoliciesService {
   private readonly logger = new Logger(PoliciesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(public readonly prisma: PrismaService) {}
 
   async create(createPolicyDto: CreatePolicyDto): Promise<Policy> {
     const { companyId, name, description, isDefault, settings } = createPolicyDto;
