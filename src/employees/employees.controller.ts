@@ -114,10 +114,34 @@ export class EmployeesController {
       }
 
       // Restrict fields for employees (prevent them from changing salary, status, etc.)
-      const restrictedFields = ['basicSalary', 'status', 'employeeNo', 'companyId', 'userId', 'canSelfEdit'];
+      const restrictedFields = [
+        'basicSalary',
+        'status',
+        'employeeNo',
+        'companyId',
+        'userId',
+        'canSelfEdit',
+        'joinedDate',
+        'resignedDate',
+        'designation',
+        'departmentId',
+        'managerId',
+        'policyId',
+        'employmentType',
+        'remark',
+        'active',
+      ];
       for (const field of restrictedFields) {
-        if ((updateEmployeeDto as any)[field] !== undefined) {
-          throw new ForbiddenException(`You are not allowed to modify the field: ${field}`);
+        const newValue = (updateEmployeeDto as any)[field] ?? (updateEmployeeDto.details as any)?.[field];
+        if (newValue !== undefined) {
+          const currentValue = (employee as any)[field];
+          // For dates, we might need a simple string comparison of the ISO content
+          const isDate = currentValue instanceof Date;
+          const normalizedCurrent = isDate ? currentValue.toISOString() : currentValue;
+          
+          if (newValue !== normalizedCurrent) {
+            throw new ForbiddenException(`You are not allowed to modify the field: ${field}`);
+          }
         }
       }
     }

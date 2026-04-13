@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { bearer } from 'better-auth/plugins/bearer';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { createAuthMiddleware, APIError } from 'better-auth/api';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -67,5 +68,25 @@ export const auth = betterAuth({
       enabled: true,
       maxAge: 5 * 60, // 5 minutes
     },
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (!ctx.path.startsWith('/sign-in')) return;
+
+      const email = ctx.body?.email;
+      if (!email) return;
+
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user) return;
+
+      // Block anyone whose active flag is false:
+      // - Employers: active=false until an admin approves their account (shows a pending screen)
+      // - Employees: active=false when employer disables their Portal Access toggle
+      if (!user.active) {
+        throw new APIError('FORBIDDEN', {
+          message: 'Your account is not yet active. Please contact your administrator.',
+        });
+      }
+    }),
   },
 });

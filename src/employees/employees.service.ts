@@ -22,6 +22,7 @@ export class EmployeesService {
   async create(createEmployeeDto: CreateEmployeeDto): Promise<Employee> {
     this.logger.log(`Creating new employee for company: ${createEmployeeDto.companyId}`);
 
+    const source = createEmployeeDto.details || createEmployeeDto;
     const {
       active,
       bankName,
@@ -34,8 +35,9 @@ export class EmployeesService {
       nationality,
       emergencyContactName,
       emergencyContactPhone,
-      ...dto
-    } = createEmployeeDto;
+    } = source;
+
+    const { details: _, ...dto } = createEmployeeDto;
 
     // Prepare data with proper date handling
     const data: any = {
@@ -159,8 +161,6 @@ export class EmployeesService {
         designation: true,
         address: true,
         nic: true,
-        status: true,
-        basicSalary: true,
         joinedDate: true,
         companyId: true,
         departmentId: true,
@@ -214,6 +214,7 @@ export class EmployeesService {
   }
 
   async update(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee> {
+    const source = updateEmployeeDto.details || updateEmployeeDto;
     const {
       active,
       bankName,
@@ -226,10 +227,14 @@ export class EmployeesService {
       nationality,
       emergencyContactName,
       emergencyContactPhone,
+    } = source;
+
+    const { 
+      details: _,
       department, // Ignore relation objects from frontend
       manager, // Ignore relation objects from frontend
       policy, // Ignore relation objects from frontend
-      ...dto
+      ...dto 
     } = updateEmployeeDto;
 
     // Prepare data
@@ -269,11 +274,34 @@ export class EmployeesService {
     };
 
     try {
-      const employee = await this.prisma.employee.update({
-        where: { id },
-        data,
-        include: { details: true },
+      const employee = await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.employee.update({
+          where: { id },
+          data,
+          include: { details: true },
+        });
+
+        // If active status is provided and employee is linked to a user, sync it
+        if (active !== undefined && updated.userId && updated.companyId) {
+          await tx.user.update({
+            where: { id: updated.userId },
+            data: { active },
+          });
+
+          await tx.userCompany.update({
+            where: {
+              userId_companyId: {
+                userId: updated.userId,
+                companyId: updated.companyId,
+              },
+            },
+            data: { active },
+          });
+        }
+
+        return updated;
       });
+
       return employee as unknown as Employee;
     } catch (error) {
       if (error.code === 'P2025') {

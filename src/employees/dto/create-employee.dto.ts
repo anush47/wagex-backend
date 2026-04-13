@@ -175,4 +175,7 @@ export class CreateEmployeeDto {
 
   @IsOptional()
   policy?: any;
+
+  @IsOptional()
+  details?: any;
 }
