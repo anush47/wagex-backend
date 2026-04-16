@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceProcessingService } from './attendance-processing.service';
 import { CreateEventDto, BulkCreateEventsDto } from '../dto/event.dto';
@@ -182,6 +182,53 @@ export class AttendanceExternalService {
     }
   }
 
+  /**
+   * Validate time interval between consecutive events
+   */
+  async validateEventTiming(
+    employeeId: string,
+    eventTime: Date,
+    eventType: EventType,
+    policy: PolicySettingsDto,
+    lastEventContext?: { eventTime: Date; eventType: EventType },
+  ): Promise<void> {
+    const minInToOut = policy.attendance?.minInToOutMinutes ?? 10;
+    const minOutToIn = policy.attendance?.minOutToInSeconds ?? 30;
+
+    let lastEvent = lastEventContext;
+    if (!lastEvent) {
+      const dbLastEvent = await this.prisma.attendanceEvent.findFirst({
+        where: { employeeId, status: 'ACTIVE' },
+        orderBy: { eventTime: 'desc' },
+        select: { eventTime: true, eventType: true },
+      });
+      if (dbLastEvent) {
+        lastEvent = {
+          eventTime: new Date(dbLastEvent.eventTime),
+          eventType: dbLastEvent.eventType as EventType,
+        };
+      }
+    }
+
+    if (!lastEvent) return;
+
+    const diffMs = eventTime.getTime() - lastEvent.eventTime.getTime();
+
+    // Check IN -> OUT restriction
+    if (lastEvent.eventType === 'IN' && eventType === 'OUT') {
+      if (diffMs < minInToOut * 60 * 1000) {
+        throw new BadRequestException(`Minimum ${minInToOut} minutes required between check-in and check-out.`);
+      }
+    }
+
+    // Check OUT -> IN restriction
+    if (lastEvent.eventType === 'OUT' && eventType === 'IN') {
+      if (diffMs < minOutToIn * 1000) {
+        throw new BadRequestException(`Please wait ${minOutToIn} seconds before checking in again.`);
+      }
+    }
+  }
+
   async createExternalEvent(
     dto: CreateEventDto,
     verification: ApiKeyVerificationResult,
@@ -272,7 +319,6 @@ export class AttendanceExternalService {
         lastInEventTime = decision.lastEventTime;
       }
     }
-
     if (effectiveEventType === 'OUT' && !lastInEventTime) {
       const lastIn = await this.prisma.attendanceEvent.findFirst({
         where: { employeeId, eventType: 'IN', status: 'ACTIVE' },
@@ -283,6 +329,16 @@ export class AttendanceExternalService {
         lastInEventTime = lastIn.eventTime;
       }
     }
+
+    // Apply time restriction validation
+    const policy = (await this.policiesService.getEffectivePolicy(employeeId)) as unknown as PolicySettingsDto;
+    await this.validateEventTiming(
+      employeeId,
+      eventTime,
+      effectiveEventType as EventType,
+      policy,
+      lastInEventTime ? { eventTime: lastInEventTime, eventType: 'IN' } : undefined,
+    );
 
     const shiftQueryTime = effectiveEventType === 'OUT' && lastInEventTime ? lastInEventTime : eventTime;
 
@@ -508,9 +564,22 @@ export class AttendanceExternalService {
         }
       }
 
+      // Validate timing for batch
+      const policy = policyMap.get(employeeId);
+      if (policy) {
+        const lastInBatch = lastStateMap.get(employeeId);
+        await this.validateEventTiming(
+          employeeId,
+          eventTime,
+          eventType as EventType,
+          policy as unknown as PolicySettingsDto,
+          lastInBatch ? { eventTime: lastInBatch.eventTime, eventType: lastInBatch.eventType as EventType } : undefined,
+        );
+      }
+
       lastStateMap.set(employeeId, {
         eventTime,
-        eventType: eventType,
+        eventType: eventType as EventType,
         sessionId: eventType === 'IN' ? null : decision?.sessionId || null,
       });
 
@@ -518,7 +587,7 @@ export class AttendanceExternalService {
         employeeId,
         companyId,
         eventTime,
-        eventType: eventType,
+        eventType: eventType as EventType,
         source: 'API_KEY',
         apiKeyName,
         device: eventDto.device,

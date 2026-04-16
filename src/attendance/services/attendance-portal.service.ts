@@ -204,6 +204,14 @@ export class AttendancePortalService {
 
     const eventType = decision.autoCheckoutAt ? 'IN' : decision.type;
 
+    // Apply time restriction validation
+    const lastEvent = decision.lastEventTime ? {
+        eventTime: decision.lastEventTime,
+        eventType: (eventType === 'IN' ? 'OUT' : 'IN') as any
+    } : undefined;
+
+    await this.externalService.validateEventTiming(employeeId, now, eventType as any, policy, lastEvent);
+
     // Create the event
     const event = await this.prisma.attendanceEvent.create({
       data: {

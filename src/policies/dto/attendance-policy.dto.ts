@@ -134,6 +134,16 @@ export class AttendanceConfigDto {
   @Type(() => CompanyApiKeyDto)
   apiKeys: CompanyApiKeyDto[];
 
+  @ApiPropertyOptional({ example: 10, description: 'Minimum minutes required between IN and OUT' })
+  @IsOptional()
+  @IsNumber()
+  minInToOutMinutes?: number;
+
+  @ApiPropertyOptional({ example: 30, description: 'Minimum seconds required between OUT and IN' })
+  @IsOptional()
+  @IsNumber()
+  minOutToInSeconds?: number;
+
   @ApiPropertyOptional({ example: 'uuid-calendar', description: 'Override Calendar ID for Attendance' })
   @IsOptional()
   @IsString()
