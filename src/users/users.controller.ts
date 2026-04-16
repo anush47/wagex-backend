@@ -6,6 +6,7 @@ import {
   Param,
   Delete,
   Put,
+  Patch,
   Request,
   Logger,
   ForbiddenException,
@@ -62,6 +63,18 @@ export class UsersController {
     }
 
     return user;
+  }
+
+  @Patch('me')
+  @AllowInactive()
+  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiResponse({ status: 200, type: User })
+  async updateMe(
+    @Request() req: RequestWithUserNamespace.RequestWithUser,
+    @Body() updateUserDto: UpdateUserDto,
+  ): Promise<User> {
+    const { active, role, ...safeUpdateData } = updateUserDto as any; // prevent restricted fields
+    return this.usersService.update(req.user.id, safeUpdateData);
   }
 
   @Get(':id')
