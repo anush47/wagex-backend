@@ -50,4 +50,13 @@ export class QueryDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @ApiPropertyOptional({ example: 'EMPLOYER', description: 'Filter by Role' })
+  @IsOptional()
+  @IsString()
+  role?: string;
+
+  @ApiPropertyOptional({ example: false, description: 'Filter by active status directly' })
+  @IsOptional()
+  active?: any; // Accepting any and casting to boolean below since query params come as string
 }

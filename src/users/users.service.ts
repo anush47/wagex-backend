@@ -25,19 +25,24 @@ export class UsersService {
   }
 
   async findAll(queryDto: QueryDto): Promise<PaginatedResponse<User>> {
-    const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc' } = queryDto;
+    const { page = 1, limit = 20, search, sortBy = 'createdAt', sortOrder = 'desc', role, active } = queryDto as any;
     const skip = (page - 1) * limit;
 
-    // Build where clause for search
-    const where = search
-      ? {
-          OR: [
-            { email: { contains: search, mode: 'insensitive' as const } },
-            { nameWithInitials: { contains: search, mode: 'insensitive' as const } },
-            { fullName: { contains: search, mode: 'insensitive' as const } },
-          ],
-        }
-      : {};
+    // Build where clause
+    const where: any = {};
+    if (search) {
+      where.OR = [
+        { email: { contains: search, mode: 'insensitive' } },
+        { nameWithInitials: { contains: search, mode: 'insensitive' } },
+        { fullName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (role) {
+      where.role = role;
+    }
+    if (active !== undefined && active !== null) {
+      where.active = active === 'true' || active === true;
+    }
 
     // Build orderBy clause
     const orderBy: any = sortBy ? { [sortBy]: sortOrder } : { createdAt: 'desc' };
