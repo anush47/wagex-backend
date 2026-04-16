@@ -1,5 +1,6 @@
 import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
+import { maskSensitiveFields } from '../utils/mask-sensitive.util';
 
 @Injectable()
 export class HttpLoggerMiddleware implements NestMiddleware {
@@ -23,7 +24,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
 
       // Log body for mutative requests to help debug
       if (['POST', 'PUT', 'PATCH'].includes(method) && statusCode >= 400) {
-        this.logger.debug(`Request Body: ${JSON.stringify(request.body)}`);
+        this.logger.debug(`Request Body: ${JSON.stringify(maskSensitiveFields(request.body))}`);
       }
     });
 

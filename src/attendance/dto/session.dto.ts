@@ -140,6 +140,12 @@ export class SessionQueryDto {
   @IsBoolean()
   @Type(() => Boolean)
   isPending?: boolean;
+
+  @ApiPropertyOptional({ description: 'Include all currently active sessions regardless of date range' })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  includeActive?: boolean;
 }
 
 export class EventQueryDto {

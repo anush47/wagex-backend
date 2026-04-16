@@ -12,7 +12,7 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('employer')
-  @Roles(Role.EMPLOYER)
+  @Roles(Role.EMPLOYER, Role.ADMIN)
   @ApiOperation({ summary: 'Get dashboard stats for employer' })
   async getEmployerStats(@Request() req: RequestWithUserNamespace.RequestWithUser) {
     return this.dashboardService.getEmployerStats(req.user.id);

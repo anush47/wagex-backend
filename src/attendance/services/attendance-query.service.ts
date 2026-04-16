@@ -21,20 +21,35 @@ export class AttendanceQueryService {
     const limit = query.limit || 15;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.AttendanceSessionWhereInput = {};
-    if (query.companyId) where.companyId = query.companyId;
-    if (query.employeeId) where.employeeId = query.employeeId;
-
-    if (query.startDate || query.endDate) {
-      const dateFilter: Prisma.DateTimeFilter = {};
-      if (query.startDate) dateFilter.gte = new Date(query.startDate);
-      if (query.endDate) dateFilter.lte = new Date(query.endDate);
-      where.date = dateFilter;
-    }
+    const andConditions: Prisma.AttendanceSessionWhereInput[] = [];
+    if (query.companyId) andConditions.push({ companyId: query.companyId });
+    if (query.employeeId) andConditions.push({ employeeId: query.employeeId });
 
     if (query.isPending) {
-      where.OR = [{ inApprovalStatus: 'PENDING' }, { outApprovalStatus: 'PENDING' }];
+      andConditions.push({
+        OR: [{ inApprovalStatus: 'PENDING' }, { outApprovalStatus: 'PENDING' }],
+      });
     }
+
+    if (query.startDate || query.endDate || query.includeActive) {
+      const orConditions: Prisma.AttendanceSessionWhereInput[] = [];
+      if (query.startDate || query.endDate) {
+        const dateFilter: Prisma.DateTimeFilter = {};
+        if (query.startDate) dateFilter.gte = new Date(query.startDate);
+        if (query.endDate) dateFilter.lte = new Date(query.endDate);
+        orConditions.push({ date: dateFilter });
+      }
+
+      if (query.includeActive) {
+        orConditions.push({ checkOutTime: null, checkInTime: { not: null } });
+      }
+
+      if (orConditions.length > 0) {
+        andConditions.push({ OR: orConditions });
+      }
+    }
+
+    const where: Prisma.AttendanceSessionWhereInput = andConditions.length > 0 ? { AND: andConditions } : {};
 
     const [items, total] = await Promise.all([
       this.prisma.attendanceSession.findMany({

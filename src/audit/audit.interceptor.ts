@@ -3,6 +3,7 @@ import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { AuditService } from './audit.service';
 import { RequestWithUser } from '../common/interfaces/request-with-user.interface';
+import { maskSensitiveFields } from '../common/utils/mask-sensitive.util';
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
@@ -40,7 +41,7 @@ export class AuditInterceptor implements NestInterceptor {
 
           const details: Record<string, any> = {
             path: req.path,
-            body: req.body as Record<string, any>,
+            body: maskSensitiveFields(req.body),
           };
 
           // Capture File Metadata if present

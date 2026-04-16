@@ -12,13 +12,26 @@ export class DashboardService {
   async getEmployerStats(userId: string): Promise<EmployerDashboardDto> {
     this.logger.log(`Fetching employer stats for user ${userId}`);
 
-    // Get company IDs managed by this employer
-    const memberships = await this.prisma.userCompany.findMany({
-      where: { userId, role: Role.EMPLOYER, active: true },
-      select: { companyId: true },
-    });
+    // Get the user to check role
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
-    const companyIds = memberships.map((m) => m.companyId);
+    let companyIds: string[] = [];
+
+    if (user?.role === Role.ADMIN) {
+      this.logger.log(`Admin user ${userId} accessing global stats`);
+      const allCompanies = await this.prisma.company.findMany({
+        where: { active: true },
+        select: { id: true },
+        take: 100, // Balanced limit for dashboard view
+      });
+      companyIds = allCompanies.map((c) => c.id);
+    } else {
+      const memberships = await this.prisma.userCompany.findMany({
+        where: { userId, role: Role.EMPLOYER, active: true },
+        select: { companyId: true },
+      });
+      companyIds = memberships.map((m) => m.companyId);
+    }
 
     if (companyIds.length === 0) {
       return this.getEmptyStats();
