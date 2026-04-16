@@ -315,7 +315,7 @@ export class SalaryEngineService {
       .reduce((sum, c) => sum + c.amount, 0);
 
     const grossEarnings = basicSalaryForPeriod + totalAdditions + otAdj + hPayAdjustment;
-    const netSalary = grossEarnings - (totalComponentDeductions + totalAdvanceDeduction + recAdj + lateAdj);
+    const netSalary = grossEarnings - (totalComponentDeductions + totalNoPayAmount + totalAdvanceDeduction + recAdj + lateAdj);
 
     const problems = await this.validationService.validateEmployeePayroll(employeeId, aStart, aEnd, policy);
 
