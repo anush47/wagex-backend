@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags, ApiResponse } from '@nestjs/swagg
 
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
+import { AllowInactive } from '../auth/allow-inactive.decorator';
 import * as RequestWithUserNamespace from '../common/interfaces/request-with-user.interface';
 
 @ApiTags('Users')
@@ -12,6 +13,7 @@ export class MeController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
+  @AllowInactive()
   @ApiOperation({ summary: 'Get profile of the authenticated user' })
   @ApiResponse({ status: 200, description: 'Return current user profile.' })
   getProfile(@Request() req: RequestWithUserNamespace.RequestWithUser) {
