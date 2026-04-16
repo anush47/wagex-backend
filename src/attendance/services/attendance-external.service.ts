@@ -192,7 +192,7 @@ export class AttendanceExternalService {
     policy: PolicySettingsDto,
     lastEventContext?: { eventTime: Date; eventType: EventType },
   ): Promise<void> {
-    const minInToOut = policy.attendance?.minInToOutMinutes ?? 10;
+    const minInToOut = policy.attendance?.minInToOutMinutes ?? 2;
     const minOutToIn = policy.attendance?.minOutToInSeconds ?? 30;
 
     let lastEvent = lastEventContext;

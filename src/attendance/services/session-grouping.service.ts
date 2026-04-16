@@ -105,15 +105,22 @@ export class SessionGroupingService {
   ): Promise<SessionGroup> {
     const sortedEvents = [...events].sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime());
 
-    const firstIn = events.find((e) => e.eventType === 'IN')?.eventTime;
-    const lastOut = events
-      .slice()
-      .reverse()
-      .find((e) => e.eventType === 'OUT')?.eventTime;
+    const firstIn = sortedEvents.find((e) => e.eventType === 'IN')?.eventTime;
+    
+    // Find the chronologically absolute last event in the sorted list
+    const absoluteLastEvent = sortedEvents[sortedEvents.length - 1];
+    const isPresentNow = absoluteLastEvent?.eventType === 'IN';
+
+    // If the absolute last event is an IN, the employee is "Present Now" 
+    // and the session should not have a checkOutTime yet.
+    const lastOut = isPresentNow
+      ? null
+      : [...sortedEvents].reverse().find((e) => e.eventType === 'OUT')?.eventTime;
 
     // Simplified break pairing: any gap between consecutive events within the primary bounds
     const additionalInOutPairs: Array<{ in: Date; out: Date }> = [];
-    if (firstIn && lastOut) {
+    if (firstIn) {
+      const lastMarker = lastOut || absoluteLastEvent?.eventTime || referenceDate;
       for (let i = 0; i < sortedEvents.length - 1; i++) {
         const current = sortedEvents[i];
         const next = sortedEvents[i + 1];
@@ -122,7 +129,7 @@ export class SessionGroupingService {
           current.eventType === 'OUT' &&
           next.eventType === 'IN' &&
           current.eventTime >= firstIn &&
-          next.eventTime <= lastOut
+          next.eventTime <= lastMarker
         ) {
           additionalInOutPairs.push({ in: current.eventTime, out: next.eventTime });
         }

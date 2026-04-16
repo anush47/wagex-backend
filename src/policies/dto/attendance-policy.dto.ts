@@ -134,7 +134,7 @@ export class AttendanceConfigDto {
   @Type(() => CompanyApiKeyDto)
   apiKeys: CompanyApiKeyDto[];
 
-  @ApiPropertyOptional({ example: 10, description: 'Minimum minutes required between IN and OUT' })
+  @ApiPropertyOptional({ example: 2, description: 'Minimum minutes required between IN and OUT' })
   @IsOptional()
   @IsNumber()
   minInToOutMinutes?: number;

@@ -4,10 +4,27 @@ import { AttendanceEvent } from '@prisma/client';
 describe('SessionGroupingService', () => {
   let sessionGroupingService: SessionGroupingService;
 
+  let mockTimeService: any;
+  let mockShiftSelectionService: any;
+
   beforeEach(() => {
-    // Mock PrismaService - we don't need database functionality for unit tests
     const mockPrismaService = {};
-    sessionGroupingService = new SessionGroupingService(mockPrismaService as any);
+    mockTimeService = {
+      getLogicalDate: (d: Date) => {
+        const copy = new Date(d);
+        copy.setUTCHours(0, 0, 0, 0);
+        return copy;
+      },
+    };
+    mockShiftSelectionService = {
+      getEffectiveShift: async () => ({ dateOffset: 0 }),
+    };
+
+    sessionGroupingService = new SessionGroupingService(
+      mockPrismaService as any,
+      mockTimeService as any,
+      mockShiftSelectionService as any,
+    );
   });
 
   it('should group events within 24 hours into the same session', async () => {
@@ -94,7 +111,7 @@ describe('SessionGroupingService', () => {
       },
     ];
 
-    const result = await sessionGroupingService.groupEventsIntoSessions('emp1', events, new Date('2023-01-01'));
+    const result = await sessionGroupingService.groupEventsIntoSessions('emp1', events, new Date('2023-01-01'), 'UTC');
 
     expect(result.length).toBe(1); // All events should be in one session
     expect(result[0].events.length).toBe(4);
@@ -187,7 +204,7 @@ describe('SessionGroupingService', () => {
       },
     ];
 
-    const result = await sessionGroupingService.groupEventsIntoSessions('emp1', events, new Date('2023-01-02'));
+    const result = await sessionGroupingService.groupEventsIntoSessions('emp1', events, new Date('2023-01-02'), 'UTC');
 
     expect(result.length).toBe(2); // Two separate sessions
     expect(result[0].events.length).toBe(2); // First session with 2 events
@@ -238,7 +255,7 @@ describe('SessionGroupingService', () => {
       },
     ];
 
-    const result = await sessionGroupingService.groupEventsIntoSessions('emp1', events, new Date('2023-01-01'));
+    const result = await sessionGroupingService.groupEventsIntoSessions('emp1', events, new Date('2023-01-01'), 'UTC');
 
     expect(result.length).toBe(1); // Should be one session despite crossing midnight
     expect(result[0].events.length).toBe(2);
