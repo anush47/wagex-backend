@@ -4,9 +4,10 @@ export interface SalaryComponent {
   id: string;
   name: string;
   amount: number;
-  type: 'EARNING' | 'DEDUCTION';
-  isTaxable: boolean;
-  isStatutory: boolean;
+  type: 'EARNING' | 'DEDUCTION' | string;
+  category?: 'ADDITION' | 'DEDUCTION' | string;
+  isTaxable?: boolean;
+  isStatutory?: boolean;
 }
 
 export interface SalaryPreview {

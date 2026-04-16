@@ -307,11 +307,11 @@ export class SalaryEngineService {
     const lateAdj = existingSalary?.lateAdjustment || 0;
 
     const totalAdditions = processedComponents
-      .filter((c) => c.type === ('EARNING' as any))
+      .filter((c) => c.category === 'ADDITION')
       .reduce((sum, c) => sum + c.amount, 0);
 
     const totalComponentDeductions = processedComponents
-      .filter((c) => c.type === ('DEDUCTION' as any))
+      .filter((c) => c.category === 'DEDUCTION')
       .reduce((sum, c) => sum + c.amount, 0);
 
     const grossEarnings = basicSalaryForPeriod + totalAdditions + otAdj + hPayAdjustment;
