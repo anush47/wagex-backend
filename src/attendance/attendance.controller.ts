@@ -159,6 +159,18 @@ export class AttendanceExternalController {
     return result;
   }
 
+  @Get('sync')
+  @ApiOperation({ summary: 'Sync employee statuses and shifts (Optimized for ESP32)' })
+  async syncData(@Headers('x-api-key') apiKey: string) {
+    if (!apiKey) throw new UnauthorizedException('API key required');
+    const verification = await this.externalService.verifyApiKey(apiKey);
+    if (!verification.valid || !verification.company || !verification.apiKey) {
+      throw new UnauthorizedException('Invalid API key');
+    }
+
+    return this.externalService.getSyncData(verification);
+  }
+
   @Post('event')
   @ApiOperation({ summary: 'Insert single attendance event' })
   async createEvent(@Headers('x-api-key') apiKey: string, @Body() dto: CreateEventDto) {

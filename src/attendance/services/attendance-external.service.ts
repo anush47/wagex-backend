@@ -147,6 +147,87 @@ export class AttendanceExternalService {
     return { valid: false };
   }
 
+  /**
+   * Get bulk status synchronization data for external devices (e.g. ESP32)
+   */
+  async getSyncData(verification: ApiKeyVerificationResult) {
+    if (!verification.valid || !verification.company || !verification.apiKey || !verification.policyId) {
+      throw new UnauthorizedException('Invalid API key verification');
+    }
+
+    const companyId = verification.company.id;
+    const policyId = verification.policyId;
+    const timezone = verification.company.timezone || 'Asia/Colombo';
+    const now = new Date();
+
+    // Fetch employees assigned to this policy
+    // If it's a COMPANY key (default policy), we also include employees with null policyId
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        companyId,
+        status: 'ACTIVE',
+        AND: [
+          {
+            OR: [
+              { policyId: policyId },
+              ...(verification.type === 'COMPANY' ? [{ policyId: null }] : []),
+            ],
+          },
+        ],
+      },
+      select: {
+        id: true,
+        employeeNo: true,
+        nameWithInitials: true,
+      },
+      orderBy: { employeeNo: 'asc' },
+    });
+
+    const items = await Promise.all(
+      employees.map(async (emp) => {
+        // Get last event for status determination
+        const lastEvent = await this.prisma.attendanceEvent.findFirst({
+          where: { employeeId: emp.id, status: 'ACTIVE' },
+          orderBy: { eventTime: 'desc' },
+          select: { eventTime: true, eventType: true, sessionId: true },
+        });
+
+        const decision = await this.determineEventType(
+          emp.id,
+          now,
+          timezone,
+          lastEvent
+            ? {
+                eventTime: lastEvent.eventTime,
+                eventType: lastEvent.eventType,
+                sessionId: lastEvent.sessionId,
+              }
+            : undefined,
+        );
+
+        // Shift info only if status is currently IN (or about to be OUT)
+        let shiftName: string | undefined;
+        if (decision.type === 'OUT') {
+          const { shift } = await this.shiftSelectionService.getEffectiveShift(emp.id, now, timezone);
+          shiftName = shift?.name;
+        }
+
+        return {
+          no: emp.employeeNo,
+          name: emp.nameWithInitials,
+          status: decision.type === 'OUT' ? 'IN' : 'OUT', // If next is OUT, current status is IN
+          time: lastEvent?.eventTime.toISOString(),
+          shift: shiftName,
+        };
+      }),
+    );
+
+    return {
+      company: verification.company.name,
+      data: items,
+    };
+  }
+
   private lastUpdateMap = new Map<string, number>();
 
   private async throttleLastUsedUpdate(apiKey: string, policyId: string) {
@@ -232,7 +313,7 @@ export class AttendanceExternalService {
   async createExternalEvent(
     dto: CreateEventDto,
     verification: ApiKeyVerificationResult,
-  ): Promise<AttendanceEvent & { employeeName: string; shiftName: string }> {
+  ): Promise<AttendanceEvent & { employeeName: string; shiftName: string; updatedStatus: string }> {
     if (!verification.valid || !verification.company || !verification.apiKey) {
       throw new UnauthorizedException('Invalid API key verification');
     }
@@ -371,6 +452,7 @@ export class AttendanceExternalService {
       ...event,
       employeeName: employeeName || 'Unknown',
       shiftName,
+      updatedStatus: effectiveEventType,
     };
   }
 
