@@ -185,12 +185,11 @@ export class AttendanceExternalController {
       success: true,
       event: {
         id: event.id,
-        employeeId: event.employeeId,
+        employeeNo: dto.employeeNo,
         employeeName: event.employeeName,
-        shiftName: event.shiftName,
-        eventTime: event.eventTime.toISOString(),
-        eventType: event.eventType,
-        status: event.status,
+        status: event.eventType,
+        time: event.eventTime.toISOString(),
+        shift: event.shiftName,
       },
     };
   }

@@ -313,7 +313,7 @@ export class AttendanceExternalService {
   async createExternalEvent(
     dto: CreateEventDto,
     verification: ApiKeyVerificationResult,
-  ): Promise<AttendanceEvent & { employeeName: string; shiftName: string; updatedStatus: string }> {
+  ): Promise<AttendanceEvent & { employeeName: string; shiftName: string }> {
     if (!verification.valid || !verification.company || !verification.apiKey) {
       throw new UnauthorizedException('Invalid API key verification');
     }
@@ -452,7 +452,6 @@ export class AttendanceExternalService {
       ...event,
       employeeName: employeeName || 'Unknown',
       shiftName,
-      updatedStatus: effectiveEventType,
     };
   }
 
