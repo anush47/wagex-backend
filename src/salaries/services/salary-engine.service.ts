@@ -163,11 +163,11 @@ export class SalaryEngineService {
 
     let totalLateDeduction = 0;
     let totalLateMinutes = 0;
-    if (payrollConfig?.lateDeductionValue) {
+    if (payrollConfig?.autoDeductLate && payrollConfig?.lateDeductionValue) {
       totalLateMinutes = sessions.reduce((sum, s) => {
         const sessionLate = (s.lateMinutes || 0) + (s.earlyLeaveMinutes || 0);
         const grace = (config.lateDeductionGraceMinutes as number) || 0;
-        return sum + (sessionLate > grace ? sessionLate : 0);
+        return sum + Math.max(0, sessionLate - grace);
       }, 0);
 
       if (payrollConfig.lateDeductionType === 'DIVISOR_BASED') {
@@ -189,7 +189,8 @@ export class SalaryEngineService {
       where: {
         employeeId,
         status: LeaveStatus.APPROVED,
-        OR: [{ startDate: { gte: aStart, lte: aEnd } }, { endDate: { gte: aStart, lte: aEnd } }],
+        startDate: { lte: aEnd },
+        endDate: { gte: aStart },
       },
     });
 
@@ -266,16 +267,9 @@ export class SalaryEngineService {
       }
     }
 
-    const totalNoPayAmount = totalUnpaidAmount + (payrollConfig?.autoDeductLate ? totalLateDeduction : 0);
+    // Late deduction flows through processedComponents as LATE_DEDUCTION — do NOT add to noPayAmount
+    const totalNoPayAmount = totalUnpaidAmount;
     const noPayBreakdown = [...unpaidBreakdown];
-    if (payrollConfig?.autoDeductLate) {
-      noPayBreakdown.push({
-        type: 'LATE',
-        count: totalLateMinutes,
-        amount: totalLateDeduction,
-        reason: `Late arrivals / Early leaves (+${totalLateMinutes}m)`,
-      });
-    }
 
     const { processedComponents, currentTotalEarnings: statutoryBase } = this.componentService.processComponents(
       policy,
@@ -401,53 +395,4 @@ export class SalaryEngineService {
     }));
   }
 
-  async saveDrafts(companyId: string, previews: SalaryGroupPreview[]) {
-    const salaryRecords = previews
-      .flatMap((p) => p.employees)
-      .map((p) => {
-        const startDate = new Date(p.periodStartDate);
-        return {
-          employeeId: p.employeeId,
-          companyId,
-          periodStartDate: startDate,
-          periodEndDate: new Date(p.periodEndDate),
-          payDate: p.payDate ? new Date(p.payDate) : new Date(),
-          basicSalary: p.basicSalary,
-          otAmount: p.otAmount,
-          otBreakdown: (p.otBreakdown || []) as Prisma.InputJsonValue,
-          noPayAmount: p.noPayAmount,
-          noPayBreakdown: (p.noPayBreakdown || []) as Prisma.InputJsonValue,
-          taxAmount: p.taxAmount,
-          components: p.components as unknown as Prisma.JsonValue,
-          advanceDeduction: p.advanceDeduction,
-          advanceAdjustments: (p.advanceAdjustments || []) as unknown as Prisma.JsonValue,
-          netSalary: p.netSalary,
-          status: SalaryStatus.DRAFT,
-          holidayPayAdjustment: p.holidayPayAdjustment || 0,
-          holidayPayAdjustmentReason: p.holidayPayAdjustmentReason || '',
-          otAdjustment: p.otAdjustment || 0,
-          otAdjustmentReason: p.otAdjustmentReason || '',
-          recoveryAdjustment: p.recoveryAdjustment || 0,
-          recoveryAdjustmentReason: p.recoveryAdjustmentReason || '',
-          month: startDate.getUTCMonth() + 1,
-          year: startDate.getUTCFullYear(),
-        };
-      });
-
-    for (const salary of salaryRecords) {
-      await this.prisma.salary.upsert({
-        where: {
-          employeeId_periodStartDate_periodEndDate: {
-            employeeId: salary.employeeId,
-            periodStartDate: salary.periodStartDate,
-            periodEndDate: salary.periodEndDate,
-          },
-        },
-        update: salary as any,
-        create: salary as any,
-      });
-    }
-
-    return { count: salaryRecords.length };
-  }
 }

@@ -69,6 +69,10 @@ export class AttendanceProcessingService {
         ? { shift: context.shift }
         : await this.shiftService.getEffectiveShift(employeeId, sessionGroup.firstIn || date, timezone);
 
+      if (!shift) {
+        this.logger.warn(`No effective shift found for employee ${employeeId} on ${sessionGroup.sessionDate.toISOString()}. Late/Early/OT calculations may be affected.`);
+      }
+
       const leaves =
         context?.leaves || (await this.leaveService.getApprovedLeaves(employeeId, sessionGroup.sessionDate));
 

@@ -187,7 +187,6 @@ export class PoliciesService {
   async getEffectivePolicyDetail(employeeId: string) {
     this.logger.log(`Resolving effective policy detail for employee: ${employeeId}`);
 
-    // ⚠️ SINGLE QUERY optimization: Fetch employee, assigned policy, AND company default policy in one go
     const employee = await this.prisma.employee.findUnique({
       where: { id: employeeId },
       select: {
@@ -202,27 +201,14 @@ export class PoliciesService {
             settings: true,
           },
         },
-        company: {
-          select: {
-            policies: {
-              where: { isDefault: true },
-              select: {
-                id: true,
-                name: true,
-                settings: true,
-              },
-            },
-          },
-        },
       },
     });
 
     if (!employee) throw new NotFoundException(`Employee ${employeeId} not found`);
 
-    // Extract company default policy from the nested fetch
-    const defaultPolicy = employee.company?.policies?.[0];
-    
-    // Validate settings is a valid object
+    // Use getDefaultPolicy so the same auto-create/promote fallback applies as in getEffectivePolicy
+    const defaultPolicy = await this.getDefaultPolicy(employee.companyId);
+
     const companySettings =
       defaultPolicy?.settings && typeof defaultPolicy.settings === 'object'
         ? (defaultPolicy.settings as unknown as PolicySettingsDto)

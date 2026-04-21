@@ -2,9 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SalaryEngineService } from './salary-engine.service';
+import { SalariesService } from '../salaries.service';
 import { PoliciesService } from '../../policies/policies.service';
-import { subDays, endOfMonth, subMonths, addDays, isSameDay } from 'date-fns';
-import { PayrollSettingsConfigDto } from '../../policies/dto/payroll-settings-policy.dto';
+import { subDays, endOfMonth, subMonths, subWeeks, addDays, isSameDay, getDaysInMonth } from 'date-fns';
+import { PayCycleFrequency, PayrollSettingsConfigDto } from '../../policies/dto/payroll-settings-policy.dto';
 import { PolicySettingsDto } from '../../policies/dto/policy-settings.dto';
 import { SalaryGroupPreview } from '../interfaces/salary-calculation.interface';
 
@@ -15,6 +16,7 @@ export class SalaryAutomationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly salaryEngine: SalaryEngineService,
+    private readonly salariesService: SalariesService,
     private readonly policiesService: PoliciesService,
   ) {}
 
@@ -46,12 +48,20 @@ export class SalaryAutomationService {
 
           const { start, end } = this.determinePeriod(payDay, settings);
 
-          const previews = await this.salaryEngine.bulkGenerate(company.id, start, end);
+          const previews = await this.salaryEngine.bulkGenerate(
+            company.id,
+            start,
+            end,
+            undefined,
+            undefined,
+            undefined,
+            payDay,
+          );
           const groupPreviews: SalaryGroupPreview[] = previews.map((p: any) => ({
             ...p,
             companyId: company.id,
           }));
-          await this.salaryEngine.saveDrafts(company.id, groupPreviews);
+          await this.salariesService.saveDrafts(company.id, groupPreviews);
 
           this.logger.log(`Successfully generated auto-drafts for ${company.name}`);
         }
@@ -69,18 +79,37 @@ export class SalaryAutomationService {
     const day = parseInt(runDay);
     if (isNaN(day)) return null;
 
-    const date = new Date(reference.getFullYear(), reference.getMonth(), day);
-    return date;
+    const year = reference.getFullYear();
+    const month = reference.getMonth();
+    // Clamp to the last day of the month to avoid overflow (e.g. runDay=31 in April)
+    const clampedDay = Math.min(day, getDaysInMonth(new Date(year, month)));
+    return new Date(year, month, clampedDay);
   }
 
   private determinePeriod(payDay: Date, settings: PayrollSettingsConfigDto) {
     const cutoffDays = settings.cutoffDaysBeforePayDay || 0;
     const periodEnd = subDays(payDay, cutoffDays);
 
-    const prevPayDay = subMonths(payDay, 1);
-    const prevPeriodEnd = subDays(prevPayDay, cutoffDays);
-    const periodStart = addDays(prevPeriodEnd, 1);
+    let prevPeriodEnd: Date;
+    switch (settings.frequency) {
+      case PayCycleFrequency.WEEKLY:
+        prevPeriodEnd = subDays(periodEnd, 7);
+        break;
+      case PayCycleFrequency.BI_WEEKLY:
+        prevPeriodEnd = subDays(periodEnd, 14);
+        break;
+      case PayCycleFrequency.SEMI_MONTHLY:
+        prevPeriodEnd = subDays(periodEnd, 15);
+        break;
+      case PayCycleFrequency.MONTHLY:
+      default: {
+        const prevPayDay = subMonths(payDay, 1);
+        prevPeriodEnd = subDays(prevPayDay, cutoffDays);
+        break;
+      }
+    }
 
+    const periodStart = addDays(prevPeriodEnd, 1);
     return { start: periodStart, end: periodEnd };
   }
 }

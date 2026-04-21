@@ -525,6 +525,12 @@ export class AttendanceExternalService {
           autoCheckoutAt = new Date(eventTime.getTime() - 1000);
         }
 
+        // Final safety check: if auto-checkout is clamped to be before or too close to the last event, skip it
+        // to avoid negative work duration or impossible sequences.
+        if (autoCheckoutAt <= lastEventTime) {
+          return { type: 'IN' };
+        }
+
         return {
           type: 'IN',
           autoCheckoutAt,

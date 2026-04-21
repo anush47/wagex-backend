@@ -28,7 +28,8 @@ export class SalaryValidationService {
       where: {
         employeeId,
         status: LeaveStatus.PENDING,
-        OR: [{ startDate: { gte: periodStart, lte: periodEnd } }, { endDate: { gte: periodStart, lte: periodEnd } }],
+        startDate: { lte: periodEnd },
+        endDate: { gte: periodStart },
       },
     });
 
@@ -91,7 +92,8 @@ export class SalaryValidationService {
       where: {
         employeeId,
         status: LeaveStatus.APPROVED,
-        OR: [{ startDate: { gte: periodStart, lte: periodEnd } }, { endDate: { gte: periodStart, lte: periodEnd } }],
+        startDate: { lte: periodEnd },
+        endDate: { gte: periodStart },
       },
       select: { startDate: true, endDate: true },
     });

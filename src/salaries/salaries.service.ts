@@ -97,8 +97,10 @@ export class SalariesService {
             const advance = await tx.salaryAdvance.findUnique({ where: { id: adj.advanceId } });
             if (advance) {
               const schedule = (advance.deductionSchedule as unknown as DeductionInstallment[]) || [];
+              const toDay = (d: Date | string) => new Date(d).toISOString().split('T')[0];
+              const previewStartDay = toDay(preview.periodStartDate);
               const updatedSchedule = schedule.map((s) => {
-                if (new Date(s.periodStartDate).getTime() === new Date(preview.periodStartDate).getTime()) {
+                if (toDay(s.periodStartDate) === previewStartDay) {
                   return { ...s, isDeducted: true, salaryId: created.id, deductedAt: new Date().toISOString() };
                 }
                 return s;

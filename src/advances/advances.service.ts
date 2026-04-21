@@ -109,11 +109,11 @@ export class AdvancesService {
 
     for (const advance of advances) {
       const schedule = (advance.deductionSchedule as unknown as DeductionInstallment[]) || [];
+      const toDay = (d: Date | string) => new Date(d).toISOString().split('T')[0];
+      const startDay = toDay(startDate);
+      const endDay = toDay(endDate);
       const installment = schedule.find(
-        (s) =>
-          !s.isDeducted &&
-          new Date(s.periodStartDate).getTime() >= startDate.getTime() &&
-          new Date(s.periodStartDate).getTime() <= endDate.getTime(),
+        (s) => !s.isDeducted && toDay(s.periodStartDate) >= startDay && toDay(s.periodStartDate) <= endDay,
       );
 
       if (installment) {
