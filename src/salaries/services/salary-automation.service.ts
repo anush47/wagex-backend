@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SalaryEngineService } from './salary-engine.service';
 import { SalariesService } from '../salaries.service';
 import { PoliciesService } from '../../policies/policies.service';
-import { subDays, endOfMonth, subMonths, subWeeks, addDays, isSameDay, getDaysInMonth } from 'date-fns';
+import { subDays, endOfMonth, subMonths, addDays, isSameDay, getDaysInMonth } from 'date-fns';
 import { PayCycleFrequency, PayrollSettingsConfigDto } from '../../policies/dto/payroll-settings-policy.dto';
 import { PolicySettingsDto } from '../../policies/dto/policy-settings.dto';
 import { SalaryGroupPreview } from '../interfaces/salary-calculation.interface';

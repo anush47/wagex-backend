@@ -519,7 +519,9 @@ export class LeavesService {
       const start = new Date(dto.startDate);
       const end = new Date(dto.endDate);
       const minutes = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
-      return { days: 0, minutes };
+      // Store as fractional day (standard 8-hour workday = 480 min) so balance is correctly consumed
+      const days = Math.max(0, minutes) / 480;
+      return { days, minutes };
     }
 
     if (dto.type === (LeaveRequestType.HALF_DAY_FIRST as any) || dto.type === (LeaveRequestType.HALF_DAY_LAST as any)) {
