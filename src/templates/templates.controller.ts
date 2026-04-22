@@ -65,10 +65,11 @@ export class TemplatesController {
   @Get('render/:templateId/:resourceId')
   @ApiOperation({ summary: 'Render a template with data' })
   render(
-    @Param('templateId') templateId: string, 
+    @Param('templateId') templateId: string,
     @Param('resourceId') resourceId: string,
-    @Query() query: any
+    @Query() query: any,
+    @Request() req: RequestWithUserNamespace.RequestWithUser,
   ) {
-    return this.templatesService.render(templateId, resourceId, query);
+    return this.templatesService.render(templateId, resourceId, query, req.user);
   }
 }

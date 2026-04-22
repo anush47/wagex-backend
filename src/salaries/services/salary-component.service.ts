@@ -104,6 +104,10 @@ export class SalaryComponentService {
         if (comp.employerValue !== undefined) {
           employerAmount = (currentTotalEarnings * comp.employerValue) / 100;
         }
+      } else if (comp.systemType === PayrollComponentSystemType.EPF_EMPLOYER) {
+        // Separate employer-only EPF component (no employee deduction)
+        amount = 0;
+        employerAmount = (currentTotalEarnings * (comp.employerValue || comp.value || 0)) / 100;
       } else if (comp.systemType === PayrollComponentSystemType.ETF_EMPLOYER) {
         amount = 0;
         employerAmount = (currentTotalEarnings * (comp.employerValue || 0)) / 100;

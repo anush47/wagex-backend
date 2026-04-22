@@ -170,6 +170,25 @@ export class TemplatesService implements OnModuleInit {
       finalDto.isActive = false;
     }
 
+    // Atomically deactivate all other templates for the same type+company before activating this one
+    if (finalDto.isActive) {
+      return this.prisma.$transaction([
+        this.prisma.documentTemplate.updateMany({
+          where: {
+            id: { not: id },
+            type: template.type,
+            companyId: template.companyId,
+            isActive: true,
+          },
+          data: { isActive: false },
+        }),
+        this.prisma.documentTemplate.update({
+          where: { id },
+          data: finalDto as any,
+        }),
+      ]).then((results) => results[1]);
+    }
+
     return this.prisma.documentTemplate.update({
       where: { id },
       data: finalDto as any,
@@ -221,13 +240,18 @@ export class TemplatesService implements OnModuleInit {
     return this.dataService.getData(type, resourceId, query);
   }
 
-  async render(templateId: string, resourceId: string, query: any = {}) {
+  async render(templateId: string, resourceId: string, query: any = {}, user?: any) {
     const template = await this.prisma.documentTemplate.findUnique({
       where: { id: templateId },
     });
 
     if (!template) {
-      throw new Error('Template not found');
+      throw new NotFoundException('Template not found');
+    }
+
+    // Tenancy check: reuse the same authorization logic as getLiveData
+    if (user) {
+      await this.getLiveData(template.type, resourceId, user, query);
     }
 
     const data = await this.dataService.getData(template.type, resourceId, query);

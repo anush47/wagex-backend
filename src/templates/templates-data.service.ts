@@ -30,6 +30,12 @@ export class TemplatesDataService {
         data = await this.getAttendanceData(companyId, employeeId, startDate, endDate);
         break;
       }
+      case DocumentType.EPF_FORM:
+        data = await this.getEpfFormData(compositeId);
+        break;
+      case DocumentType.ETF_FORM:
+        data = await this.getEtfFormData(compositeId);
+        break;
       default:
         throw new Error('Unsupported document type for data fetching');
     }
@@ -282,15 +288,206 @@ export class TemplatesDataService {
   }
 
   private async getAttendanceData(companyId: string, employeeId: string, startDate: string, endDate: string) {
-    const employee = await this.prisma.employee.findUnique({
-      where: { id: employeeId },
-      include: { 
-        company: true,
-        department: { select: { name: true } }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const [employee, sessions, leaveRequests] = await Promise.all([
+      this.prisma.employee.findUnique({
+        where: { id: employeeId },
+        include: {
+          company: true,
+          department: { select: { name: true } },
+        },
+      }),
+      this.prisma.attendanceSession.findMany({
+        where: {
+          employeeId,
+          companyId,
+          date: { gte: start, lte: end },
+        },
+        orderBy: { date: 'asc' },
+      }),
+      this.prisma.leaveRequest.findMany({
+        where: {
+          employeeId,
+          status: 'APPROVED',
+          startDate: { lte: end },
+          endDate: { gte: start },
+        },
+        select: {
+          id: true,
+          type: true,
+          startDate: true,
+          endDate: true,
+          days: true,
+          status: true,
+          reason: true,
+          responseReason: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+    ]);
+
+    const logs = sessions.map((s) => ({
+      id: s.id,
+      date: format(new Date(s.date), 'yyyy-MM-dd'),
+      shiftName: s.shiftName || null,
+      shiftStartTime: s.shiftStartTime || null,
+      shiftEndTime: s.shiftEndTime || null,
+      shiftBreakMinutes: s.shiftBreakMinutes || 0,
+      checkInTime: s.checkInTime ? s.checkInTime.toISOString() : null,
+      checkOutTime: s.checkOutTime ? s.checkOutTime.toISOString() : null,
+      checkInLocation: s.checkInLocation || null,
+      checkOutLocation: s.checkOutLocation || null,
+      totalMinutes: s.totalMinutes || 0,
+      breakMinutes: s.breakMinutes || 0,
+      workMinutes: s.workMinutes || 0,
+      overtimeMinutes: s.overtimeMinutes || 0,
+      isLate: s.isLate,
+      lateMinutes: s.lateMinutes || 0,
+      isEarlyLeave: s.isEarlyLeave,
+      earlyLeaveMinutes: s.earlyLeaveMinutes || 0,
+      isOnLeave: s.isOnLeave,
+      isHalfDay: s.isHalfDay,
+      hasShortLeave: s.hasShortLeave,
+      autoCheckout: s.autoCheckout,
+      manuallyEdited: s.manuallyEdited,
+      workDayStatus: s.workDayStatus,
+      inApprovalStatus: s.inApprovalStatus,
+      outApprovalStatus: s.outApprovalStatus,
+      payrollStatus: s.salaryId ? 'PROCESSED' : 'PENDING',
+      remarks: s.remarks || null,
+      metadata: s.metadata || {},
+      createdAt: s.createdAt.toISOString(),
+      updatedAt: s.updatedAt.toISOString(),
+    }));
+
+    const summary = {
+      totalDays: logs.length,
+      presentDays: logs.filter((l) => l.checkInTime && !l.isOnLeave).length,
+      absentDays: logs.filter((l) => !l.checkInTime && !l.isOnLeave).length,
+      lateDays: logs.filter((l) => l.isLate).length,
+      overtimeMinutes: logs.reduce((sum, l) => sum + l.overtimeMinutes, 0),
+      leavesTaken: leaveRequests.reduce((sum, l) => sum + (l.days || 0), 0),
+    };
+
+    return {
+      employee,
+      company: employee?.company,
+      startDate,
+      endDate,
+      logs,
+      leaves: leaveRequests.map((l) => ({
+        ...l,
+        startDate: format(new Date(l.startDate), 'yyyy-MM-dd'),
+        endDate: format(new Date(l.endDate), 'yyyy-MM-dd'),
+      })),
+      summary,
+    };
+  }
+
+  private async getEpfFormData(epfRecordId: string) {
+    const record = await this.prisma.epfRecord.findUnique({
+      where: { id: epfRecordId },
+      include: {
+        salaries: {
+          include: {
+            employee: {
+              select: { id: true, fullName: true, employeeNo: true },
+            },
+          },
+        },
       },
     });
-    // Placeholder for attendance logs
-    const logs = [];
-    return { employee, startDate, endDate, logs };
+
+    if (!record) throw new Error('EPF record not found');
+
+    const company = await this.prisma.company.findUnique({ where: { id: record.companyId } });
+
+    const salaries = record.salaries.map((s) => {
+      const components = (s.components as any[]) || [];
+      const epfEmployeeComp = components.find((c) => c.systemType === 'EPF_EMPLOYEE');
+      const epfEmployerComp = components.find((c) => c.systemType === 'EPF_EMPLOYER');
+      const epfEmployee = epfEmployeeComp?.amount || 0;
+      const epfEmployer = epfEmployerComp?.amount || epfEmployeeComp?.employerAmount || 0;
+      let liableEarnings = 0;
+      if (epfEmployeeComp && epfEmployeeComp.value > 0) {
+        liableEarnings = epfEmployee / (epfEmployeeComp.value / 100);
+      } else {
+        liableEarnings = s.basicSalary || 0;
+      }
+      return {
+        id: s.id,
+        employee: s.employee,
+        basicSalary: s.basicSalary,
+        liableEarnings,
+        epfEmployee,
+        epfEmployer,
+        payDate: s.payDate ? format(new Date(s.payDate), 'yyyy-MM-dd') : null,
+        status: s.status,
+      };
+    });
+
+    const totals = {
+      totalEmployeeContribution: salaries.reduce((sum, s) => sum + s.epfEmployee, 0),
+      totalEmployerContribution: salaries.reduce((sum, s) => sum + s.epfEmployer, 0),
+      totalContribution: salaries.reduce((sum, s) => sum + s.epfEmployee + s.epfEmployer, 0),
+    };
+
+    return {
+      company,
+      month: record.month,
+      year: record.year,
+      epfRecord: record,
+      salaries,
+      totals,
+    };
+  }
+
+  private async getEtfFormData(etfRecordId: string) {
+    const record = await this.prisma.etfRecord.findUnique({
+      where: { id: etfRecordId },
+      include: {
+        salaries: {
+          include: {
+            employee: {
+              select: { id: true, fullName: true, employeeNo: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!record) throw new Error('ETF record not found');
+
+    const company = await this.prisma.company.findUnique({ where: { id: record.companyId } });
+
+    const salaries = record.salaries.map((s) => {
+      const components = (s.components as any[]) || [];
+      const etfComp = components.find((c) => c.systemType === 'ETF_EMPLOYER');
+      const etfEmployer = etfComp?.employerAmount || 0;
+      return {
+        id: s.id,
+        employee: s.employee,
+        basicSalary: s.basicSalary,
+        etfEmployer,
+        payDate: s.payDate ? format(new Date(s.payDate), 'yyyy-MM-dd') : null,
+        status: s.status,
+      };
+    });
+
+    const totals = {
+      totalContribution: salaries.reduce((sum, s) => sum + s.etfEmployer, 0),
+    };
+
+    return {
+      company,
+      month: record.month,
+      year: record.year,
+      etfRecord: record,
+      salaries,
+      totals,
+    };
   }
 }

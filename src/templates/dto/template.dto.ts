@@ -40,10 +40,8 @@ export class CreateTemplateDto {
   @IsEnum(['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'])
   status?: TemplateStatus;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
+  // isActive is intentionally omitted: always forced to false on create.
+  // Activate via PATCH /templates/:id after the template is approved.
 
   @ApiPropertyOptional()
   @IsOptional()

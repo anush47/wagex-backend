@@ -12,6 +12,11 @@ import { GeofencingEnforcement, ApprovalPolicyMode } from '../dto/attendance-pol
 import { Gender } from '../../common/enums/employee.enum';
 import { EmploymentType } from '../../common/enums/employee.enum';
 import { AccrualFrequency, AccrualMethod, EncashmentType } from '../dto/leaves-policy.dto';
+import {
+  PayrollComponentType,
+  PayrollComponentCategory,
+  PayrollComponentSystemType,
+} from '../dto/salary-components-policy.dto';
 
 /**
  * Default Policy Template for New Companies
@@ -215,8 +220,32 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
 
   // ════════════════════════════════════════════════════════════════════════
   // SALARY COMPONENTS (EPF, ETF as per Sri Lanka law)
+  // EPF: Employee 8%, Employer 12% | ETF: Employer 3%
   // ════════════════════════════════════════════════════════════════════════
   salaryComponents: {
-    components: [],
+    components: [
+      {
+        id: 'epf-employee',
+        name: 'EPF',
+        category: PayrollComponentCategory.DEDUCTION,
+        type: PayrollComponentType.PERCENTAGE_TOTAL_EARNINGS,
+        value: 8, // Employee deduction: 8% of total earnings
+        systemType: PayrollComponentSystemType.EPF_EMPLOYEE,
+        isStatutory: true,
+        affectsTotalEarnings: true,
+        employerValue: 12, // Employer contribution: 12% (stored on same component)
+      },
+      {
+        id: 'etf-employer',
+        name: 'ETF',
+        category: PayrollComponentCategory.DEDUCTION,
+        type: PayrollComponentType.PERCENTAGE_TOTAL_EARNINGS,
+        value: 0, // No employee deduction for ETF
+        systemType: PayrollComponentSystemType.ETF_EMPLOYER,
+        isStatutory: true,
+        affectsTotalEarnings: true,
+        employerValue: 3, // Employer contribution: 3% of total earnings
+      },
+    ],
   },
 };

@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LeaveStatus, ApprovalStatus } from '@prisma/client';
 import { PolicySettingsDto } from '../../policies/dto/policy-settings.dto';
+import { PayrollComponentSystemType } from '../../policies/dto/salary-components-policy.dto';
 
 export interface PayrollProblem {
-  type: 'PENDING_LEAVE' | 'UNAPPROVED_ATTENDANCE' | 'UNCLOSED_SESSION' | 'MISSING_ATTENDANCE';
+  type: 'PENDING_LEAVE' | 'UNAPPROVED_ATTENDANCE' | 'UNCLOSED_SESSION' | 'MISSING_ATTENDANCE' | 'MISSING_STATUTORY_COMPONENT';
   severity: 'ERROR' | 'WARNING';
   message: string;
   count?: number;
@@ -122,6 +123,29 @@ export class SalaryValidationService {
         });
       }
       currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    }
+
+    // 5. Check for missing statutory EPF/ETF components in policy
+    const components = policy.salaryComponents?.components || [];
+    const hasEpf = components.some(
+      (c) => c.systemType === PayrollComponentSystemType.EPF_EMPLOYEE || c.systemType === PayrollComponentSystemType.EPF_EMPLOYER,
+    );
+    const hasEtf = components.some((c) => c.systemType === PayrollComponentSystemType.ETF_EMPLOYER);
+
+    if (!hasEpf) {
+      problems.push({
+        type: 'MISSING_STATUTORY_COMPONENT',
+        severity: 'WARNING',
+        message: 'No EPF component found in policy. EPF deductions will not be applied.',
+      });
+    }
+
+    if (!hasEtf) {
+      problems.push({
+        type: 'MISSING_STATUTORY_COMPONENT',
+        severity: 'WARNING',
+        message: 'No ETF component found in policy. ETF contributions will not be applied.',
+      });
     }
 
     return problems;
