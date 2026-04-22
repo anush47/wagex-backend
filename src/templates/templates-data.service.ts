@@ -395,7 +395,7 @@ export class TemplatesDataService {
         salaries: {
           include: {
             employee: {
-              select: { id: true, fullName: true, employeeNo: true },
+              select: { id: true, fullName: true, employeeNo: true, nic: true },
             },
           },
         },
@@ -431,6 +431,7 @@ export class TemplatesDataService {
     });
 
     const totals = {
+      count: salaries.length,
       totalEmployeeContribution: salaries.reduce((sum, s) => sum + s.epfEmployee, 0),
       totalEmployerContribution: salaries.reduce((sum, s) => sum + s.epfEmployer, 0),
       totalContribution: salaries.reduce((sum, s) => sum + s.epfEmployee + s.epfEmployer, 0),
@@ -453,7 +454,7 @@ export class TemplatesDataService {
         salaries: {
           include: {
             employee: {
-              select: { id: true, fullName: true, employeeNo: true },
+              select: { id: true, fullName: true, employeeNo: true, nic: true },
             },
           },
         },
@@ -479,6 +480,7 @@ export class TemplatesDataService {
     });
 
     const totals = {
+      count: salaries.length,
       totalContribution: salaries.reduce((sum, s) => sum + s.etfEmployer, 0),
     };
 
