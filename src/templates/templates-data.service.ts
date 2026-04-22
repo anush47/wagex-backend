@@ -168,9 +168,10 @@ export class TemplatesDataService {
       where: { id: salaryId },
       include: {
         employee: {
-          include: { 
+          include: {
             company: true,
-            department: { select: { name: true } }
+            department: { select: { name: true } },
+            details: true,
           },
         },
       },
@@ -336,8 +337,8 @@ export class TemplatesDataService {
       shiftStartTime: s.shiftStartTime || null,
       shiftEndTime: s.shiftEndTime || null,
       shiftBreakMinutes: s.shiftBreakMinutes || 0,
-      checkInTime: s.checkInTime ? s.checkInTime.toISOString() : null,
-      checkOutTime: s.checkOutTime ? s.checkOutTime.toISOString() : null,
+      checkInTime: s.checkInTime ? format(new Date(s.checkInTime), 'HH:mm') : null,
+      checkOutTime: s.checkOutTime ? format(new Date(s.checkOutTime), 'HH:mm') : null,
       checkInLocation: s.checkInLocation || null,
       checkOutLocation: s.checkOutLocation || null,
       totalMinutes: s.totalMinutes || 0,
