@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AttendanceEvent, SessionWorkDayStatus, LeaveRequest } from '@prisma/client';
+import { AttendanceEvent, EventType, SessionWorkDayStatus, LeaveRequest } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SessionGroup } from './session-grouping.service';
 import { ShiftDto } from '../../policies/dto/shifts-policy.dto';
@@ -176,10 +176,10 @@ export class AttendanceCalculationService {
   }
 
   private getFirstIn(events: AttendanceEvent[]): Date | null {
-    return events.find((e) => e.eventType === 'IN')?.eventTime || null;
+    return events.find((e) => e.eventType === EventType.IN)?.eventTime || null;
   }
 
   private getLastOut(events: AttendanceEvent[]): Date | null {
-    return [...events].reverse().find((e) => e.eventType === 'OUT')?.eventTime || null;
+    return [...events].reverse().find((e) => e.eventType === EventType.OUT)?.eventTime || null;
   }
 }

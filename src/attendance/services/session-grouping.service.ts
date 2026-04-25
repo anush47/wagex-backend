@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TimeService } from './time.service';
-import { AttendanceEvent } from '@prisma/client';
+import { AttendanceEvent, EventSource, EventStatus, EventType } from '@prisma/client';
 import { ShiftSelectionService } from './shift-selection.service';
 
 export interface SessionGroup {
@@ -65,7 +65,7 @@ export class SessionGroupingService {
       let shouldSplit = false;
 
       // Rule 0: Always split after an auto checkout (SYSTEM source OUT event)
-      if (prevEvent.eventType === 'OUT' && currentEvent.eventType === 'IN' && prevEvent.source === 'SYSTEM') {
+      if (prevEvent.eventType === EventType.OUT && currentEvent.eventType === EventType.IN && prevEvent.source === EventSource.SYSTEM) {
         shouldSplit = true;
       }
       // Rule 1: Normal gap between any two events
@@ -73,7 +73,7 @@ export class SessionGroupingService {
         shouldSplit = true;
       }
       // Rule 2: Gap between an OUT and the next IN (End of shift)
-      else if (prevEvent.eventType === 'OUT' && currentEvent.eventType === 'IN' && gapHours > 10) {
+      else if (prevEvent.eventType === EventType.OUT && currentEvent.eventType === EventType.IN && gapHours > 10) {
         shouldSplit = true;
       }
       // Rule 3: Gap between two similar events (Duplicate logs or long forgotten clock-out)
@@ -83,7 +83,7 @@ export class SessionGroupingService {
       // Rule 4: Gap between IN and the next OUT (Shift duration)
       // We allow up to 24h for a single shift duration.
       // If it's longer than 24h, it's probably an error or separate days.
-      else if (prevEvent.eventType === 'IN' && currentEvent.eventType === 'OUT' && gapHours > 28) {
+      else if (prevEvent.eventType === 'IN' && currentEvent.eventType === EventType.OUT && gapHours > 28) {
         shouldSplit = true;
       }
 
@@ -109,17 +109,17 @@ export class SessionGroupingService {
   ): Promise<SessionGroup> {
     const sortedEvents = [...events].sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime());
 
-    const firstIn = sortedEvents.find((e) => e.eventType === 'IN')?.eventTime;
+    const firstIn = sortedEvents.find((e) => e.eventType === EventType.IN)?.eventTime;
     
     // Find the chronologically absolute last event in the sorted list
     const absoluteLastEvent = sortedEvents[sortedEvents.length - 1];
-    const isPresentNow = absoluteLastEvent?.eventType === 'IN';
+    const isPresentNow = absoluteLastEvent?.eventType === EventType.IN;
 
     // If the absolute last event is an IN, the employee is "Present Now" 
     // and the session should not have a checkOutTime yet.
     const lastOut = isPresentNow
       ? null
-      : [...sortedEvents].reverse().find((e) => e.eventType === 'OUT')?.eventTime;
+      : [...sortedEvents].reverse().find((e) => e.eventType === EventType.OUT)?.eventTime;
 
     // Simplified break pairing: any gap between consecutive events within the primary bounds
     const additionalInOutPairs: Array<{ in: Date; out: Date }> = [];
@@ -130,8 +130,8 @@ export class SessionGroupingService {
         const next = sortedEvents[i + 1];
         // If we have OUT followed by IN between our first and last markers, it's a break
         if (
-          current.eventType === 'OUT' &&
-          next.eventType === 'IN' &&
+          current.eventType === EventType.OUT &&
+          next.eventType === EventType.IN &&
           current.eventTime >= firstIn &&
           next.eventTime <= lastMarker
         ) {
@@ -194,7 +194,7 @@ export class SessionGroupingService {
           gte: startDate,
           lte: endDate,
         },
-        status: 'ACTIVE',
+        status: EventStatus.ACTIVE,
       },
       orderBy: {
         eventTime: 'asc',

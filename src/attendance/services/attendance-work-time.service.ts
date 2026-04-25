@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AttendanceEvent } from '@prisma/client';
+import { AttendanceEvent, EventType } from '@prisma/client';
 import { ShiftDto } from '../../policies/dto/shifts-policy.dto';
 import { TimeService } from './time.service';
 import { SessionGroup } from './session-grouping.service';
@@ -175,7 +175,7 @@ export class AttendanceWorkTimeService {
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
 
-      if (event.eventType === 'IN') {
+      if (event.eventType === EventType.IN) {
         // If we have a previous OUT, calculate break time
         if (lastOut) {
           const breakDuration = (event.eventTime.getTime() - lastOut.getTime()) / (1000 * 60);
@@ -183,7 +183,7 @@ export class AttendanceWorkTimeService {
         }
 
         // Look for matching OUT
-        const nextOut = events.slice(i + 1).find((e) => e.eventType === 'OUT');
+        const nextOut = events.slice(i + 1).find((e) => e.eventType === EventType.OUT);
         if (nextOut) {
           pairs.push({ in: event.eventTime, out: nextOut.eventTime });
           const duration = (nextOut.eventTime.getTime() - event.eventTime.getTime()) / (1000 * 60);
@@ -205,15 +205,15 @@ export class AttendanceWorkTimeService {
     }
 
     // Check if there's a single IN event without OUT
-    const hasIn = events.some((e) => e.eventType === 'IN');
-    const hasOut = events.some((e) => e.eventType === 'OUT');
+    const hasIn = events.some((e) => e.eventType === EventType.IN);
+    const hasOut = events.some((e) => e.eventType === EventType.OUT);
 
     if (!hasIn || hasOut) {
       return false;
     }
 
     // Check if more than 12 hours have passed since check-in
-    const firstIn = events.find((e) => e.eventType === 'IN');
+    const firstIn = events.find((e) => e.eventType === EventType.IN);
     if (!firstIn) {
       return false;
     }

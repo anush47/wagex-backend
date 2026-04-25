@@ -7,7 +7,7 @@ import { PoliciesService } from '../../policies/policies.service';
 import { TimeService } from './time.service';
 import { ShiftSelectionService } from './shift-selection.service';
 import { SessionQueryDto } from '../dto/session.dto';
-import { Role } from '@prisma/client';
+import { EventSource, EventStatus, EventType, Role } from '@prisma/client';
 import { PolicySettingsDto, GeofencingEnforcement } from '../../policies/dto/policy-settings.dto';
 
 @Injectable()
@@ -90,7 +90,7 @@ export class AttendancePortalService {
 
     // Find last event to determine current status
     const lastEvent = await this.prisma.attendanceEvent.findFirst({
-      where: { employeeId, status: 'ACTIVE' },
+      where: { employeeId, status: EventStatus.ACTIVE },
       orderBy: { eventTime: 'desc' },
       select: { eventTime: true, eventType: true, sessionId: true },
     });
@@ -193,21 +193,21 @@ export class AttendancePortalService {
           employeeId,
           companyId,
           eventTime: decision.autoCheckoutAt,
-          eventType: 'OUT',
-          source: 'SYSTEM',
+          eventType: EventType.OUT,
+          source: EventSource.SYSTEM,
           remark: 'Auto checkout on shift end',
-          status: 'ACTIVE',
+          status: EventStatus.ACTIVE,
           sessionId: decision.sessionId,
         },
       });
     }
 
-    const eventType = decision.autoCheckoutAt ? 'IN' : decision.type;
+    const eventType = decision.autoCheckoutAt ? EventType.IN : decision.type;
 
     // Apply time restriction validation
     const lastEvent = decision.lastEventTime ? {
         eventTime: decision.lastEventTime,
-        eventType: (eventType === 'IN' ? 'OUT' : 'IN') as any
+        eventType: (eventType === EventType.IN ? EventType.OUT : EventType.IN),
     } : undefined;
 
     await this.externalService.validateEventTiming(employeeId, now, eventType as any, policy, lastEvent);
@@ -219,12 +219,12 @@ export class AttendancePortalService {
         companyId,
         eventTime: now,
         eventType,
-        source: 'PORTAL',
+        source: EventSource.PORTAL,
         device: 'Web Portal',
         latitude: coords?.latitude,
         longitude: coords?.longitude,
         remark,
-        status: 'ACTIVE',
+        status: EventStatus.ACTIVE,
       },
     });
 

@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ShiftSelectionService } from './shift-selection.service';
 import { AttendanceCalculationService } from './attendance-calculation.service';
 import { LeaveIntegrationService } from './leave-integration.service';
-import { AttendanceEvent, AttendanceSession, ApprovalStatus, Prisma } from '@prisma/client';
+import { AttendanceEvent, AttendanceSession, ApprovalStatus, EventSource, EventType, Prisma } from '@prisma/client';
 import { PoliciesService } from '../../policies/policies.service';
 import { ApprovalPolicyMode } from '../../policies/dto/attendance-policy.dto';
 import { SessionGroupingService, SessionGroup } from './session-grouping.service';
@@ -129,16 +129,16 @@ export class AttendanceProcessingService {
     const effectivePolicy = policy || context?.policy || (await this.policiesService.getEffectivePolicy(employeeId));
     const approvalConfig = effectivePolicy?.attendance?.approvalPolicy;
 
-    const firstInEvent = sessionGroup.events.find((e) => e.eventType === 'IN');
-    const lastOutEvent = [...sessionGroup.events].reverse().find((e) => e.eventType === 'OUT');
+    const firstInEvent = sessionGroup.events.find((e) => e.eventType === EventType.IN);
+    const lastOutEvent = [...sessionGroup.events].reverse().find((e) => e.eventType === EventType.OUT);
 
     const determineApproval = (event?: AttendanceEvent, isLate?: boolean) => {
       if (!event || !approvalConfig || approvalConfig.mode === ApprovalPolicyMode.AUTO_APPROVE) {
         return ApprovalStatus.APPROVED;
       }
 
-      if (event.source === 'SYSTEM') return ApprovalStatus.APPROVED;
-      if (event.source === 'MANUAL') return ApprovalStatus.PENDING;
+      if (event.source === EventSource.SYSTEM) return ApprovalStatus.APPROVED;
+      if (event.source === EventSource.MANUAL) return ApprovalStatus.PENDING;
 
       switch (approvalConfig.mode) {
         case ApprovalPolicyMode.REQUIRE_APPROVAL_ALL:
@@ -217,7 +217,7 @@ export class AttendanceProcessingService {
       isHalfDay: calculation.isHalfDay,
       hasShortLeave: calculation.hasShortLeave,
       manuallyEdited: false,
-      autoCheckout: lastOutEvent?.source === 'SYSTEM',
+      autoCheckout: lastOutEvent?.source === EventSource.SYSTEM,
       additionalInOutCount: sessionGroup.additionalInOutPairs.length,
       workDayStatus: workDayStatus as any,
       inApprovalStatus,

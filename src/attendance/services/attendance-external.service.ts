@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException, UnauthorizedException, BadReques
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceProcessingService } from './attendance-processing.service';
 import { CreateEventDto, BulkCreateEventsDto } from '../dto/event.dto';
-import { AttendanceEvent, EventType, Prisma } from '@prisma/client';
+import { AttendanceEvent, EventSource, EventStatus, EventType, Prisma } from '@prisma/client';
 import { ShiftSelectionService } from './shift-selection.service';
 import { PoliciesService } from '../../policies/policies.service';
 import { TimeService } from './time.service';
@@ -187,7 +187,7 @@ export class AttendanceExternalService {
       employees.map(async (emp) => {
         // Get last event for status determination
         const lastEvent = await this.prisma.attendanceEvent.findFirst({
-          where: { employeeId: emp.id, status: 'ACTIVE' },
+          where: { employeeId: emp.id, status: EventStatus.ACTIVE },
           orderBy: { eventTime: 'desc' },
           select: { eventTime: true, eventType: true, sessionId: true },
         });
@@ -279,7 +279,7 @@ export class AttendanceExternalService {
     let lastEvent = lastEventContext;
     if (!lastEvent) {
       const dbLastEvent = await this.prisma.attendanceEvent.findFirst({
-        where: { employeeId, status: 'ACTIVE' },
+        where: { employeeId, status: EventStatus.ACTIVE },
         orderBy: { eventTime: 'desc' },
         select: { eventTime: true, eventType: true },
       });
@@ -296,14 +296,14 @@ export class AttendanceExternalService {
     const diffMs = eventTime.getTime() - lastEvent.eventTime.getTime();
 
     // Check IN -> OUT restriction
-    if (lastEvent.eventType === 'IN' && eventType === 'OUT') {
+    if (lastEvent.eventType === EventType.IN && eventType === EventType.OUT) {
       if (diffMs < minInToOut * 60 * 1000) {
         throw new BadRequestException(`Minimum ${minInToOut} minutes required between check-in and check-out.`);
       }
     }
 
     // Check OUT -> IN restriction
-    if (lastEvent.eventType === 'OUT' && eventType === 'IN') {
+    if (lastEvent.eventType === EventType.OUT && eventType === EventType.IN) {
       if (diffMs < minOutToIn * 1000) {
         throw new BadRequestException(`Please wait ${minOutToIn} seconds before checking in again.`);
       }
@@ -387,14 +387,14 @@ export class AttendanceExternalService {
             employeeId,
             companyId,
             eventTime: decision.autoCheckoutAt,
-            eventType: 'OUT',
-            source: 'SYSTEM',
+            eventType: EventType.OUT,
+            source: EventSource.SYSTEM,
             remark: 'Auto checkout on shift end',
-            status: 'ACTIVE',
+            status: EventStatus.ACTIVE,
             sessionId: decision.sessionId,
           },
         });
-        effectiveEventType = 'IN';
+        effectiveEventType = EventType.IN;
       } else {
         effectiveEventType = decision.type;
         lastInEventTime = decision.lastEventTime;
@@ -402,7 +402,7 @@ export class AttendanceExternalService {
     }
     if (effectiveEventType === 'OUT' && !lastInEventTime) {
       const lastIn = await this.prisma.attendanceEvent.findFirst({
-        where: { employeeId, eventType: 'IN', status: 'ACTIVE' },
+        where: { employeeId, eventType: EventType.IN, status: EventStatus.ACTIVE },
         orderBy: { eventTime: 'desc' },
         select: { eventTime: true },
       });
@@ -418,10 +418,10 @@ export class AttendanceExternalService {
       eventTime,
       effectiveEventType as EventType,
       policy,
-      lastInEventTime ? { eventTime: lastInEventTime, eventType: 'IN' } : undefined,
+      lastInEventTime ? { eventTime: lastInEventTime, eventType: EventType.IN } : undefined,
     );
 
-    const shiftQueryTime = effectiveEventType === 'OUT' && lastInEventTime ? lastInEventTime : eventTime;
+    const shiftQueryTime = effectiveEventType === EventType.OUT && lastInEventTime ? lastInEventTime : eventTime;
 
     const { shift } = await this.shiftSelectionService.getEffectiveShift(employeeId, shiftQueryTime, timezone);
     const shiftName = shift?.name || 'No Shift Assigned';
@@ -432,14 +432,14 @@ export class AttendanceExternalService {
         companyId,
         eventTime,
         eventType: effectiveEventType,
-        source: 'API_KEY',
+        source: EventSource.API_KEY,
         apiKeyName,
         device: dto.device,
         location: dto.location,
         latitude: dto.latitude,
         longitude: dto.longitude,
         remark: dto.remark,
-        status: 'ACTIVE',
+        status: EventStatus.ACTIVE,
       },
     });
 
@@ -474,7 +474,7 @@ export class AttendanceExternalService {
 
     if (!lastEvent) {
       const dbLastEvent = await this.prisma.attendanceEvent.findFirst({
-        where: { employeeId, status: 'ACTIVE' },
+        where: { employeeId, status: EventStatus.ACTIVE },
         orderBy: { eventTime: 'desc' },
         select: { eventTime: true, eventType: true, sessionId: true },
       });
@@ -487,8 +487,8 @@ export class AttendanceExternalService {
       }
     }
 
-    if (!lastEvent || lastEvent.eventType === 'OUT') {
-      return { type: 'IN' };
+    if (!lastEvent || lastEvent.eventType === EventType.OUT) {
+      return { type: EventType.IN };
     }
 
     const lastEventTime = lastEvent.eventTime;
@@ -634,18 +634,18 @@ export class AttendanceExternalService {
             employeeId,
             companyId,
             eventTime: d.autoCheckoutAt,
-            eventType: 'OUT',
-            source: 'SYSTEM',
+            eventType: EventType.OUT,
+            source: EventSource.SYSTEM,
             remark: 'Auto checkout on shift end',
-            status: 'ACTIVE',
+            status: EventStatus.ACTIVE,
             sessionId: d.sessionId,
           });
           lastStateMap.set(employeeId, {
             eventTime: d.autoCheckoutAt,
-            eventType: 'OUT',
+            eventType: EventType.OUT,
             sessionId: d.sessionId,
           });
-          eventType = 'IN';
+          eventType = EventType.IN;
         } else {
           eventType = d.type;
         }
@@ -667,7 +667,7 @@ export class AttendanceExternalService {
       lastStateMap.set(employeeId, {
         eventTime,
         eventType: eventType as EventType,
-        sessionId: eventType === 'IN' ? null : decision?.sessionId || null,
+        sessionId: eventType === EventType.IN ? null : decision?.sessionId || null,
       });
 
       validEvents.push({
@@ -675,14 +675,14 @@ export class AttendanceExternalService {
         companyId,
         eventTime,
         eventType: eventType as EventType,
-        source: 'API_KEY',
+        source: EventSource.API_KEY,
         apiKeyName,
         device: eventDto.device,
         location: eventDto.location,
         latitude: eventDto.latitude,
         longitude: eventDto.longitude,
         remark: eventDto.remark,
-        status: 'ACTIVE',
+        status: EventStatus.ACTIVE,
       });
     }
 
@@ -724,7 +724,7 @@ export class AttendanceExternalService {
       results: [
         ...results,
         ...validEvents
-          .filter((e) => e.source === 'API_KEY')
+          .filter((e) => e.source === EventSource.API_KEY)
           .map((e) => ({
             employeeNo: employees.find((emp) => emp.id === e.employeeId)?.employeeNo,
             status: 'success',

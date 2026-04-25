@@ -7,7 +7,7 @@ import { LeaveIntegrationService } from './leave-integration.service';
 import { PoliciesService } from '../../policies/policies.service';
 import { CreateEventDto } from '../dto/event.dto';
 import { UpdateSessionDto, CreateSessionDto } from '../dto/session.dto';
-import { EventSource, AttendanceEvent, AttendanceSession, EventType, Prisma } from '@prisma/client';
+import { EventSource, EventStatus, AttendanceEvent, AttendanceSession, EventType, Prisma } from '@prisma/client';
 import { ProcessingContext } from '../types/processing-context.types';
 import { AttendanceWorkTimeService } from './attendance-work-time.service';
 import { AttendanceHolidayService } from './attendance-holiday.service';
@@ -62,7 +62,7 @@ export class AttendanceManualService {
         latitude: dto.latitude,
         longitude: dto.longitude,
         remark: dto.remark,
-        status: 'ACTIVE',
+        status: EventStatus.ACTIVE,
       },
     });
 
@@ -328,7 +328,7 @@ export class AttendanceManualService {
 
     await this.prisma.attendanceEvent.updateMany({
       where: { sessionId: id },
-      data: { sessionId: null, status: 'IGNORED' },
+      data: { sessionId: null, status: EventStatus.IGNORED },
     });
 
     await this.prisma.attendanceSession.delete({ where: { id } });
