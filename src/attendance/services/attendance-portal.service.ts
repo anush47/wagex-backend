@@ -194,7 +194,7 @@ export class AttendancePortalService {
           companyId,
           eventTime: decision.autoCheckoutAt,
           eventType: 'OUT',
-          source: 'MANUAL',
+          source: 'SYSTEM',
           remark: 'Auto checkout on shift end',
           status: 'ACTIVE',
           sessionId: decision.sessionId,

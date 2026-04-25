@@ -64,8 +64,12 @@ export class SessionGroupingService {
 
       let shouldSplit = false;
 
+      // Rule 0: Always split after an auto checkout (SYSTEM source OUT event)
+      if (prevEvent.eventType === 'OUT' && currentEvent.eventType === 'IN' && prevEvent.source === 'SYSTEM') {
+        shouldSplit = true;
+      }
       // Rule 1: Normal gap between any two events
-      if (gapHours > 24) {
+      else if (gapHours > 24) {
         shouldSplit = true;
       }
       // Rule 2: Gap between an OUT and the next IN (End of shift)

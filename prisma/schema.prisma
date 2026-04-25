@@ -666,6 +666,7 @@ enum EventSource {
   API_KEY
   MANUAL
   PORTAL
+  SYSTEM
 }
 
 enum EventStatus {

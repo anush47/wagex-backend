@@ -137,6 +137,7 @@ export class AttendanceProcessingService {
         return ApprovalStatus.APPROVED;
       }
 
+      if (event.source === 'SYSTEM') return ApprovalStatus.APPROVED;
       if (event.source === 'MANUAL') return ApprovalStatus.PENDING;
 
       switch (approvalConfig.mode) {
@@ -216,7 +217,7 @@ export class AttendanceProcessingService {
       isHalfDay: calculation.isHalfDay,
       hasShortLeave: calculation.hasShortLeave,
       manuallyEdited: false,
-      autoCheckout: false,
+      autoCheckout: lastOutEvent?.source === 'SYSTEM',
       additionalInOutCount: sessionGroup.additionalInOutPairs.length,
       workDayStatus: workDayStatus as any,
       inApprovalStatus,
