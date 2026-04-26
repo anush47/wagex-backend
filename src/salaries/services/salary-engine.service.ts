@@ -4,6 +4,7 @@ import { PoliciesService } from '../../policies/policies.service';
 import { AttendanceProcessingService } from '../../attendance/services/attendance-processing.service';
 import { AdvancesService } from '../../advances/advances.service';
 import { PayCycleFrequency, PayrollCalculationMethod } from '../../policies/dto/payroll-settings-policy.dto';
+import { PolicySettingsDto } from '../../policies/dto/policy-settings.dto';
 import { SalaryStatus, LeaveStatus, Prisma, AttendanceSession, Holiday } from '@prisma/client';
 import { groupBy } from 'lodash';
 import { SalaryValidationService, PayrollProblem } from './salary-validation.service';
@@ -39,6 +40,7 @@ export class SalaryEngineService {
     attendanceStart?: Date,
     attendanceEnd?: Date,
     payDate?: Date,
+    policySnapshot?: PolicySettingsDto,
   ): Promise<
     SalaryPreview & {
       sessions: any[];
@@ -56,7 +58,7 @@ export class SalaryEngineService {
     const aStart = attendanceStart || periodStart;
     const aEnd = attendanceEnd || periodEnd;
 
-    const policy = await this.policiesService.getEffectivePolicy(employeeId);
+    const policy = policySnapshot ?? (await this.policiesService.getEffectivePolicy(employeeId));
     if (!policy) throw new NotFoundException('Policy not found for employee');
 
     const employee = await this.prisma.employee.findUnique({
@@ -364,6 +366,8 @@ export class SalaryEngineService {
       include: { policy: true },
     });
 
+    const policySnapshots = await this.policiesService.resolveBulkPolicies(targetEmployees.map((e) => e.id));
+
     const previews: any[] = [];
     for (const emp of targetEmployees) {
       try {
@@ -375,6 +379,7 @@ export class SalaryEngineService {
           attendanceStart,
           attendanceEnd,
           payDate,
+          policySnapshots.get(emp.id),
         );
         previews.push({
           ...preview,
