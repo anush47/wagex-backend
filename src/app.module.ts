@@ -29,6 +29,8 @@ import { PaymentsModule } from './payments/payments.module';
 import { StatutoryModule } from './statutory/statutory.module';
 import { TemplatesModule } from './templates/templates.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { BillingModule } from './billing/billing.module';
+import { BillingGuard } from './billing/guards/billing.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
 
@@ -61,6 +63,7 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
     PaymentsModule,
     TemplatesModule,
     DashboardModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [
@@ -88,6 +91,10 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
     {
       provide: APP_GUARD,
       useClass: PermissionsGuard, // Granular Permissions
+    },
+    {
+      provide: APP_GUARD,
+      useClass: BillingGuard,
     },
     {
       provide: APP_INTERCEPTOR,

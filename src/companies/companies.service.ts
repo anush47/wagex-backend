@@ -6,19 +6,20 @@ import { Company } from './entities/company.entity';
 import { QueryDto } from '../common/dto/query.dto';
 import { PaginatedResponse } from '../common/interfaces/paginated-response.interface';
 import { DEFAULT_EMPLOYER_PERMISSIONS } from '../auth/permissions';
-
 @Injectable()
 export class CompaniesService {
   private readonly logger = new Logger(CompaniesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
 
   async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
     this.logger.log(`Creating new company: ${createCompanyDto.name}`);
     return this.prisma.company.create({
       data: {
         ...createCompanyDto,
-        timezone: createCompanyDto.timezone || 'Asia/Colombo', // Default to Sri Lanka/Indian Standard Time (+5:30)
+        timezone: createCompanyDto.timezone || 'Asia/Colombo',
       },
     });
   }
@@ -27,7 +28,6 @@ export class CompaniesService {
     this.logger.log(`Creating company with membership for user: ${userId}`);
 
     return this.prisma.$transaction(async (tx) => {
-      // Create company with default timezone
       const company = await tx.company.create({
         data: {
           ...createCompanyDto,
@@ -35,14 +35,13 @@ export class CompaniesService {
         },
       });
 
-      // Add user as company member with employer role
       await tx.userCompany.create({
         data: {
           userId,
           companyId: company.id,
           role: 'EMPLOYER',
           permissions: DEFAULT_EMPLOYER_PERMISSIONS,
-          active: true, // The creator should have immediate access
+          active: true,
         },
       });
 

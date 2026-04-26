@@ -31,6 +31,7 @@ model Company {
   epfRecords         EpfRecord[]
   etfRecords         EtfRecord[]
   documentTemplates  DocumentTemplate[]
+  companyBilling     CompanyBilling?
 
   // Statutory Defaults
   defaultStatutoryPaymentMethod PaymentMethod? @default(BANK_TRANSFER)
@@ -577,6 +578,55 @@ model EtfRecord {
   @@map("etf_records")
 }
 
+model CompanyBilling {
+  id                  String          @id @default(uuid())
+  companyId           String?         @unique
+  isDefault           Boolean         @default(false)
+  basePriceLkr        Decimal         @default(3000) @db.Decimal(10, 2)
+  employeeTiers       Json            @default("[]")
+  services            Json            @default("[]")
+  multiMonthDiscounts Json            @default("[]")
+  employeeCount       Int             @default(0)
+  overrideActive      Boolean         @default(false)
+  gracePeriodMonths   Int             @default(2)
+  suspensionLevel     SuspensionLevel @default(NONE)
+  notes               String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  company             Company?        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoices            PaymentInvoice[]
+
+  @@map("company_billings")
+}
+
+model PaymentInvoice {
+  id                String         @id @default(uuid())
+  companyBillingId  String
+  companyId         String
+  billingPeriod     String
+  employeeCountSnap Int
+  basePriceLkr      Decimal        @db.Decimal(10, 2)
+  addonPriceLkr     Decimal        @default(0) @db.Decimal(10, 2)
+  discountLkr       Decimal        @default(0) @db.Decimal(10, 2)
+  totalLkr          Decimal        @db.Decimal(10, 2)
+  status            InvoiceStatus  @default(UNPAID)
+  slipUrl           String?
+  uploadedByUserId  String?
+  reviewedByUserId  String?
+  rejectionReason   String?
+  notes             String?
+  paidAt            DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  companyBilling    CompanyBilling @relation(fields: [companyBillingId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, billingPeriod])
+  @@index([companyId, status])
+  @@index([status])
+  @@index([companyBillingId])
+  @@map("payment_invoices")
+}
+
 model DocumentTemplate {
   id          String       @id @default(uuid())
   companyId   String?
@@ -719,4 +769,18 @@ enum PaymentMethod {
   BANK_TRANSFER
   CHEQUE
   OTHER
+}
+
+enum SuspensionLevel {
+  NONE
+  PORTAL
+  ALL
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PENDING
+  PAID
+  SKIPPED
+  FREE
 }

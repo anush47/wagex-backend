@@ -57,6 +57,15 @@ export class AttendanceExternalService {
       if (cached.result.valid && cached.result.policyId) {
         void this.throttleLastUsedUpdate(apiKey, cached.result.policyId);
       }
+      if (cached.result.valid && cached.result.company?.id) {
+        const billing = await this.prisma.companyBilling.findUnique({
+          where: { companyId: cached.result.company.id },
+          select: { suspensionLevel: true },
+        });
+        if (billing?.suspensionLevel === 'ALL') {
+          return { valid: false };
+        }
+      }
       return cached.result;
     }
 
@@ -130,6 +139,18 @@ export class AttendanceExternalService {
         employee: employeeInfo,
         restrictedToPolicyId: policy.isDefault ? null : policy.policyId,
       };
+
+      if (result.valid && result.company?.id) {
+        const billing = await this.prisma.companyBilling.findUnique({
+          where: { companyId: result.company.id },
+          select: { suspensionLevel: true },
+        });
+        if (billing?.suspensionLevel === 'ALL') {
+          const invalidResult: ApiKeyVerificationResult = { valid: false };
+          this.apiKeyCache.set(apiKey, { result: invalidResult, expiresAt: Date.now() + this.CACHE_TTL });
+          return invalidResult;
+        }
+      }
 
       this.apiKeyCache.set(apiKey, {
         result,

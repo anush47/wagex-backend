@@ -8,6 +8,7 @@ import { PaginatedResponse } from '../common/interfaces/paginated-response.inter
 import { Role } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { BillingConfigService } from '../billing/services/billing-config.service';
 import { auth } from '../auth/better-auth';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class EmployeesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly billingConfigService: BillingConfigService,
   ) {}
 
   async create(createEmployeeDto: CreateEmployeeDto): Promise<Employee> {
@@ -66,6 +68,7 @@ export class EmployeesService {
       data,
       include: { details: true },
     });
+    void this.billingConfigService.syncEmployeeCount(employee.companyId).catch(() => {});
     return employee as unknown as Employee;
   }
 
@@ -324,6 +327,9 @@ export class EmployeesService {
         return updated;
       });
 
+      if ('status' in updateEmployeeDto) {
+        void this.billingConfigService.syncEmployeeCount(employee.companyId).catch(() => {});
+      }
       return employee as unknown as Employee;
     } catch (error) {
       if (error.code === 'P2025') {
@@ -336,7 +342,7 @@ export class EmployeesService {
   async remove(id: string): Promise<void> {
     const employee = await this.prisma.employee.findUnique({
       where: { id },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, companyId: true },
     });
 
     // If there's a linked user, deprovision them first (delete the account)
@@ -352,11 +358,15 @@ export class EmployeesService {
     // Soft delete the employee
     await this.prisma.employee.update({
       where: { id },
-      data: { 
+      data: {
         status: 'DELETED',
         userId: null // Ensure it's unlinked
       },
     });
+
+    if (employee?.companyId) {
+      void this.billingConfigService.syncEmployeeCount(employee.companyId).catch(() => {});
+    }
   }
 
   private generatePassword(length = 12): string {
