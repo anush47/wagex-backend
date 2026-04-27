@@ -31,6 +31,7 @@ import { TemplatesModule } from './templates/templates.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { BillingModule } from './billing/billing.module';
 import { BillingGuard } from './billing/guards/billing.guard';
+import { BillingPeriodGuard } from './billing/guards/billing-period.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
 
@@ -95,6 +96,10 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
     {
       provide: APP_GUARD,
       useClass: BillingGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: BillingPeriodGuard,
     },
     {
       provide: APP_INTERCEPTOR,
