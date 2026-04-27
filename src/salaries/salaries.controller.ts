@@ -40,6 +40,12 @@ export class SalariesController {
     return this.salariesService.findAll(query);
   }
 
+  @Get('summary')
+  @ApiOperation({ summary: 'Get salary payment summary (pending, overdue, disbursed this month)' })
+  getSummary(@Query('companyId') companyId: string) {
+    return this.salariesService.getSummary(companyId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get salary by ID' })
   findOne(@Param('id') id: string) {

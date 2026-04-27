@@ -217,6 +217,58 @@ export class SalariesService {
   }
 
 
+  async getSummary(companyId: string) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const pendingStatuses = [SalaryStatus.APPROVED, SalaryStatus.PARTIALLY_PAID];
+
+    const [pendingSalaries, disbursedThisMonth] = await Promise.all([
+      this.prisma.salary.findMany({
+        where: { companyId, status: { in: pendingStatuses } },
+        select: {
+          netSalary: true,
+          payDate: true,
+          payments: { select: { amount: true } },
+        },
+      }),
+      this.prisma.payment.aggregate({
+        where: {
+          salary: { companyId },
+          date: { gte: startOfMonth, lte: endOfMonth },
+          salaryId: { not: null },
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    let pendingAmount = 0;
+    let pendingCount = 0;
+    let overdueAmount = 0;
+    let overdueCount = 0;
+
+    for (const s of pendingSalaries) {
+      const paid = s.payments.reduce((sum, p) => sum + p.amount, 0);
+      const balance = s.netSalary - paid;
+      if (balance <= 0.01) continue;
+      pendingAmount += balance;
+      pendingCount += 1;
+      if (s.payDate && s.payDate < now) {
+        overdueAmount += balance;
+        overdueCount += 1;
+      }
+    }
+
+    return {
+      disbursedThisMonth: disbursedThisMonth._sum.amount ?? 0,
+      pendingAmount,
+      pendingCount,
+      overdueAmount,
+      overdueCount,
+    };
+  }
+
   async findMySalaries(userId: string, query: SalaryQueryDto) {
     const employee = await this.prisma.employee.findFirst({
       where: { userId },
