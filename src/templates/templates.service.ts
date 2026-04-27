@@ -4,12 +4,14 @@ import { CreateTemplateDto, UpdateTemplateDto, TemplateQueryDto } from './dto/te
 import * as Handlebars from 'handlebars';
 import { DocumentType, TemplateStatus } from '@prisma/client';
 import { TemplatesDataService } from './templates-data.service';
+import { BillingStatusService } from '../billing/services/billing-status.service';
 
 @Injectable()
 export class TemplatesService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dataService: TemplatesDataService,
+    private readonly billingStatusService: BillingStatusService,
   ) {}
 
   onModuleInit() {
@@ -240,6 +242,37 @@ export class TemplatesService implements OnModuleInit {
     return this.dataService.getData(type, resourceId, query);
   }
 
+  /** Resolve companyId + periodEndDate from template type + resourceId and check billing. */
+  private async assertBillingForTemplate(type: DocumentType, resourceId: string): Promise<void> {
+    if (type === DocumentType.PAYSLIP) {
+      let salary: { periodEndDate: Date | null; employee: { companyId: string } | null } | null = null;
+      try {
+        salary = await this.prisma.salary.findUnique({
+          where: { id: resourceId },
+          select: { periodEndDate: true, employee: { select: { companyId: true } } },
+        });
+      } catch {
+        return; // DB lookup failed — skip check rather than block the render
+      }
+      if (salary?.employee?.companyId && salary.periodEndDate) {
+        await this.billingStatusService.assertBillingForPeriodEnd(
+          salary.employee.companyId,
+          new Date(salary.periodEndDate),
+        );
+      }
+    } else if (type === DocumentType.SALARY_SHEET) {
+      // resourceId format: "companyId:month:year"
+      const parts = resourceId.split(':');
+      if (parts.length < 3) {
+        throw new BadRequestException('Invalid resourceId for SALARY_SHEET: expected "companyId:month:year"');
+      }
+      const [companyId, month, year] = parts;
+      const periodEnd = this.billingStatusService.periodEndFromMonthYear(Number(month), Number(year));
+      await this.billingStatusService.assertBillingForPeriodEnd(companyId, periodEnd);
+    }
+    // Other document types (ATTENDANCE etc.) are not period-billed — no check needed
+  }
+
   async render(templateId: string, resourceId: string, query: any = {}, user?: any) {
     const template = await this.prisma.documentTemplate.findUnique({
       where: { id: templateId },
@@ -253,6 +286,9 @@ export class TemplatesService implements OnModuleInit {
     if (user) {
       await this.getLiveData(template.type, resourceId, user, query);
     }
+
+    // Billing check: enforce invoice purchase for period-based document types
+    await this.assertBillingForTemplate(template.type, resourceId);
 
     const data = await this.dataService.getData(template.type, resourceId, query);
     

@@ -34,20 +34,22 @@ export class BillingConfigService {
     const existing = await this.prisma.companyBilling.findUnique({ where: { companyId } });
     if (existing) return existing;
 
-    const def = await this.getDefault();
-    const employeeCount = await this.prisma.employee.count({
-      where: { companyId, status: 'ACTIVE' },
-    });
+    const [def, employeeCount] = await Promise.all([
+      this.getDefault(),
+      this.prisma.employee.count({ where: { companyId, status: 'ACTIVE' } }),
+    ]);
+
+    if (!def) throw new NotFoundException('No default billing config found. Seed a default config before creating company-specific configs.');
 
     return this.prisma.companyBilling.create({
       data: {
         companyId,
         isDefault: false,
-        basePriceLkr: def?.basePriceLkr ?? 3000,
-        employeeTiers: (def?.employeeTiers as any) ?? [],
-        services: (def?.services as any) ?? [],
-        multiMonthDiscounts: (def?.multiMonthDiscounts as any) ?? [],
-        gracePeriodMonths: def?.gracePeriodMonths ?? 2,
+        basePriceLkr: def.basePriceLkr,
+        employeeTiers: def.employeeTiers as any,
+        services: def.services as any,
+        multiMonthDiscounts: def.multiMonthDiscounts as any,
+        gracePeriodMonths: def.gracePeriodMonths,
         suspensionLevel: 'NONE',
         employeeCount,
       },
@@ -66,9 +68,10 @@ export class BillingConfigService {
   }
 
   async forceRecalculate(companyId: string) {
-    const count = await this.prisma.employee.count({ where: { companyId, status: 'ACTIVE' } });
-    // Only update if a custom config exists
-    const billing = await this.prisma.companyBilling.findUnique({ where: { companyId } });
+    const [count, billing] = await Promise.all([
+      this.prisma.employee.count({ where: { companyId, status: 'ACTIVE' } }),
+      this.prisma.companyBilling.findUnique({ where: { companyId } }),
+    ]);
     if (!billing) return { message: 'No custom config — company uses the default' };
     return this.prisma.companyBilling.update({
       where: { companyId },

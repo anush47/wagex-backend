@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { addDays, subDays, startOfMonth, addMonths, format, endOfMonth } from 'date-fns';
 
 export interface BillingStatus {
   suspensionLevel: 'NONE' | 'PORTAL' | 'ALL';
@@ -13,6 +14,42 @@ export interface BillingStatus {
 @Injectable()
 export class BillingStatusService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Throws ForbiddenException if the company has no purchased invoice
+   * (UNPAID / PENDING / PAID) for any billing month within ±15 days of periodEndDate.
+   */
+  async assertBillingForPeriodEnd(companyId: string, periodEndDate: Date): Promise<void> {
+    const expandedStart = subDays(periodEndDate, 15);
+    const expandedEnd = addDays(periodEndDate, 15);
+
+    const months: string[] = [];
+    let cursor = startOfMonth(expandedStart);
+    while (cursor <= expandedEnd) {
+      months.push(format(cursor, 'yyyy-MM'));
+      cursor = addMonths(cursor, 1);
+    }
+
+    const count = await this.prisma.paymentInvoice.count({
+      where: {
+        companyId,
+        billingPeriod: { in: months },
+        status: { in: ['UNPAID', 'PENDING', 'PAID', 'FREE', 'SKIPPED'] },
+      },
+    });
+
+    if (count === 0) {
+      throw new ForbiddenException(
+        `No billing invoice purchased for period ending ${format(periodEndDate, 'yyyy-MM-dd')}. ` +
+        `Please purchase the invoice for month(s): ${months.join(', ')}.`,
+      );
+    }
+  }
+
+  /** Convenience helper: build periodEndDate from month+year (last day of that month). */
+  periodEndFromMonthYear(month: number, year: number): Date {
+    return endOfMonth(new Date(year, month - 1, 1));
+  }
 
   async getStatus(companyId: string): Promise<BillingStatus> {
     const billing = await this.prisma.companyBilling.findUnique({ where: { companyId } });
@@ -30,10 +67,13 @@ export class BillingStatusService {
       };
     }
 
-    const [unpaidCount, pendingCount] = await Promise.all([
-      this.prisma.paymentInvoice.count({ where: { companyId, status: 'UNPAID' } }),
-      this.prisma.paymentInvoice.count({ where: { companyId, status: 'PENDING' } }),
-    ]);
+    const statusCounts = await this.prisma.paymentInvoice.groupBy({
+      by: ['status'],
+      where: { companyId, status: { in: ['UNPAID', 'PENDING'] } },
+      _count: true,
+    });
+    const unpaidCount = statusCounts.find((s) => s.status === 'UNPAID')?._count ?? 0;
+    const pendingCount = statusCounts.find((s) => s.status === 'PENDING')?._count ?? 0;
 
     const suspensionLevel = billing.suspensionLevel as 'NONE' | 'PORTAL' | 'ALL';
     let hasWarning = false;

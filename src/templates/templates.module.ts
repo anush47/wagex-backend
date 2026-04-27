@@ -4,9 +4,10 @@ import { TemplatesController } from './templates.controller';
 import { TemplatesDataService } from './templates-data.service';
 
 import { StorageModule } from '../storage/storage.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-  imports: [StorageModule],
+  imports: [StorageModule, BillingModule],
   controllers: [TemplatesController],
   providers: [TemplatesService, TemplatesDataService],
   exports: [TemplatesService],

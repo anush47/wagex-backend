@@ -84,7 +84,9 @@ export class AdminBillingController {
   ) {
     if (!file) throw new BadRequestException('File is required');
     if (!companyId) throw new BadRequestException('companyId is required');
-    const invoiceIds = JSON.parse(invoiceIdsRaw);
+    let invoiceIds: string[];
+    try { invoiceIds = JSON.parse(invoiceIdsRaw); } catch { throw new BadRequestException('invoiceIds must be a valid JSON array'); }
+    if (!Array.isArray(invoiceIds) || invoiceIds.length === 0) throw new BadRequestException('invoiceIds must be a non-empty array');
     const { key } = await this.storageService.uploadFile(file, companyId, 'billing');
     return this.invoiceService.uploadSlip(companyId, invoiceIds, key, req.user.id);
   }

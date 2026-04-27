@@ -9,9 +9,10 @@ import { AdvancesModule } from '../advances/advances.module';
 import { SalaryValidationService } from './services/salary-validation.service';
 import { SalaryOvertimeService } from './services/salary-overtime.service';
 import { SalaryComponentService } from './services/salary-component.service';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-  imports: [PoliciesModule, AttendanceModule, AdvancesModule],
+  imports: [PoliciesModule, AttendanceModule, AdvancesModule, BillingModule],
   controllers: [SalariesController],
   providers: [
     SalariesService,

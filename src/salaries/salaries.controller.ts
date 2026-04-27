@@ -1,14 +1,17 @@
-import { Controller, Get, Post, Body, Query, Param, Request, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, Request, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SalariesService } from './salaries.service';
 import { GenerateSalaryDto, SalaryQueryDto } from './dto/salary.dto';
 import * as RequestWithUserNamespace from '../common/interfaces/request-with-user.interface';
 import { SalaryGroupPreview, SalaryPreview } from './interfaces/salary-calculation.interface';
+import { BillingPeriodGuard } from '../billing/guards/billing-period.guard';
+import { RequiresBilling } from '../billing/decorators/require-billing.decorator';
 
 @ApiTags('salaries')
 @Controller('salaries')
 export class SalariesController {
   constructor(private readonly salariesService: SalariesService) {}
+
   @Get('me')
   @ApiOperation({ summary: 'Get current employee salaries' })
   findMySalaries(@Query() query: SalaryQueryDto, @Request() req: RequestWithUserNamespace.RequestWithUser) {
@@ -16,12 +19,16 @@ export class SalariesController {
   }
 
   @Post('generate-preview')
+  @UseGuards(BillingPeriodGuard)
+  @RequiresBilling({ companyIdPath: 'body.companyId', kind: 'date', periodEndPath: 'body.periodEndDate' })
   @ApiOperation({ summary: 'Generate salary previews without saving' })
   generatePreview(@Body() dto: GenerateSalaryDto) {
     return this.salariesService.generatePreviews(dto);
   }
 
   @Post('save-drafts/:companyId')
+  @UseGuards(BillingPeriodGuard)
+  @RequiresBilling({ companyIdPath: 'params.companyId', kind: 'date', periodEndPath: 'body.0.employees.0.periodEndDate' })
   @ApiOperation({ summary: 'Save generated salary previews as drafts' })
   saveDrafts(@Param('companyId') companyId: string, @Body() groupedPreviews: SalaryGroupPreview[]) {
     return this.salariesService.saveDrafts(companyId, groupedPreviews);

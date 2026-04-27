@@ -131,8 +131,9 @@ export class InvoiceService {
     });
     if (invoices.length === 0) throw new BadRequestException('No PENDING invoices found');
 
-    await this.prisma.paymentInvoice.updateMany({
-      where: { id: { in: invoiceIds } },
+    const pendingIds = invoices.map((i) => i.id);
+    const result = await this.prisma.paymentInvoice.updateMany({
+      where: { id: { in: pendingIds }, status: 'PENDING' },
       data: {
         status: approved ? 'PAID' : 'UNPAID',
         reviewedByUserId,
@@ -142,7 +143,7 @@ export class InvoiceService {
       },
     });
 
-    return { updated: invoices.length, approved };
+    return { updated: result.count, approved };
   }
 
   async setSpecialStatus(invoiceId: string, status: 'SKIPPED' | 'FREE', reviewedByUserId: string) {

@@ -4,9 +4,10 @@ import { EtfService } from './services/etf.service';
 import { EpfController } from './controllers/epf.controller';
 import { EtfController } from './controllers/etf.controller';
 import { PrismaModule } from '../prisma/prisma.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, BillingModule],
   controllers: [EpfController, EtfController],
   providers: [EpfService, EtfService],
   exports: [EpfService, EtfService],
