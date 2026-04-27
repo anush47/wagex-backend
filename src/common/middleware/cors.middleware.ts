@@ -16,6 +16,10 @@ const NO_ORIGIN_ALLOWED_PREFIXES = [
   '/v1/attendance/external/events/bulk',
   // Swagger UI — direct browser navigation, key-protected separately
   '/docs',
+  // Better Auth internal — server-side token requests have no browser Origin
+  '/v1/auth',
+  // Browser auto-probes (Chrome DevTools, etc.)
+  '/.well-known',
 ];
 
 function isNoOriginAllowed(path: string): boolean {
