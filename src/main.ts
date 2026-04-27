@@ -8,6 +8,8 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
 import { json, urlencoded } from 'express';
+import { buildCorsMiddleware } from './common/middleware/cors.middleware';
+import { swaggerAuthMiddleware } from './common/middleware/swagger-auth.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -33,14 +35,11 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  // CORS Setup
-  app.enableCors({
-    origin: true, // or your frontend URL
-    credentials: true,
-  });
+  // CORS — path-aware, see src/common/middleware/cors.middleware.ts
+  app.use(buildCorsMiddleware());
 
-  // Global API Prefix
-  app.setGlobalPrefix('api/v1');
+  // Global API Prefix — /v1/... (deploy on api.wagex.lk)
+  app.setGlobalPrefix('v1');
 
   // Swagger Documentation Setup
   const config = new DocumentBuilder()
@@ -50,8 +49,11 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
 
+  // Swagger — protected by ?key=<SWAGGER_KEY>
+  app.use(['/docs', '/docs-json'], swaggerAuthMiddleware);
+
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('docs', app, document);
 
   const port = process.env.PORT ?? 8000;
   await app.listen(port, '0.0.0.0'); // <-- bind to all IPv4 interfaces
