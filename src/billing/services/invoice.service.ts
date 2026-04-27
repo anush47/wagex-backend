@@ -49,6 +49,16 @@ export class InvoiceService {
     await this.billingConfigService.createCustomForCompany(companyId);
     const billing = await this.billingConfigService.getForCompany(companyId);
 
+    // Grace period enforcement: block if unpaid+pending > gracePeriodMonths
+    const outstandingCount = await this.prisma.paymentInvoice.count({
+      where: { companyId, status: { in: ['UNPAID', 'PENDING'] } },
+    });
+    if (outstandingCount > billing.gracePeriodMonths) {
+      throw new BadRequestException(
+        `You have ${outstandingCount} unpaid/pending invoice(s), which exceeds your grace period of ${billing.gracePeriodMonths} month(s). Please settle outstanding invoices before adding more.`,
+      );
+    }
+
     const existing = await this.prisma.paymentInvoice.findMany({
       where: { companyId, billingPeriod: { in: billingPeriods } },
       select: { billingPeriod: true },
@@ -168,6 +178,9 @@ export class InvoiceService {
         ...(filters.companyId ? { companyId: filters.companyId } : {}),
         ...(filters.status ? { status: filters.status as any } : {}),
         ...(filters.period ? { billingPeriod: filters.period } : {}),
+      },
+      include: {
+        companyBilling: { include: { company: { select: { name: true } } } },
       },
       orderBy: { createdAt: 'desc' },
       take: 200,

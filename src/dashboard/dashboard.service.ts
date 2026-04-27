@@ -46,33 +46,24 @@ export class DashboardService {
       pendingLeavesCount,
       todaySessions,
       recentAuditLogs,
+      pendingSalariesCount,
+      unpaidBillingCount,
     ] = await Promise.all([
       this.prisma.company.count({ where: { id: { in: companyIds }, active: true } }),
       this.prisma.employee.count({ where: { companyId: { in: companyIds }, status: 'ACTIVE' } }),
       this.prisma.leaveRequest.count({ where: { companyId: { in: companyIds }, status: 'PENDING' } }),
       this.prisma.attendanceSession.findMany({
-        where: {
-          companyId: { in: companyIds },
-          date: today,
-        },
-        select: {
-          checkInTime: true,
-          isLate: true,
-        },
+        where: { companyId: { in: companyIds }, date: today },
+        select: { checkInTime: true, isLate: true },
       }),
       this.prisma.auditLog.findMany({
         where: { companyId: { in: companyIds } },
         orderBy: { createdAt: 'desc' },
         take: 10,
-        select: {
-          id: true,
-          action: true,
-          entity: true,
-          details: true,
-          createdAt: true,
-          resourceId: true,
-        },
+        select: { id: true, action: true, entity: true, details: true, createdAt: true, resourceId: true },
       }),
+      this.prisma.salary.count({ where: { companyId: { in: companyIds }, status: { in: ['APPROVED', 'PARTIALLY_PAID'] } } }),
+      this.prisma.paymentInvoice.count({ where: { companyId: { in: companyIds }, status: { in: ['UNPAID', 'PENDING'] } } }),
     ]);
 
     // Attendance breakdown
@@ -84,12 +75,58 @@ export class DashboardService {
       companiesCount,
       employeesCount,
       pendingLeavesCount,
-      attendance: {
-        present,
-        late,
-        absent,
-        total: employeesCount,
-      },
+      pendingSalariesCount,
+      unpaidBillingCount,
+      attendance: { present, late, absent, total: employeesCount },
+      recentActivity: recentAuditLogs.map((log) => ({
+        id: log.id,
+        action: log.action,
+        details: this.formatAuditDetails(log),
+        createdAt: log.createdAt,
+        type: this.mapEntityToType(log.entity || ''),
+      })),
+    };
+  }
+
+  async getAdminStats() {
+    this.logger.log('Fetching admin dashboard stats');
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const [
+      companiesCount,
+      employeesCount,
+      pendingInvoicesCount,
+      unpaidInvoicesCount,
+      mrrThisMonth,
+      suspendedCompaniesCount,
+      recentAuditLogs,
+    ] = await Promise.all([
+      this.prisma.company.count({ where: { active: true } }),
+      this.prisma.employee.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.paymentInvoice.count({ where: { status: 'PENDING' } }),
+      this.prisma.paymentInvoice.count({ where: { status: 'UNPAID' } }),
+      this.prisma.paymentInvoice.aggregate({
+        where: { status: 'PAID', paidAt: { gte: startOfMonth, lte: endOfMonth } },
+        _sum: { totalLkr: true },
+      }),
+      this.prisma.companyBilling.count({ where: { suspensionLevel: { not: 'NONE' } } }),
+      this.prisma.auditLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { id: true, action: true, entity: true, details: true, createdAt: true },
+      }),
+    ]);
+
+    return {
+      companiesCount,
+      employeesCount,
+      pendingInvoicesCount,
+      unpaidInvoicesCount,
+      mrrThisMonth: Number(mrrThisMonth._sum.totalLkr ?? 0),
+      suspendedCompaniesCount,
       recentActivity: recentAuditLogs.map((log) => ({
         id: log.id,
         action: log.action,
@@ -105,6 +142,8 @@ export class DashboardService {
       companiesCount: 0,
       employeesCount: 0,
       pendingLeavesCount: 0,
+      pendingSalariesCount: 0,
+      unpaidBillingCount: 0,
       attendance: { present: 0, late: 0, absent: 0, total: 0 },
       recentActivity: [],
     };

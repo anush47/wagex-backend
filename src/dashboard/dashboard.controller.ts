@@ -17,4 +17,12 @@ export class DashboardController {
   async getEmployerStats(@Request() req: RequestWithUserNamespace.RequestWithUser) {
     return this.dashboardService.getEmployerStats(req.user.id);
   }
+
+  @Get('admin')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get system-wide admin dashboard stats' })
+  async getAdminStats() {
+    return this.dashboardService.getAdminStats();
+  }
 }
+

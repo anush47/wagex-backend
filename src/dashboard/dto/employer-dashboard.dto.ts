@@ -2,6 +2,8 @@ export class EmployerDashboardDto {
   companiesCount: number;
   employeesCount: number;
   pendingLeavesCount: number;
+  pendingSalariesCount: number;
+  unpaidBillingCount: number;
   attendance: {
     present: number;
     late: number;
