@@ -233,11 +233,11 @@ export class SalariesService {
           payments: { select: { amount: true } },
         },
       }),
+      // All payments this month (salary + advance) for this company
       this.prisma.payment.aggregate({
         where: {
-          salary: { companyId },
+          companyId,
           date: { gte: startOfMonth, lte: endOfMonth },
-          salaryId: { not: null },
         },
         _sum: { amount: true },
       }),
