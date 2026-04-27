@@ -2,18 +2,24 @@ import cors from 'cors';
 import type { Request, Response, NextFunction } from 'express';
 
 /**
- * Device-only endpoints: ESP32 / external hardware call these without a browser
- * Origin header. They are secured by API-key auth rather than browser sessions.
+ * Paths that may be accessed without an Origin header.
+ *
+ * DEVICE_PATHS  — ESP32/hardware endpoints secured by API-key auth.
+ * BROWSER_DIRECT — Pages navigated to directly in a browser tab; browsers
+ *                  don't send Origin on direct navigation, only on fetch/XHR.
  */
-const DEVICE_PATH_PREFIXES = [
+const NO_ORIGIN_ALLOWED_PREFIXES = [
+  // Hardware device endpoints
   '/v1/attendance/external/verify',
   '/v1/attendance/external/sync',
   '/v1/attendance/external/event',
   '/v1/attendance/external/events/bulk',
+  // Swagger UI — direct browser navigation, key-protected separately
+  '/docs',
 ];
 
-function isDevicePath(path: string): boolean {
-  return DEVICE_PATH_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+function isNoOriginAllowed(path: string): boolean {
+  return NO_ORIGIN_ALLOWED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`) || path.startsWith(`${p}-`));
 }
 
 /**
@@ -39,8 +45,7 @@ export function buildCorsMiddleware() {
     cors({
       origin: (origin, callback) => {
         if (!origin) {
-          // No Origin header — only device endpoints may proceed
-          if (isDevicePath(req.path)) return callback(null, true);
+          if (isNoOriginAllowed(req.path)) return callback(null, true);
           return callback(new Error('CORS: Origin header is required for this endpoint'));
         }
 
