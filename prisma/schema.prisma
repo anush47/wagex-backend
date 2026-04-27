@@ -68,6 +68,7 @@ model User {
   approvedSalaries Salary[]       @relation("ApprovedSalaries")
   sessions         Session[]
   accounts         Account[]
+  auditLogs        AuditLog[]
 
   @@map("users")
 }
@@ -233,6 +234,7 @@ model AuditLog {
   createdAt  DateTime @default(now())
   companyId  String?
   entity     String?
+  user       User?    @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
 }

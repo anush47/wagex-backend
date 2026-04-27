@@ -34,4 +34,47 @@ export class AuditService {
       })
       .catch((err) => console.error('Audit Log Failed:', err));
   }
+
+  async findAll(query: {
+    page?: number;
+    limit?: number;
+    action?: string;
+    entity?: string;
+    userId?: string;
+    companyId?: string;
+  }) {
+    const { page = 1, limit = 20, action, entity, userId, companyId } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.AuditLogWhereInput = {};
+    if (action) where.action = action;
+    if (entity) where.entity = entity;
+    if (userId) where.userId = userId;
+    if (companyId) where.companyId = companyId;
+
+    const [items, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              fullName: true,
+              email: true,
+            },
+          },
+        },
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
+  }
 }
