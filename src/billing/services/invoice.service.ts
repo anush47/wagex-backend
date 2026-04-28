@@ -107,6 +107,32 @@ export class InvoiceService {
     };
   }
 
+  async paymentPreview(companyId: string, invoiceIds: string[]) {
+    const invoices = await this.prisma.paymentInvoice.findMany({
+      where: {
+        id: { in: invoiceIds },
+        companyId,
+        status: 'UNPAID',
+      },
+    });
+
+    if (invoices.length === 0) {
+      throw new BadRequestException('No valid UNPAID invoices found for preview');
+    }
+
+    if (invoices.length !== invoiceIds.length) {
+      throw new BadRequestException('Some selected invoices are not UNPAID or do not belong to this company');
+    }
+
+    const totalLkr = invoices.reduce((sum, inv) => sum + Number(inv.totalLkr), 0);
+
+    return {
+      totalLkr,
+      invoiceCount: invoices.length,
+      invoiceIds,
+    };
+  }
+
   async uploadSlip(companyId: string, invoiceIds: string[], slipUrl: string, uploadedByUserId: string) {
     const pendingCount = await this.prisma.paymentInvoice.count({
       where: { companyId, status: 'PENDING' },
@@ -185,5 +211,31 @@ export class InvoiceService {
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
+  }
+
+  async getAdminStats() {
+    const [pending, unpaid, paidThisMonth] = await Promise.all([
+      this.prisma.paymentInvoice.aggregate({
+        where: { status: 'PENDING' },
+        _count: true,
+        _sum: { totalLkr: true },
+      }),
+      this.prisma.paymentInvoice.aggregate({
+        where: { status: 'UNPAID' },
+        _count: true,
+        _sum: { totalLkr: true },
+      }),
+      this.prisma.paymentInvoice.aggregate({
+        where: { status: 'PAID' }, // Simplified: just total paid in history
+        _count: true,
+        _sum: { totalLkr: true },
+      }),
+    ]);
+
+    return {
+      pending: { count: pending._count, totalLkr: pending._sum.totalLkr || 0 },
+      unpaid: { count: unpaid._count, totalLkr: unpaid._sum.totalLkr || 0 },
+      paidTotal: { count: paidThisMonth._count, totalLkr: paidThisMonth._sum.totalLkr || 0 },
+    };
   }
 }

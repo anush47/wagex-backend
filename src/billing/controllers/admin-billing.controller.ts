@@ -60,6 +60,11 @@ export class AdminBillingController {
     return this.invoiceService.getAllInvoices({ companyId, status, period });
   }
 
+  @Get('stats')
+  getStats() {
+    return this.invoiceService.getAdminStats();
+  }
+
   @Post('invoices/review')
   reviewInvoices(@Body() dto: ReviewInvoiceDto, @Request() req: { user: RequestWithUser['user'] }) {
     return this.invoiceService.reviewInvoices(dto.invoiceIds, dto.approved, req.user.id, dto.rejectionReason);

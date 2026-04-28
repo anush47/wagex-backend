@@ -45,6 +45,14 @@ export class EmployerBillingController {
     return this.invoiceService.previewPrice(dto.companyId, dto.billingPeriods);
   }
 
+  @Post('invoices/payment-preview')
+  paymentPreview(@Body() dto: { companyId: string; invoiceIds: string[] }) {
+    if (!dto.invoiceIds || !Array.isArray(dto.invoiceIds) || dto.invoiceIds.length === 0) {
+      throw new BadRequestException('invoiceIds must be a non-empty array');
+    }
+    return this.invoiceService.paymentPreview(dto.companyId, dto.invoiceIds);
+  }
+
   @Post('invoices')
   createInvoices(@Body() dto: CreateInvoicesDto, @Request() req: { user: RequestWithUser['user'] }) {
     return this.invoiceService.createInvoices(dto.companyId, dto.billingPeriods, req.user.id);
