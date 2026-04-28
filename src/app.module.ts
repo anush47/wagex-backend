@@ -1,5 +1,8 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { MulterModule } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { MAX_FILE_SIZE_BYTES } from './storage/storage.constants';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
@@ -38,6 +41,10 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    MulterModule.register({
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_FILE_SIZE_BYTES },
+    }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {

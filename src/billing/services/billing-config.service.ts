@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { UpdateBillingConfigDto } from '../dto/billing.dto';
+import { UpdateBillingConfigDto, GetCompaniesQueryDto } from '../dto/billing.dto';
 
 @Injectable()
 export class BillingConfigService {
@@ -97,33 +97,71 @@ export class BillingConfigService {
     });
   }
 
-  /** Returns ALL companies with their custom billing config (or null if using default). */
-  async listAll() {
-    const [companies, billings] = await Promise.all([
+  /** Returns paginated companies with their billing config. */
+  async listAll(query: GetCompaniesQueryDto) {
+    const { page = 1, limit = 20, type, search } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    const conditions: any[] = [];
+
+    if (search) {
+      conditions.push({ name: { contains: search, mode: 'insensitive' } });
+    }
+    
+    if (type === 'CUSTOM') {
+      conditions.push({ companyBilling: { overrideActive: true } });
+    } else if (type === 'DEFAULT') {
+      conditions.push({
+        OR: [
+          { companyBilling: null },
+          { companyBilling: { overrideActive: false } }
+        ]
+      });
+    }
+
+    if (conditions.length > 0) {
+      where.AND = conditions;
+    }
+
+    const [total, companies] = await Promise.all([
+      this.prisma.company.count({ where }),
       this.prisma.company.findMany({
-        select: { id: true, name: true },
-        orderBy: { name: 'asc' },
-      }),
-      this.prisma.companyBilling.findMany({
-        where: { isDefault: false },
-        select: {
-          id: true,
-          companyId: true,
-          suspensionLevel: true,
-          basePriceLkr: true,
-          employeeCount: true,
-          overrideActive: true,
+        where,
+        select: { 
+          id: true, 
+          name: true,
+          companyBilling: {
+            select: {
+              id: true,
+              suspensionLevel: true,
+              basePriceLkr: true,
+              employeeCount: true,
+              overrideActive: true,
+            }
+          }
         },
+        orderBy: { name: 'asc' },
+        skip,
+        take: limit,
       }),
     ]);
 
-    const billingMap = new Map(billings.map((b) => [b.companyId, b]));
-
-    return companies.map((company) => ({
-      company,
-      billing: billingMap.get(company.id) ?? null,
-      hasCustomConfig: billingMap.has(company.id),
+    const data = companies.map((c) => ({
+      company: { id: c.id, name: c.name },
+      billing: c.companyBilling,
+      hasCustomConfig: !!c.companyBilling,
     }));
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async ensureDefaultExists() {

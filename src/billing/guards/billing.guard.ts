@@ -20,7 +20,7 @@ export class BillingGuard implements CanActivate {
     const query = (request.query || {}) as Record<string, string>;
     const params = (request.params || {}) as Record<string, string>;
     const body = (request.body || {}) as Record<string, any>;
-    const companyId = query.companyId || params.companyId || body?.companyId || params.id;
+    const companyId = query.companyId || params.companyId || body?.companyId;
 
     if (!companyId) return true;
 

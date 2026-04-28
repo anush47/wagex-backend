@@ -9,9 +9,10 @@ import { Role } from '@prisma/client';
 import { BillingConfigService } from '../services/billing-config.service';
 import { InvoiceService } from '../services/invoice.service';
 import { BillingStatusService } from '../services/billing-status.service';
-import { CreateInvoicesDto } from '../dto/billing.dto';
+import { CreateInvoicesDto, GetInvoicesQueryDto } from '../dto/billing.dto';
 import { StorageService } from '../../storage/storage.service';
 import { RequestWithUser } from '../../common/interfaces/request-with-user.interface';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiTags('Employer Billing')
 @ApiBearerAuth()
@@ -36,8 +37,9 @@ export class EmployerBillingController {
   }
 
   @Get('invoices')
-  getInvoices(@Query('companyId') companyId: string) {
-    return this.invoiceService.getInvoicesForCompany(companyId);
+  getInvoices(@Query() query: GetInvoicesQueryDto) {
+    if (!query.companyId) throw new BadRequestException('companyId is required');
+    return this.invoiceService.getInvoicesForCompany(query.companyId, query);
   }
 
   @Post('invoices/preview')

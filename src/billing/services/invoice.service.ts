@@ -1,6 +1,8 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillingConfigService } from './billing-config.service';
+import { GetInvoicesQueryDto } from '../dto/billing.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 interface EmployeeTier { upTo: number; priceLkr: number; }
 interface ServiceAddon { name: string; priceLkr: number; active: boolean; }
@@ -49,7 +51,7 @@ export class InvoiceService {
     await this.billingConfigService.createCustomForCompany(companyId);
     const billing = await this.billingConfigService.getForCompany(companyId);
 
-    // Grace period enforcement: block if unpaid+pending > gracePeriodMonths
+    // Grace period enforcement: block when outstanding EXCEEDS gracePeriodMonths
     const outstandingCount = await this.prisma.paymentInvoice.count({
       where: { companyId, status: { in: ['UNPAID', 'PENDING'] } },
     });
@@ -100,37 +102,49 @@ export class InvoiceService {
 
   async previewPrice(companyId: string, billingPeriods: string[]) {
     const billing = await this.billingConfigService.getForCompany(companyId);
+    
+    // Only preview for periods that don't exist yet
+    const existing = await this.prisma.paymentInvoice.findMany({
+      where: { companyId, billingPeriod: { in: billingPeriods } },
+      select: { billingPeriod: true },
+    });
+    const existingPeriods = existing.map((e) => e.billingPeriod);
+    const newPeriods = billingPeriods.filter((p) => !existingPeriods.includes(p));
+
+    if (newPeriods.length === 0) {
+      return {
+        basePriceLkr: 0,
+        addonPriceLkr: 0,
+        discountLkr: 0,
+        totalLkr: 0,
+        periods: [],
+        alreadyCreated: existingPeriods,
+      };
+    }
+
     return {
-      ...this.calculatePrice(billing, billingPeriods.length),
-      employeeCount: billing.employeeCount,
-      periods: billingPeriods,
+      ...this.calculatePrice(billing, newPeriods.length),
+      periods: newPeriods,
+      alreadyCreated: existingPeriods,
     };
   }
 
   async paymentPreview(companyId: string, invoiceIds: string[]) {
     const invoices = await this.prisma.paymentInvoice.findMany({
-      where: {
-        id: { in: invoiceIds },
-        companyId,
-        status: 'UNPAID',
-      },
+      where: { id: { in: invoiceIds }, companyId, status: 'UNPAID' },
     });
 
     if (invoices.length === 0) {
       throw new BadRequestException('No valid UNPAID invoices found for preview');
     }
-
     if (invoices.length !== invoiceIds.length) {
       throw new BadRequestException('Some selected invoices are not UNPAID or do not belong to this company');
     }
 
     const totalLkr = invoices.reduce((sum, inv) => sum + Number(inv.totalLkr), 0);
+    const discountLkr = invoices.reduce((sum, inv) => sum + Number(inv.discountLkr), 0);
 
-    return {
-      totalLkr,
-      invoiceCount: invoices.length,
-      invoiceIds,
-    };
+    return { totalLkr, discountLkr, invoiceCount: invoices.length, invoiceIds };
   }
 
   async uploadSlip(companyId: string, invoiceIds: string[], slipUrl: string, uploadedByUserId: string) {
@@ -150,7 +164,7 @@ export class InvoiceService {
     }
 
     await this.prisma.paymentInvoice.updateMany({
-      where: { id: { in: invoiceIds } },
+      where: { id: { in: invoices.map((i) => i.id) }, status: 'UNPAID' },
       data: { status: 'PENDING', slipUrl, uploadedByUserId },
     });
 
@@ -191,30 +205,100 @@ export class InvoiceService {
     });
   }
 
-  async getInvoicesForCompany(companyId: string) {
-    return this.prisma.paymentInvoice.findMany({
-      where: { companyId },
-      orderBy: { billingPeriod: 'desc' },
-    });
+  async getInvoicesForCompany(companyId: string, query: GetInvoicesQueryDto) {
+    const { page = 1, limit = 20, status, period } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      companyId,
+      ...(status ? { status: status.includes(',') ? { in: status.split(',') as any } : status as any } : {}),
+      ...(period ? { billingPeriod: period } : {}),
+    };
+
+    const [total, invoices] = await Promise.all([
+      this.prisma.paymentInvoice.count({ where }),
+      this.prisma.paymentInvoice.findMany({
+        where,
+        orderBy: { billingPeriod: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    return {
+      data: this.groupInvoicesBySlip(invoices),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
-  async getAllInvoices(filters: { companyId?: string; status?: string; period?: string }) {
-    return this.prisma.paymentInvoice.findMany({
-      where: {
-        ...(filters.companyId ? { companyId: filters.companyId } : {}),
-        ...(filters.status ? { status: filters.status as any } : {}),
-        ...(filters.period ? { billingPeriod: filters.period } : {}),
+  async getAllInvoices(query: GetInvoicesQueryDto) {
+    const { page = 1, limit = 20, companyId, status, period } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      ...(companyId ? { companyId } : {}),
+      ...(status ? { status: status.includes(',') ? { in: status.split(',') as any } : status as any } : {}),
+      ...(period ? { billingPeriod: period } : {}),
+    };
+
+    const [total, invoices] = await Promise.all([
+      this.prisma.paymentInvoice.count({ where }),
+      this.prisma.paymentInvoice.findMany({
+        where,
+        include: {
+          companyBilling: { include: { company: { select: { name: true } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    return {
+      data: this.groupInvoicesBySlip(invoices),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-      include: {
-        companyBilling: { include: { company: { select: { name: true } } } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    });
+    };
+  }
+
+  private groupInvoicesBySlip(invoices: any[]) {
+    return invoices.reduce((acc: any[], inv) => {
+      const key = inv.slipUrl || inv.id;
+      const existing = acc.find((g) => g.id === key);
+
+      if (existing) {
+        existing.invoices.push(inv);
+        existing.totalLkr = Number(existing.totalLkr) + Number(inv.totalLkr);
+        existing.discountLkr = Number(existing.discountLkr) + Number(inv.discountLkr);
+      } else {
+        acc.push({
+          id: key,
+          slipUrl: inv.slipUrl,
+          companyName: inv.companyBilling?.company?.name || inv.companyId.substring(0, 8),
+          companyId: inv.companyId,
+          status: inv.status,
+          totalLkr: Number(inv.totalLkr),
+          discountLkr: Number(inv.discountLkr),
+          invoices: [inv],
+          createdAt: inv.createdAt,
+          rejectionReason: inv.rejectionReason,
+        });
+      }
+      return acc;
+    }, []);
   }
 
   async getAdminStats() {
-    const [pending, unpaid, paidThisMonth] = await Promise.all([
+    const [pending, unpaid, paidAllTime] = await Promise.all([
       this.prisma.paymentInvoice.aggregate({
         where: { status: 'PENDING' },
         _count: true,
@@ -226,7 +310,7 @@ export class InvoiceService {
         _sum: { totalLkr: true },
       }),
       this.prisma.paymentInvoice.aggregate({
-        where: { status: 'PAID' }, // Simplified: just total paid in history
+        where: { status: 'PAID' },
         _count: true,
         _sum: { totalLkr: true },
       }),
@@ -235,7 +319,7 @@ export class InvoiceService {
     return {
       pending: { count: pending._count, totalLkr: pending._sum.totalLkr || 0 },
       unpaid: { count: unpaid._count, totalLkr: unpaid._sum.totalLkr || 0 },
-      paidTotal: { count: paidThisMonth._count, totalLkr: paidThisMonth._sum.totalLkr || 0 },
+      paidAllTime: { count: paidAllTime._count, totalLkr: paidAllTime._sum.totalLkr || 0 },
     };
   }
 }

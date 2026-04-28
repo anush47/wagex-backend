@@ -9,7 +9,7 @@ import { Role } from '@prisma/client';
 import { BillingConfigService } from '../services/billing-config.service';
 import { InvoiceService } from '../services/invoice.service';
 import { BillingStatusService } from '../services/billing-status.service';
-import { UpdateBillingConfigDto, ReviewInvoiceDto } from '../dto/billing.dto';
+import { UpdateBillingConfigDto, ReviewInvoiceDto, GetInvoicesQueryDto, GetCompaniesQueryDto } from '../dto/billing.dto';
 import { StorageService } from '../../storage/storage.service';
 import { RequestWithUser } from '../../common/interfaces/request-with-user.interface';
 
@@ -32,7 +32,7 @@ export class AdminBillingController {
   updateDefault(@Body() dto: UpdateBillingConfigDto) { return this.configService.updateDefault(dto); }
 
   @Get('companies')
-  listAll() { return this.configService.listAll(); }
+  listAll(@Query() query: GetCompaniesQueryDto) { return this.configService.listAll(query); }
 
   @Get('companies/:companyId')
   getForCompany(@Param('companyId') id: string) { return this.configService.getForCompany(id); }
@@ -52,12 +52,8 @@ export class AdminBillingController {
   getStatus(@Param('companyId') id: string) { return this.statusService.getStatus(id); }
 
   @Get('invoices')
-  getAllInvoices(
-    @Query('companyId') companyId: string,
-    @Query('status') status: string,
-    @Query('period') period: string,
-  ) {
-    return this.invoiceService.getAllInvoices({ companyId, status, period });
+  getAllInvoices(@Query() query: GetInvoicesQueryDto) {
+    return this.invoiceService.getAllInvoices(query);
   }
 
   @Get('stats')
