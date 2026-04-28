@@ -147,7 +147,7 @@ export class InvoiceService {
     return { totalLkr, discountLkr, invoiceCount: invoices.length, invoiceIds };
   }
 
-  async uploadSlip(companyId: string, invoiceIds: string[], slipUrl: string, uploadedByUserId: string) {
+  async uploadSlip(companyId: string, invoiceIds: string[], slipUrl: string | null, uploadedByUserId: string, notes?: string) {
     const pendingCount = await this.prisma.paymentInvoice.count({
       where: { companyId, status: 'PENDING' },
     });
@@ -165,13 +165,18 @@ export class InvoiceService {
 
     await this.prisma.paymentInvoice.updateMany({
       where: { id: { in: invoices.map((i) => i.id) }, status: 'UNPAID' },
-      data: { status: 'PENDING', slipUrl, uploadedByUserId },
+      data: { 
+        status: 'PENDING', 
+        slipUrl, 
+        uploadedByUserId,
+        notes: notes || null
+      },
     });
 
     return { updated: invoices.length };
   }
 
-  async reviewInvoices(invoiceIds: string[], approved: boolean, reviewedByUserId: string, rejectionReason?: string) {
+  async reviewInvoices(invoiceIds: string[], approved: boolean, reviewedByUserId: string, rejectionReason?: string, isFree?: boolean) {
     if (!approved && !rejectionReason) {
       throw new BadRequestException('Rejection reason is required when rejecting');
     }
@@ -185,7 +190,7 @@ export class InvoiceService {
     const result = await this.prisma.paymentInvoice.updateMany({
       where: { id: { in: pendingIds }, status: 'PENDING' },
       data: {
-        status: approved ? 'PAID' : 'UNPAID',
+        status: approved ? (isFree ? 'FREE' : 'PAID') : 'UNPAID',
         reviewedByUserId,
         rejectionReason: approved ? null : rejectionReason,
         paidAt: approved ? new Date() : null,
@@ -193,7 +198,7 @@ export class InvoiceService {
       },
     });
 
-    return { updated: result.count, approved };
+    return { updated: result.count, approved, isFree };
   }
 
   async setSpecialStatus(invoiceId: string, status: 'SKIPPED' | 'FREE', reviewedByUserId: string) {
@@ -272,7 +277,8 @@ export class InvoiceService {
 
   private groupInvoicesBySlip(invoices: any[]) {
     return invoices.reduce((acc: any[], inv) => {
-      const key = inv.slipUrl || inv.id;
+      // Group by slipUrl if present, or by (companyId + notes + timestamp) if it's a manual reference, otherwise by id
+      const key = inv.slipUrl || (inv.notes ? `${inv.companyId}-${inv.notes}-${new Date(inv.updatedAt).getTime()}` : inv.id);
       const existing = acc.find((g) => g.id === key);
 
       if (existing) {
@@ -291,6 +297,7 @@ export class InvoiceService {
           invoices: [inv],
           createdAt: inv.createdAt,
           rejectionReason: inv.rejectionReason,
+          notes: inv.notes,
         });
       }
       return acc;

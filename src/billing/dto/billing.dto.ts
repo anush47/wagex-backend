@@ -27,6 +27,7 @@ export class ReviewInvoiceDto {
   @IsArray() @IsString({ each: true }) invoiceIds: string[];
   @IsBoolean() approved: boolean;
   @IsOptional() @IsString() rejectionReason?: string;
+  @IsOptional() @IsBoolean() isFree?: boolean;
 }
 
 export class ForceRecalculateDto {

@@ -76,4 +76,17 @@ export class EmployerBillingController {
     const { key } = await this.storageService.uploadFile(file, companyId, 'billing');
     return this.invoiceService.uploadSlip(companyId, invoiceIds, key, req.user.id);
   }
+
+  @Post('invoices/submit-reference')
+  async submitReference(
+    @Body('companyId') companyId: string,
+    @Body('invoiceIds') invoiceIds: string[],
+    @Body('reference') reference: string,
+    @Request() req: { user: RequestWithUser['user'] },
+  ) {
+    if (!companyId) throw new BadRequestException('companyId is required');
+    if (!Array.isArray(invoiceIds) || invoiceIds.length === 0) throw new BadRequestException('invoiceIds must be a non-empty array');
+    if (!reference) throw new BadRequestException('reference is required');
+    return this.invoiceService.uploadSlip(companyId, invoiceIds, null, req.user.id, reference);
+  }
 }

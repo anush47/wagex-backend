@@ -34,7 +34,7 @@ export class BillingStatusService {
       where: {
         companyId,
         billingPeriod: { in: months },
-        status: { in: ['UNPAID', 'PENDING', 'PAID', 'FREE', 'SKIPPED'] },
+        status: { in: ['UNPAID', 'PENDING', 'PAID', 'FREE'] },
       },
     });
 

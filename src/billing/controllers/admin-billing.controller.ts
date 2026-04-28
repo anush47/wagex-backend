@@ -63,7 +63,7 @@ export class AdminBillingController {
 
   @Post('invoices/review')
   reviewInvoices(@Body() dto: ReviewInvoiceDto, @Request() req: { user: RequestWithUser['user'] }) {
-    return this.invoiceService.reviewInvoices(dto.invoiceIds, dto.approved, req.user.id, dto.rejectionReason);
+    return this.invoiceService.reviewInvoices(dto.invoiceIds, dto.approved, req.user.id, dto.rejectionReason, dto.isFree);
   }
 
   @Patch('invoices/:id/status')
