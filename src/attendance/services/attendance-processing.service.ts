@@ -18,6 +18,10 @@ import { PolicySettingsDto } from '../../policies/dto/policy-settings.dto';
 export class AttendanceProcessingService {
   private readonly logger = new Logger(AttendanceProcessingService.name);
 
+  // Serializes concurrent processEmployeeDate calls for the same employee+date
+  // to prevent race conditions on the session upsert.
+  private readonly processingChains = new Map<string, Promise<AttendanceSession[]>>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly shiftService: ShiftSelectionService,
@@ -30,10 +34,22 @@ export class AttendanceProcessingService {
   ) {}
 
   /**
-   * Process events for a specific employee and date
-   * This is called automatically when events are inserted
+   * Process events for a specific employee and date.
+   * Calls are serialized per (employeeId, date) to prevent race conditions.
    */
   async processEmployeeDate(employeeId: string, date: Date, context?: ProcessingContext): Promise<AttendanceSession[]> {
+    const key = `${employeeId}:${date.toISOString().slice(0, 10)}`;
+    const previous = this.processingChains.get(key);
+    const next = (previous ? previous.catch(() => []) : Promise.resolve([] as AttendanceSession[]))
+      .then(() => this._doProcessEmployeeDate(employeeId, date, context));
+    this.processingChains.set(key, next);
+    next.finally(() => {
+      if (this.processingChains.get(key) === next) this.processingChains.delete(key);
+    });
+    return next;
+  }
+
+  private async _doProcessEmployeeDate(employeeId: string, date: Date, context?: ProcessingContext): Promise<AttendanceSession[]> {
     let timezone: string = context?.timezone || 'UTC';
     if (!context?.timezone) {
       const employee =
@@ -139,18 +155,30 @@ export class AttendanceProcessingService {
 
       if (event.source === EventSource.SYSTEM) return ApprovalStatus.APPROVED;
       if (event.source === EventSource.MANUAL) return ApprovalStatus.PENDING;
+      // Hardware biometric events are always trusted — no exception checks apply
+      if (event.source === EventSource.API_KEY) return ApprovalStatus.APPROVED;
 
       switch (approvalConfig.mode) {
         case ApprovalPolicyMode.REQUIRE_APPROVAL_ALL:
           return ApprovalStatus.PENDING;
-        case ApprovalPolicyMode.REQUIRE_APPROVAL_EXCEPTIONS:
-          if (
-            isLate &&
-            (approvalConfig.exceptionTriggers?.deviceMismatch || approvalConfig.exceptionTriggers?.outsideZone)
-          ) {
-            return ApprovalStatus.PENDING;
+        case ApprovalPolicyMode.REQUIRE_APPROVAL_EXCEPTIONS: {
+          // Only portal events can trigger exceptions (geofencing / device mismatch)
+          if (!isLate) return ApprovalStatus.APPROVED;
+
+          const triggers = approvalConfig.exceptionTriggers;
+          if (!triggers) return ApprovalStatus.APPROVED;
+
+          // outsideZone: check if the event coordinates actually violate any configured zone
+          if (triggers.outsideZone && event.latitude != null && event.longitude != null) {
+            const zones = effectivePolicy?.attendance?.geofencing?.zones ?? [];
+            const isOutside = zones.length > 0 && !zones.some((zone) =>
+              this.haversineDistance(event.latitude!, event.longitude!, zone.latitude, zone.longitude) <= zone.radius,
+            );
+            if (isOutside) return ApprovalStatus.PENDING;
           }
+
           return ApprovalStatus.APPROVED;
+        }
         default:
           return ApprovalStatus.APPROVED;
       }
@@ -226,14 +254,16 @@ export class AttendanceProcessingService {
       payrollHolidayId,
     };
 
-    let session = await this.prisma.attendanceSession.findUnique({
-      where: {
-        employeeId_date: {
-          employeeId,
-          date: sessionGroup.sessionDate,
-        },
-      },
-    });
+    const shiftId = shift?.id ?? null;
+
+    // Look up existing session for this employee + date + shift combination
+    let session = shiftId
+      ? await this.prisma.attendanceSession.findUnique({
+          where: { employeeId_date_shiftId: { employeeId, date: sessionGroup.sessionDate, shiftId } },
+        })
+      : await this.prisma.attendanceSession.findFirst({
+          where: { employeeId, date: sessionGroup.sessionDate, shiftId: null },
+        });
 
     if (session) {
       await this.prisma.attendanceEvent.updateMany({
@@ -258,16 +288,22 @@ export class AttendanceProcessingService {
       }
     }
 
-    session = await this.prisma.attendanceSession.upsert({
-      where: {
-        employeeId_date: {
-          employeeId,
-          date: sessionGroup.sessionDate,
-        },
-      },
-      create: sessionData as any,
-      update: sessionData as any,
-    });
+    // Upsert: for a known shiftId use the unique constraint; for unshifted employees
+    // fall back to update-or-create to keep one session per day.
+    if (shiftId) {
+      session = await this.prisma.attendanceSession.upsert({
+        where: { employeeId_date_shiftId: { employeeId, date: sessionGroup.sessionDate, shiftId } },
+        create: sessionData as any,
+        update: sessionData as any,
+      });
+    } else if (session) {
+      session = await this.prisma.attendanceSession.update({
+        where: { id: session.id },
+        data: sessionData as any,
+      });
+    } else {
+      session = await this.prisma.attendanceSession.create({ data: sessionData as any });
+    }
 
     await this.prisma.attendanceEvent.updateMany({
       where: { id: { in: sessionGroup.events.map((e) => e.id) } },
@@ -278,10 +314,26 @@ export class AttendanceProcessingService {
   }
 
   /**
-   * Process events for a date range
-   * Useful for bulk processing or recalculation
+   * Haversine distance between two lat/lon points, in metres.
+   */
+  private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371000;
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  /**
+   * Process events for a date range.
+   * Employees are processed in batches to avoid overwhelming the database.
    */
   async processDateRange(companyId: string, startDate: Date, endDate: Date): Promise<void> {
+    const BATCH_SIZE = 10;
+
     const employees = await this.prisma.employee.findMany({
       where: { companyId },
       select: { id: true },
@@ -289,11 +341,16 @@ export class AttendanceProcessingService {
 
     const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
-      for (const employee of employees) {
-        void this.processEmployeeDate(employee.id, new Date(currentDate)).catch((error) => {
-          const msg = error instanceof Error ? error.message : String(error);
-          this.logger.error(`Error processing bulk for employee ${employee.id}: ${msg}`);
-        });
+      for (let i = 0; i < employees.length; i += BATCH_SIZE) {
+        const batch = employees.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map((employee) =>
+            this.processEmployeeDate(employee.id, new Date(currentDate)).catch((error) => {
+              const msg = error instanceof Error ? error.message : String(error);
+              this.logger.error(`Error processing bulk for employee ${employee.id}: ${msg}`);
+            }),
+          ),
+        );
       }
       currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     }

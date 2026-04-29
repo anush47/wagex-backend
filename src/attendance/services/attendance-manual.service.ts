@@ -105,17 +105,12 @@ export class AttendanceManualService {
 
     const sessionDate = this.timeService.getLogicalDate(new Date(date), timezone);
 
-    const existing = await this.prisma.attendanceSession.findUnique({
-      where: {
-        employeeId_date: {
-          employeeId,
-          date: sessionDate,
-        },
-      },
+    const existing = await this.prisma.attendanceSession.findFirst({
+      where: { employeeId, date: sessionDate, shiftId: shiftId ?? null },
     });
 
     if (existing) {
-      throw new BadRequestException('Session already exists for this date');
+      throw new BadRequestException('A session already exists for this date and shift');
     }
 
     const session = await this.prisma.attendanceSession.create({
@@ -211,11 +206,11 @@ export class AttendanceManualService {
       const newDate = this.timeService.getLogicalDate(dateObj, timezone);
 
       if (newDate.getTime() !== session.date.getTime()) {
-        const conflict = await this.prisma.attendanceSession.findUnique({
-          where: { employeeId_date: { employeeId: session.employeeId, date: newDate } },
+        const conflict = await this.prisma.attendanceSession.findFirst({
+          where: { employeeId: session.employeeId, date: newDate, shiftId: session.shiftId ?? null },
         });
         if (conflict && conflict.id !== id) {
-          throw new BadRequestException('Session already exists on this date');
+          throw new BadRequestException('A session already exists on this date for the same shift');
         }
         updateData.date = newDate;
       }

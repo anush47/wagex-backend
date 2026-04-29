@@ -35,8 +35,8 @@ export class SessionGroupingService {
     // Sort events chronologically
     const sortedEvents = [...events].sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime());
 
-    // Group events into sessions based on 24-hour gaps
-    const sessionGroups = this.groupEventsByTimeProximity(sortedEvents);
+    // Group events into sessions based on 24-hour gaps and shift boundaries
+    const sessionGroups = await this.groupEventsByTimeProximity(sortedEvents, employeeId, timezone);
 
     // Process each group into a session structure
     const sessionGroupsProcessed: SessionGroup[] = await Promise.all(
@@ -47,13 +47,22 @@ export class SessionGroupingService {
   }
 
   /**
-   * Groups events based on time proximity (12-hour window)
+   * Groups events based on time proximity and shift boundaries.
+   * Two events are split into separate sessions when they clearly belong to different shifts
+   * (e.g. standard shift ends then night shift starts) or a significant time gap exists.
    */
-  private groupEventsByTimeProximity(events: AttendanceEvent[]): AttendanceEvent[][] {
+  private async groupEventsByTimeProximity(
+    events: AttendanceEvent[],
+    employeeId: string,
+    timezone: string,
+  ): Promise<AttendanceEvent[][]> {
     const groups: AttendanceEvent[][] = [];
     if (events.length === 0) return groups;
 
     let currentGroup: AttendanceEvent[] = [events[0]];
+    // Track the first IN event of the current group to compare shift identity
+    let currentGroupFirstIn: AttendanceEvent | null =
+      events[0].eventType === EventType.IN ? events[0] : null;
 
     for (let i = 1; i < events.length; i++) {
       const prevEvent = events[i - 1];
@@ -72,9 +81,25 @@ export class SessionGroupingService {
       else if (gapHours > 24) {
         shouldSplit = true;
       }
-      // Rule 2: Gap between an OUT and the next IN (End of shift)
-      else if (prevEvent.eventType === EventType.OUT && currentEvent.eventType === EventType.IN && gapHours > 10) {
-        shouldSplit = true;
+      // Rule 2: OUT followed by IN — check if it belongs to a different shift
+      else if (prevEvent.eventType === EventType.OUT && currentEvent.eventType === EventType.IN) {
+        if (gapHours > 10) {
+          // Large gap — definitely a new session
+          shouldSplit = true;
+        } else if (currentGroupFirstIn) {
+          // Smaller gap — compare shifts to decide if this is a new session
+          const [prevShiftResult, nextShiftResult] = await Promise.all([
+            this.shiftSelectionService.getEffectiveShift(employeeId, currentGroupFirstIn.eventTime, timezone),
+            this.shiftSelectionService.getEffectiveShift(employeeId, currentEvent.eventTime, timezone),
+          ]);
+          if (prevShiftResult.shift?.id && nextShiftResult.shift?.id && prevShiftResult.shift.id !== nextShiftResult.shift.id) {
+            // Different shifts → new session
+            shouldSplit = true;
+            this.logger.log(
+              `[GROUPING] Splitting session: shift changed from "${prevShiftResult.shift.name}" to "${nextShiftResult.shift.name}" after ${gapHours.toFixed(1)}h gap`,
+            );
+          }
+        }
       }
       // Rule 3: Gap between two similar events (Duplicate logs or long forgotten clock-out)
       else if (prevEvent.eventType === currentEvent.eventType && gapHours > 12) {
@@ -83,15 +108,19 @@ export class SessionGroupingService {
       // Rule 4: Gap between IN and the next OUT (Shift duration)
       // We allow up to 24h for a single shift duration.
       // If it's longer than 24h, it's probably an error or separate days.
-      else if (prevEvent.eventType === 'IN' && currentEvent.eventType === EventType.OUT && gapHours > 28) {
+      else if (prevEvent.eventType === EventType.IN && currentEvent.eventType === EventType.OUT && gapHours > 28) {
         shouldSplit = true;
       }
 
       if (shouldSplit) {
         groups.push(currentGroup);
         currentGroup = [currentEvent];
+        currentGroupFirstIn = currentEvent.eventType === EventType.IN ? currentEvent : null;
       } else {
         currentGroup.push(currentEvent);
+        if (currentGroupFirstIn === null && currentEvent.eventType === EventType.IN) {
+          currentGroupFirstIn = currentEvent;
+        }
       }
     }
 

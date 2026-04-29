@@ -527,7 +527,7 @@ export class AttendanceExternalService {
       maxOutDate = this.timeService.parseTimeWithTimezone(lastShift.maxOutTime, lastEventTime, timezone);
 
       if (maxOutDate < lastEventTime) {
-        maxOutDate.setDate(maxOutDate.getUTCDate() + 1);
+        maxOutDate.setUTCDate(maxOutDate.getUTCDate() + 1);
       }
     }
 
@@ -539,7 +539,7 @@ export class AttendanceExternalService {
         let autoCheckoutAt = this.timeService.parseTimeWithTimezone(lastShift.endTime, lastEventTime, timezone);
 
         if (autoCheckoutAt < lastEventTime) {
-          autoCheckoutAt.setDate(autoCheckoutAt.getDate() + 1);
+          autoCheckoutAt.setUTCDate(autoCheckoutAt.getUTCDate() + 1);
         }
 
         if (autoCheckoutAt >= eventTime) {

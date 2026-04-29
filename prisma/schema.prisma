@@ -387,7 +387,8 @@ model AttendanceSession {
   payrollStatus         SessionPayrollStatus @default(UNPROCESSED)
   salary                Salary?              @relation(fields: [salaryId], references: [id])
 
-  @@unique([employeeId, date])
+  @@unique([employeeId, date, shiftId])
+  @@index([employeeId, date])
   @@index([companyId, date])
   @@index([inApprovalStatus])
   @@index([outApprovalStatus])
