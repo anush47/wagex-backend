@@ -1,5 +1,6 @@
 import cors from 'cors';
 import type { Request, Response, NextFunction } from 'express';
+import { ForbiddenException } from '@nestjs/common';
 
 /**
  * Paths that may be accessed without an Origin header.
@@ -50,12 +51,12 @@ export function buildCorsMiddleware() {
       origin: (origin, callback) => {
         if (!origin) {
           if (isNoOriginAllowed(req.path)) return callback(null, true);
-          return callback(new Error('CORS: Origin header is required for this endpoint'));
+          return callback(new ForbiddenException('CORS: Origin header is required for this endpoint'));
         }
 
         // Browser request — must be in the allowlist
         if (!allowedOrigins || allowedOrigins.includes(origin)) return callback(null, true);
-        callback(new Error(`CORS: origin '${origin}' is not allowed`));
+        callback(new ForbiddenException(`CORS: origin '${origin}' is not allowed`));
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

@@ -1,5 +1,6 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
+import { Prisma } from '@prisma/client';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -11,9 +12,32 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const { httpAdapter } = this.httpAdapterHost;
     const ctx = host.switchToHttp();
 
-    const httpStatus = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    let httpStatus = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message = exception instanceof HttpException ? exception.getResponse() : 'Internal server error';
+    let message = exception instanceof HttpException ? exception.getResponse() : 'Internal server error';
+
+    // Handle Prisma Client Errors
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      switch (exception.code) {
+        case 'P2002': // Unique constraint failed
+          httpStatus = HttpStatus.CONFLICT;
+          const target = (exception.meta?.target as string[]) || [];
+          message = `Unique constraint failed: ${target.join(', ') || 'record already exists'}`;
+          break;
+        case 'P2025': // Record not found
+          httpStatus = HttpStatus.NOT_FOUND;
+          message = (exception.meta?.cause as string) || 'Record not found';
+          break;
+        case 'P2003': // Foreign key constraint failed
+          httpStatus = HttpStatus.BAD_REQUEST;
+          message = 'Foreign key constraint failed';
+          break;
+        default:
+          // Stay as 500 but log the code
+          this.logger.warn(`Unhandled Prisma error code: ${exception.code}`);
+          break;
+      }
+    }
 
     // Log all errors (>= 400)
     if (httpStatus >= 400) {
@@ -44,7 +68,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         typeof message === 'object' && message !== null && 'message' in message
           ? (message as any).message // Handle ValidationPipe array
           : message,
-      error: exception instanceof Error ? exception.name : 'UnknownError',
+      error:
+        exception instanceof Prisma.PrismaClientKnownRequestError
+          ? `PrismaError(${exception.code})`
+          : exception instanceof Error
+            ? exception.name
+            : 'UnknownError',
       timestamp: new Date().toISOString(),
       path: httpAdapter.getRequestUrl(ctx.getRequest()),
     };

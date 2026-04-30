@@ -498,4 +498,16 @@ export class EmployeesService {
 
     return { message: 'User account deleted and employee unlinked.' };
   }
+
+  async getUsedEmployeeNumbers(companyId: string): Promise<number[]> {
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        companyId,
+        status: { not: 'DELETED' }
+      },
+      select: { employeeNo: true }
+    });
+
+    return employees.map(e => e.employeeNo).sort((a, b) => a - b);
+  }
 }
