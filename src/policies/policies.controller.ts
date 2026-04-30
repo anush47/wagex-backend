@@ -101,4 +101,20 @@ export class PoliciesController {
   remove(@Param('id') id: string) {
     return this.policiesService.remove(id);
   }
+
+  @Post(':id/api-keys')
+  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @Permissions(Permission.MANAGE_COMPANY)
+  @ApiOperation({ summary: 'Generate and add a new API key to a policy' })
+  addApiKey(@Param('id') id: string, @Body('name') name: string) {
+    return this.policiesService.addApiKey(id, name);
+  }
+
+  @Delete(':id/api-keys/:keyId')
+  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @Permissions(Permission.MANAGE_COMPANY)
+  @ApiOperation({ summary: 'Remove/Revoke an API key from a policy' })
+  removeApiKey(@Param('id') id: string, @Param('keyId') keyId: string) {
+    return this.policiesService.removeApiKey(id, keyId);
+  }
 }

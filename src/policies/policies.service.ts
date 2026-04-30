@@ -6,6 +6,9 @@ import { PolicySettingsDto } from './dto/policy-settings.dto';
 import { Policy } from '@prisma/client';
 import { merge } from 'lodash';
 import { DEFAULT_POLICY_SETTINGS } from './constants/default-policy.template';
+import { generateSecureApiKey } from '../common/utils/key-generator.util';
+import { v4 as uuidv4 } from 'uuid';
+import { AttendanceConfigDto } from './dto/attendance-policy.dto';
 
 @Injectable()
 export class PoliciesService {
@@ -147,6 +150,86 @@ export class PoliciesService {
     }
 
     return this.prisma.policy.delete({ where: { id } });
+  }
+
+  /**
+   * Adds a new system-generated secure API key to a policy
+   */
+  async addApiKey(id: string, name: string) {
+    const policy = await this.prisma.policy.findUnique({ where: { id } });
+    if (!policy) throw new NotFoundException(`Policy ${id} not found`);
+
+    let settings = (policy.settings as unknown as PolicySettingsDto) || {};
+    if (!settings.attendance) {
+      settings.attendance = {
+        allowSelfCheckIn: true,
+        requireLocation: false,
+        requireDeviceInfo: false,
+        geofencing: { enabled: false, enforcement: 'NONE' as any, zones: [] },
+        approvalPolicy: { mode: 'AUTO_APPROVE' as any, exceptionTriggers: { outsideZone: false, deviceMismatch: false } },
+        apiKeys: [],
+      };
+    }
+
+    // Generate a unique key
+    let apiKey = '';
+    let isUnique = false;
+    let attempts = 0;
+
+    while (!isUnique && attempts < 10) {
+      apiKey = generateSecureApiKey();
+      const queryValue = JSON.stringify([{ key: apiKey }]);
+      const existing = await this.prisma.$queryRaw<any[]>`
+        SELECT id FROM public.policies 
+        WHERE (settings -> 'attendance' -> 'apiKeys') @> ${queryValue}::jsonb
+        LIMIT 1
+      `;
+      if (!existing || existing.length === 0) {
+        isUnique = true;
+      }
+      attempts++;
+    }
+
+    if (!isUnique) {
+      throw new InternalServerErrorException('Failed to generate a unique API key. Please try again.');
+    }
+
+    const newKey = {
+      id: uuidv4(),
+      name,
+      key: apiKey,
+      createdAt: new Date().toISOString(),
+      enabled: true,
+    };
+
+    if (!settings.attendance.apiKeys) {
+      settings.attendance.apiKeys = [];
+    }
+
+    settings.attendance.apiKeys.push(newKey as any);
+
+    return this.prisma.policy.update({
+      where: { id },
+      data: { settings: settings as any },
+    });
+  }
+
+  /**
+   * Removes an API key from a policy
+   */
+  async removeApiKey(policyId: string, keyId: string) {
+    const policy = await this.prisma.policy.findUnique({ where: { id: policyId } });
+    if (!policy) throw new NotFoundException(`Policy ${policyId} not found`);
+
+    const settings = (policy.settings as unknown as PolicySettingsDto) || {};
+    if (!settings.attendance?.apiKeys) return policy;
+
+    settings.attendance.apiKeys = settings.attendance.apiKeys.filter((k: any) => k.id !== keyId);
+
+    return this.prisma.policy.update({
+      where: { id: policyId },
+      data: { settings: settings as any },
+    });
   }
 
   /**
