@@ -36,7 +36,18 @@ export class PermissionsGuard implements CanActivate {
     const query = (request.query || {}) as Record<string, string>;
     const params = (request.params || {}) as Record<string, string>;
     const body = (request.body || {}) as Record<string, any>;
-    const companyId = query.companyId || params.companyId || (body.companyId as string) || params.id;
+    
+    // Primary sources for companyId
+    let companyId = query.companyId || params.companyId || (body.companyId as string);
+
+    // Fallback to params.id ONLY if the controller is specifically CompaniesController
+    // This prevents :id from other resources (like policies) being mistaken for a companyId
+    if (!companyId && params.id) {
+      const className = context.getClass().name;
+      if (className === 'CompaniesController') {
+        companyId = params.id;
+      }
+    }
 
     // If no companyId, we only allow GET requests (which will be filtered by the service/controller)
     if (!companyId) {
