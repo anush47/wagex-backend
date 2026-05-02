@@ -21,6 +21,7 @@ import { Permission } from '../auth/permissions';
 import { Permissions } from '../auth/permissions.decorator';
 import { QueryDto } from '../common/dto/query.dto';
 import * as RequestWithUserNamespace from '../common/interfaces/request-with-user.interface';
+import { EpfLookup } from '../common/utils/epf-lookup';
 
 @ApiTags('Companies')
 @ApiBearerAuth()
@@ -67,6 +68,22 @@ export class CompaniesController {
     return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
   }
 
+  @Get('epf-name-lookup')
+  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @ApiOperation({ summary: 'Lookup EPF company name with month fallback' })
+  async epfNameLookup(@Query('employerNo') employerNo: string, @Query('period') period: string) {
+    const name = await EpfLookup.fetchCompanyName(employerNo, period);
+    return { name };
+  }
+
+  @Get('epf-ref-lookup')
+  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @ApiOperation({ summary: 'Lookup EPF reference number strictly for the period' })
+  async epfRefLookup(@Query('employerNo') employerNo: string, @Query('period') period: string) {
+    const referenceNo = await EpfLookup.fetchReferenceNo(employerNo, period);
+    return { referenceNo };
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.EMPLOYER)
   @Permissions(Permission.VIEW_COMPANY)
@@ -110,6 +127,7 @@ export class CompaniesController {
 
     return this.companiesService.update(id, updateCompanyDto);
   }
+
 
   @Delete(':id')
   @Roles(Role.ADMIN, Role.EMPLOYER)

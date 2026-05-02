@@ -13,7 +13,7 @@ model Company {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   timezone           String              @default("UTC")
-  employerNumber     String?
+  employerNumber     String?             @unique
   address            String?
   startedDate        DateTime?
   logo               String?

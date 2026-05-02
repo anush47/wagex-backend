@@ -2,14 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateEpfDto, EpfQueryDto, GenerateEpfDto, UpdateEpfDto } from '../dto/epf.dto';
 import { PayrollComponentSystemType } from '../../policies/dto/salary-components-policy.dto';
+import { EpfLookup } from '../../common/utils/epf-lookup';
 
 @Injectable()
 export class EpfService {
   constructor(private readonly prisma: PrismaService) {}
 
   async generatePreview(dto: GenerateEpfDto) {
-    const referenceNo = await this.generateReferenceNo();
     const { companyId, month, year, salaryIds } = dto;
+    if (!companyId) throw new Error('Company ID is required for EPF preview');
+    
+    const referenceNo = await this.generateReferenceNo(companyId, month, year);
 
     const where: any = {
       companyId,
@@ -79,9 +82,26 @@ export class EpfService {
     };
   }
 
-  private async generateReferenceNo() {
-    // For now, return a placeholder as per user request
-    return '11111111111';
+  private async generateReferenceNo(companyId: string, month: number, year: number) {
+    try {
+      const company = await this.prisma.company.findUnique({
+        where: { id: companyId },
+        select: { employerNumber: true },
+      });
+
+      if (!company || !company.employerNumber) {
+        return '11111111111';
+      }
+
+      // Use strict period for reference number fetching
+      const period = `${year}${month.toString().padStart(2, '0')}`;
+      const referenceNo = await EpfLookup.fetchReferenceNo(company.employerNumber, period);
+      
+      return referenceNo || '11111111111';
+    } catch (error) {
+      console.error('Error auto-generating reference number:', error);
+      return '11111111111';
+    }
   }
 
   async create(dto: CreateEpfDto) {
@@ -121,7 +141,7 @@ export class EpfService {
       data: {
         ...data,
         companyId: data.companyId!,
-        referenceNo: data.referenceNo || (await this.generateReferenceNo()),
+        referenceNo: data.referenceNo || (await this.generateReferenceNo(data.companyId!, data.month, data.year)),
         paidDate: data.paidDate ? new Date(data.paidDate) : null,
         paymentMethod: data.paymentMethod || company?.defaultStatutoryPaymentMethod || 'BANK_TRANSFER',
         bankName: data.bankName || company?.statutoryBankName,

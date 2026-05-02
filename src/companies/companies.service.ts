@@ -1,7 +1,8 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { Company } from './entities/company.entity';
 import { QueryDto } from '../common/dto/query.dto';
 import { PaginatedResponse } from '../common/interfaces/paginated-response.interface';
@@ -16,37 +17,53 @@ export class CompaniesService {
 
   async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
     this.logger.log(`Creating new company: ${createCompanyDto.name}`);
-    return this.prisma.company.create({
-      data: {
-        ...createCompanyDto,
-        timezone: createCompanyDto.timezone || 'Asia/Colombo',
-      },
-    });
-  }
-
-  async createWithMembership(createCompanyDto: CreateCompanyDto, userId: string): Promise<Company> {
-    this.logger.log(`Creating company with membership for user: ${userId}`);
-
-    return this.prisma.$transaction(async (tx) => {
-      const company = await tx.company.create({
+    try {
+      return await this.prisma.company.create({
         data: {
           ...createCompanyDto,
           timezone: createCompanyDto.timezone || 'Asia/Colombo',
         },
       });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        this.logger.error(`Failed to create company: Employer number "${createCompanyDto.employerNumber}" already exists`);
+        throw new ConflictException(`Employer number "${createCompanyDto.employerNumber}" is already registered`);
+      }
+      throw error;
+    }
+  }
 
-      await tx.userCompany.create({
-        data: {
-          userId,
-          companyId: company.id,
-          role: 'EMPLOYER',
-          permissions: DEFAULT_EMPLOYER_PERMISSIONS,
-          active: true,
-        },
+  async createWithMembership(createCompanyDto: CreateCompanyDto, userId: string): Promise<Company> {
+    this.logger.log(`Creating company with membership for user: ${userId}`);
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const company = await tx.company.create({
+          data: {
+            ...createCompanyDto,
+            timezone: createCompanyDto.timezone || 'Asia/Colombo',
+          },
+        });
+
+        await tx.userCompany.create({
+          data: {
+            userId,
+            companyId: company.id,
+            role: 'EMPLOYER',
+            permissions: DEFAULT_EMPLOYER_PERMISSIONS,
+            active: true,
+          },
+        });
+
+        return company;
       });
-
-      return company;
-    });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        this.logger.error(`Failed to create company with membership: Employer number "${createCompanyDto.employerNumber}" already exists`);
+        throw new ConflictException(`Employer number "${createCompanyDto.employerNumber}" is already registered`);
+      }
+      throw error;
+    }
   }
 
   async findAll(queryDto: QueryDto): Promise<PaginatedResponse<Company>> {
@@ -157,10 +174,18 @@ export class CompaniesService {
     await this.findOne(id);
 
     this.logger.log(`Updating company ID: ${id}`);
-    return this.prisma.company.update({
-      where: { id },
-      data: updateCompanyDto,
-    });
+    try {
+      return await this.prisma.company.update({
+        where: { id },
+        data: updateCompanyDto,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        this.logger.error(`Failed to update company ID: ${id}: Employer number "${updateCompanyDto.employerNumber}" already exists`);
+        throw new ConflictException(`Employer number "${updateCompanyDto.employerNumber}" is already registered by another company`);
+      }
+      throw error;
+    }
   }
 
   async remove(id: string): Promise<Company> {

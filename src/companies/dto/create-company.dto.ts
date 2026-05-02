@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsDateString, IsArray } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsDateString, IsArray, Matches } from 'class-validator';
 
 export class CreateCompanyDto {
   @ApiProperty({ example: 'WageX Inc.', description: 'Name of the company' })
@@ -12,9 +12,10 @@ export class CreateCompanyDto {
   @IsBoolean()
   active?: boolean;
 
-  @ApiPropertyOptional({ example: 'EMP-001', description: 'Employer Number' })
+  @ApiPropertyOptional({ example: 'B/12345', description: 'Employer Number' })
   @IsOptional()
   @IsString()
+  @Matches(/^[A-Z]\/\d+$/, { message: 'Employer number must be in the format X/00000 (e.g., B/12345)' })
   employerNumber?: string;
 
   @ApiPropertyOptional({ example: '123 Main St, City', description: 'Address' })
