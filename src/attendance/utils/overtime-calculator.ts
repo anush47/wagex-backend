@@ -49,14 +49,10 @@ export function findMatchingOvertimeRule(
   const mappedStatus = mapWorkDayStatusToOvertimeType(workDayStatus);
 
   for (const rule of otRules) {
-    // For holiday rules, match based on holiday type, not work day status
-    // For non-holiday rules, match based on work day status
     let statusMatch = true;
     if (rule.isHoliday) {
-      // Holiday rules match any work day status (FULL/HALF/OFF) when on a holiday
       statusMatch = isHoliday;
     } else {
-      // Non-holiday rules match based on work day status
       statusMatch = rule.dayStatus === OvertimeDayType.ANY || rule.dayStatus === mappedStatus;
     }
 
@@ -65,7 +61,6 @@ export function findMatchingOvertimeRule(
       if (rule.isHoliday !== isHoliday) {
         holidayMatch = false;
       } else if (isHoliday && rule.holidayTypes && rule.holidayTypes.length > 0) {
-        // Check if ANY of the rule's required types match the holiday's flags
         const typeMatch = rule.holidayTypes.some((t) => holidayFlags.includes(t));
         if (!typeMatch) holidayMatch = false;
       }

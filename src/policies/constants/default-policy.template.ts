@@ -85,6 +85,17 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         affectTotalEarnings: true, // Off Day OT affects EPF/ETF base (goes to Holiday Pay)
       },
       {
+        id: 'ot-rule-half-day',
+        name: 'Half Day OT',
+        dayStatus: OvertimeDayType.HALF_DAY,
+        isHoliday: false,
+        holidayTypes: [],
+        otEnabled: true,
+        startAfterMinutes: 360, // OT after 6 hours
+        tiers: [{ thresholdMinutes: 0, multiplier: 1.5 }],
+        affectTotalEarnings: false,
+      },
+      {
         id: 'ot-rule-holiday-public',
         name: 'Public Holiday OT',
         dayStatus: OvertimeDayType.HOLIDAY,
