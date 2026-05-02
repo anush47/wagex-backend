@@ -165,11 +165,84 @@ export class CompaniesService {
 
   async remove(id: string): Promise<Company> {
     // Ensure it exists
-    await this.findOne(id);
+    const company = await this.findOne(id);
 
-    this.logger.log(`Deleting company ID: ${id}`);
-    return this.prisma.company.delete({
-      where: { id },
-    });
+    this.logger.log(`Deleting company ID: ${id} ("${company.name}") — preserving billing records`);
+
+    await this.prisma.$transaction(
+      async (tx) => {
+        // ── Step 1: Deprovision all employee user accounts ──────────────────────
+        const provisionedEmployees = await tx.employee.findMany({
+          where: { companyId: id, userId: { not: null } },
+          select: { id: true, userId: true, fullName: true },
+        });
+
+        this.logger.log(
+          `Found ${provisionedEmployees.length} provisioned employee account(s) to delete`,
+        );
+
+        for (const emp of provisionedEmployees) {
+          try {
+            // Cascades: sessions, auth accounts, UserCompany memberships, notifications
+            await tx.user.delete({ where: { id: emp.userId! } });
+            this.logger.log(`Deleted user account for "${emp.fullName}" (userId: ${emp.userId})`);
+          } catch (error) {
+            if (error.code !== 'P2025') {
+              this.logger.error(
+                `Failed to delete user account for "${emp.fullName}" (userId: ${emp.userId}): ${error.message}`,
+              );
+            }
+          }
+        }
+
+        // ── Step 2: Delete operational data (deepest dependencies first) ────────
+
+        // Attendance sessions reference salary rows — delete sessions/events first
+        await tx.attendanceEvent.deleteMany({ where: { companyId: id } });
+        await tx.attendanceSession.deleteMany({ where: { companyId: id } });
+
+        // Salary-adjacent records
+        await tx.epfRecord.deleteMany({ where: { companyId: id } });
+        await tx.etfRecord.deleteMany({ where: { companyId: id } });
+        await tx.payment.deleteMany({ where: { companyId: id } });
+        await tx.salaryAdvance.deleteMany({ where: { companyId: id } });
+        await tx.salary.deleteMany({ where: { companyId: id } });
+
+        // Leave requests
+        await tx.leaveRequest.deleteMany({ where: { companyId: id } });
+
+        // Document templates
+        await tx.documentTemplate.deleteMany({ where: { companyId: id } });
+
+        // Departments (clear head FK first to avoid self-reference conflict)
+        await tx.department.updateMany({ where: { companyId: id }, data: { headId: null } });
+        await tx.department.deleteMany({ where: { companyId: id } });
+
+        // Policies
+        await tx.policy.deleteMany({ where: { companyId: id } });
+
+        // Remaining UserCompany memberships not already cascade-deleted with users
+        await tx.userCompany.deleteMany({ where: { companyId: id } });
+
+        // Employees (details cascade via schema)
+        await tx.employee.deleteMany({ where: { companyId: id } });
+
+        // ── Step 3: Detach CompanyBilling so it survives the company deletion ───
+        // CompanyBilling.companyId is nullable — nulling it breaks the FK before delete
+        await tx.companyBilling.updateMany({
+          where: { companyId: id },
+          data: { companyId: null },
+        });
+
+        this.logger.log(`Detached CompanyBilling from company ID: ${id} — billing history preserved`);
+
+        // ── Step 4: Delete the company row ───────────────────────────────────────
+        await tx.company.delete({ where: { id } });
+      },
+      { timeout: 30000 },
+    );
+
+    this.logger.log(`Company ID: ${id} deleted successfully`);
+    return company;
   }
 }
