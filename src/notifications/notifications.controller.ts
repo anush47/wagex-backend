@@ -30,6 +30,13 @@ export class NotificationsController {
     );
   }
 
+  @Get('sent')
+  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @ApiOperation({ summary: 'Get notifications sent by me with per-user read status (Admin/Employer)' })
+  getSent(@Request() req: RequestWithUserNamespace.RequestWithUser, @Query() query: NotificationQueryDto) {
+    return this.notificationsService.getSentByAdmin(req.user.id, query);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get my notifications (Paginated)' })
   findAll(@Request() req: RequestWithUserNamespace.RequestWithUser, @Query() query: NotificationQueryDto) {

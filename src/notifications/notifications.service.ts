@@ -99,7 +99,7 @@ export class NotificationsService {
           title,
           message,
           type,
-          metadata,
+          metadata: { ...metadata, sentBy: sender.id },
         })),
       });
       this.logger.log(`Broadcast sent by ${sender.email} to ${recipientIds.length} users.`);
@@ -118,6 +118,34 @@ export class NotificationsService {
         skip: skip,
       }),
       this.prisma.notification.count({ where: { userId } }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getSentByAdmin(adminId: string, query: NotificationQueryDto) {
+    const { page = 1, limit = 20 } = query;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where: { metadata: { path: ['sentBy'], equals: adminId } },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
+        include: { user: { select: { id: true, fullName: true, email: true } } },
+      }),
+      this.prisma.notification.count({
+        where: { metadata: { path: ['sentBy'], equals: adminId } },
+      }),
     ]);
 
     return {
