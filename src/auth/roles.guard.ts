@@ -24,6 +24,9 @@ export class RolesGuard implements CanActivate {
       return false;
     }
 
-    return requiredRoles.some((role) => user.role === role);
+    // Admins always pass roles checks
+    if (user.role === Role.ADMIN) return true;
+
+    return requiredRoles.includes(user.role as Role);
   }
 }
