@@ -385,59 +385,54 @@ export class TemplatesService implements OnModuleInit {
     const deductionNames = ['EPF', 'Staff Welfare'];
 
     switch (type) {
-      case DocumentType.PAYSLIP:
+      case DocumentType.PAYSLIP: {
+        const buildSampleSalary = (i: number) => ({
+          id: `sal-00${i}`,
+          month: 3,
+          year: 2026,
+          periodStartDate: '2026-03-01',
+          periodEndDate: '2026-03-31',
+          payDate: '2026-03-31',
+          basicSalary: 85000,
+          otAmount: 2500,
+          otPay: 2500,
+          otBreakdown: [
+            { hours: 8, amount: 2000, rate: 250, type: 'NORMAL_OT' },
+            { hours: 2, amount: 500, rate: 250, type: 'DOUBLE_OT' }
+          ],
+          holidayPayAmount: 4250,
+          holidayPay: 4250,
+          holidayPayBreakdown: [{ hours: 8, amount: 4250, holidayName: 'Public Holiday', affectsTotalEarnings: true }],
+          noPayAmount: 0,
+          noPay: 0,
+          noPayBreakdown: [],
+          taxAmount: 0,
+          advanceDeduction: 0,
+          liableEarnings: 106750,
+          netSalary: 97910,
+          totalDeductions: 8840,
+          epfEmployee: 8340,
+          epfEmployer: 12510,
+          etfEmployer: 3127.5,
+          status: 'APPROVED',
+          components: sampleComponents,
+          additions: sampleComponents.filter(c => c.category === 'ADDITION'),
+          deductions: sampleComponents.filter(c => c.category === 'DEDUCTION'),
+          employee: { ...commonEmployee, fullName: i === 1 ? commonEmployee.fullName : `EMPLOYEE ${i}`, employeeNo: i },
+          company: commonCompany,
+        });
+
+        const salaries = Array.from({ length: 6 }, (_, i) => buildSampleSalary(i + 1));
+
         return {
           company: commonCompany,
           employee: commonEmployee,
-          salary: {
-            id: 'sal-001',
-            month: 3,
-            year: 2026,
-            periodStartDate: '2026-03-01',
-            periodEndDate: '2026-03-31',
-            payDate: '2026-03-31',
-            basicSalary: 85000,
-            otAmount: 2500,
-            otBreakdown: [
-              { hours: 8, amount: 2000, rate: 250, type: 'NORMAL_OT' },
-              { hours: 2, amount: 500, rate: 250, type: 'DOUBLE_OT' }
-            ],
-            holidayPayAmount: 4250,
-            holidayPayBreakdown: [{ hours: 8, amount: 4250, holidayName: 'Public Holiday', affectsTotalEarnings: true }],
-            noPayAmount: 0,
-            noPayBreakdown: [],
-            taxAmount: 0,
-            advanceDeduction: 0,
-            liableEarnings: 106750,
-            netSalary: 97910,
-            status: 'APPROVED',
-            remarks: 'Standard monthly payroll run',
-            otAdjustment: 0,
-            otAdjustmentReason: '',
-            lateDeduction: 0,
-            lateAdjustment: 0,
-            lateAdjustmentReason: '',
-            holidayPayAdjustment: 0,
-            holidayPayAdjustmentReason: '',
-            recoveryAdjustment: 0,
-            recoveryAdjustmentReason: '',
-            advanceAdjustments: [],
-            // Statutory totals (mapped from components for convenience)
-            epfEmployee: 8340,
-            epfEmployer: 12510,
-            etfEmployer: 3127.5,
-            components: sampleComponents,
-            additions: sampleComponents.filter(c => c.category === 'ADDITION'),
-            deductions: sampleComponents.filter(c => c.category === 'DEDUCTION'),
-            approvedById: '00000000-0000-0000-0000-000000000000',
-            approvedAt: '2026-03-31T10:00:00Z',
-            payments: [
-              { id: 'pay-001', amount: 97910, date: '2026-03-31', paymentMethod: 'BANK_TRANSFER', referenceNo: 'TXN123456789', status: 'ACKNOWLEDGED' }
-            ],
-            createdAt: '2026-03-31T09:00:00Z',
-            updatedAt: '2026-03-31T10:00:00Z',
-          }
+          periodStartDate: '2026-03-01',
+          periodEndDate: '2026-03-31',
+          salaries,
+          salary: salaries[0],
         };
+      }
 
       case DocumentType.SALARY_SHEET: {
         const buildRow = (i: number) => {

@@ -16,9 +16,23 @@ export class TemplatesDataService {
     let data : any;
 
     switch (type) {
-      case DocumentType.PAYSLIP:
-        data = await this.getSalaryData(compositeId);
+      case DocumentType.PAYSLIP: {
+        if (compositeId.includes(':')) {
+          const [companyId, month, year] = compositeId.split(':');
+          const ids = query.ids ? query.ids.split(',') : [];
+          data = await this.getSalarySheetData(companyId, parseInt(month), parseInt(year), ids);
+        } else {
+          const singleData = await this.getSalaryData(compositeId);
+          data = {
+            ...singleData,
+            salaries: [singleData.salary], // Template expects salaries array
+          };
+          // Ensure salary item has employee and company for template convenience
+          data.salaries[0].employee = singleData.employee;
+          data.salaries[0].company = singleData.company;
+        }
         break;
+      }
       case DocumentType.SALARY_SHEET: {
         const [companyId, month, year] = compositeId.split(':');
         const ids = query.ids ? query.ids.split(',') : [];
