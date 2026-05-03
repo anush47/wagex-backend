@@ -20,7 +20,7 @@ export class TemplatesDataService {
         data = await this.getSalaryData(compositeId);
         break;
       case DocumentType.SALARY_SHEET: {
-        const [companyId, month, year] = parts;
+        const [companyId, month, year] = compositeId.split(':');
         const ids = query.ids ? query.ids.split(',') : [];
         data = await this.getSalarySheetData(companyId, parseInt(month), parseInt(year), ids);
         break;
@@ -141,6 +141,14 @@ export class TemplatesDataService {
     const deductionAmounts: Record<string, number> = {};
     deductions.forEach(d => deductionAmounts[d.name] = d.amount);
 
+    // Derive EPF liable earnings from the stored component rate (mirrors epf.service.ts logic)
+    let liableEarnings = 0;
+    if (epfEmployeeComp && epfEmployeeComp.value > 0) {
+      liableEarnings = epfEmployee / (epfEmployeeComp.value / 100);
+    } else if (salary.basicSalary > 0) {
+      liableEarnings = salary.basicSalary;
+    }
+
     return {
       ...salary,
       epfEmployee,
@@ -160,6 +168,13 @@ export class TemplatesDataService {
       totalDeductions,
       grossSalary,
       netSalary,
+      liableEarnings,
+      totalCustomAdditions,
+      totalCustomDeductions,
+      // Override raw spread values with adjustment-inclusive computed values
+      otAmount: otPay,
+      holidayPayAmount: holidayPay,
+      noPayAmount: noPay,
     };
 }
 
@@ -188,6 +203,7 @@ export class TemplatesDataService {
       company: salary.employee.company,
       month: salary.month,
       year: salary.year,
+      monthYear: salary.month && salary.year ? format(new Date(salary.year, salary.month - 1, 1), 'MMMM - yyyy') : '',
       periodStartDate: format(new Date(salary.periodStartDate), 'yyyy-MM-dd'),
       periodEndDate: format(new Date(salary.periodEndDate), 'yyyy-MM-dd'),
       payDate: format(new Date(salary.payDate), 'yyyy-MM-dd'),
@@ -243,6 +259,7 @@ export class TemplatesDataService {
       totalDeductions: 0,
       grossSalary: 0,
       netSalary: 0,
+      liableEarnings: 0,
       additionAmounts: {},
       deductionAmounts: {},
       count: processedSalaries.length,
@@ -266,6 +283,7 @@ export class TemplatesDataService {
       totals.totalDeductions += s.totalDeductions || 0;
       totals.grossSalary += s.grossSalary || 0;
       totals.netSalary += s.netSalary || 0;
+      totals.liableEarnings += s.liableEarnings || 0;
 
       s.additions.forEach((a) => (totals.additionAmounts[a.name] += a.amount));
       s.deductions.forEach((d) => (totals.deductionAmounts[d.name] += d.amount));
@@ -274,11 +292,13 @@ export class TemplatesDataService {
     const firstSal = rawSalaries[0];
     const periodStartDate = firstSal ? format(new Date(firstSal.periodStartDate), 'yyyy-MM-dd') : '';
     const periodEndDate = firstSal ? format(new Date(firstSal.periodEndDate), 'yyyy-MM-dd') : '';
+    const monthYear = format(new Date(year, month - 1, 1), 'MMMM - yyyy').toUpperCase();
 
     return {
       company,
       month,
       year,
+      monthYear,
       periodStartDate,
       periodEndDate,
       salaries: processedSalaries,
@@ -435,12 +455,16 @@ export class TemplatesDataService {
       totalEmployeeContribution: salaries.reduce((sum, s) => sum + s.epfEmployee, 0),
       totalEmployerContribution: salaries.reduce((sum, s) => sum + s.epfEmployer, 0),
       totalContribution: salaries.reduce((sum, s) => sum + s.epfEmployee + s.epfEmployer, 0),
+      liableEarnings: salaries.reduce((sum, s) => sum + s.liableEarnings, 0),
     };
+
+    const monthYear = format(new Date(record.year, record.month - 1, 1), 'MMMM - yyyy');
 
     return {
       company,
       month: record.month,
       year: record.year,
+      monthYear,
       epfRecord: record,
       salaries,
       totals,
@@ -468,12 +492,21 @@ export class TemplatesDataService {
     const salaries = record.salaries.map((s) => {
       const components = (s.components as any[]) || [];
       const etfComp = components.find((c) => c.systemType === 'ETF_EMPLOYER');
-      const etfEmployer = etfComp?.employerAmount || 0;
+      const etfEmployer = etfComp?.employerAmount || etfComp?.amount || 0;
+      // Derive liable earnings from ETF rate (same base as EPF)
+      const epfComp = components.find((c) => c.systemType === 'EPF_EMPLOYEE');
+      let liableEarnings = 0;
+      if (epfComp && epfComp.value > 0) {
+        liableEarnings = (epfComp.amount || 0) / (epfComp.value / 100);
+      } else {
+        liableEarnings = s.basicSalary || 0;
+      }
       return {
         id: s.id,
         employee: s.employee,
         basicSalary: s.basicSalary,
         etfEmployer,
+        liableEarnings,
         payDate: s.payDate ? format(new Date(s.payDate), 'yyyy-MM-dd') : null,
         status: s.status,
       };
@@ -482,12 +515,16 @@ export class TemplatesDataService {
     const totals = {
       count: salaries.length,
       totalContribution: salaries.reduce((sum, s) => sum + s.etfEmployer, 0),
+      liableEarnings: salaries.reduce((sum, s) => sum + s.liableEarnings, 0),
     };
+
+    const monthYear = format(new Date(record.year, record.month - 1, 1), 'MMMM - yyyy');
 
     return {
       company,
       month: record.month,
       year: record.year,
+      monthYear,
       etfRecord: record,
       salaries,
       totals,

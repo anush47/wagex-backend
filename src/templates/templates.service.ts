@@ -224,7 +224,7 @@ export class TemplatesService implements OnModuleInit {
                 break;
             }
             case DocumentType.SALARY_SHEET:
-                companyIdToCheck = parts[0];
+                companyIdToCheck = resourceId.split(':')[0];
                 break;
             case DocumentType.ATTENDANCE_REPORT:
                 companyIdToCheck = parts[0];
