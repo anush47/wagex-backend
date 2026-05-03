@@ -14,52 +14,11 @@ export class TemplatesService implements OnModuleInit {
     private readonly billingStatusService: BillingStatusService,
   ) {}
 
-  onModuleInit() {
-    this.registerHelpers(Handlebars);
-  }
+  onModuleInit() {}
 
   private registerHelpers(instance: typeof Handlebars) {
-    instance.registerHelper('formatCurrency', (value) => {
-      if (typeof value !== 'number') return value;
-      return new Intl.NumberFormat('en-LK', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(value);
-    });
-
-    instance.registerHelper('formatDate', (date) => {
-      if (!date || (typeof date !== 'string' && typeof date !== 'number' && !(date instanceof Date))) return '';
-      try { return new Date(date).toLocaleDateString(); } catch { return date; }
-    });
-
-    instance.registerHelper('add', (a, b) => (Number(a) || 0) + (Number(b) || 0));
-
-    instance.registerHelper('eq', (a, b) => a === b);
-
-    instance.registerHelper('chunk', function(array, size) {
-      if (!Array.isArray(array)) return [];
-      const chunkSize = typeof size === 'number' ? size : 20;
-      const result: any[] = [];
-      for (let i = 0; i < array.length; i += chunkSize) {
-        result.push(array.slice(i, i + chunkSize));
-      }
-      return result;
-    });
-
-    instance.registerHelper('getAmount', function(items, name) {
-      if (!Array.isArray(items)) return 0;
-      const searchName = typeof name === 'string' ? name : null;
-      if (!searchName) return 0;
-      const item = items.find((i: any) => i.name === searchName);
-      return item ? item.amount : 0;
-    });
-
-    instance.registerHelper('getCustomTotal', function(totals, name) {
-      if (!totals || typeof totals !== 'object') return 0;
-      const searchName = typeof name === 'string' ? name : null;
-      if (!searchName) return 0;
-      return (totals as any)[searchName] || 0;
-    });
+    // Standard helpers now come purely from the template.helpers string
+    // to avoid inconsistency between environment and template definitions.
   }
 
   async create(dto: CreateTemplateDto, user: any) {

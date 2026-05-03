@@ -244,6 +244,15 @@ export class TemplatesDataService {
     const additionColumns = Array.from(additionNames);
     const deductionColumns = Array.from(deductionNames);
 
+    // Create metadata for additions to show statutory indicators (*)
+    const additionMetadata: Record<string, { isStatutory: boolean }> = {};
+    additionColumns.forEach(name => {
+      // Find the first occurrence of this addition to check its statutory status
+      const sample = processedSalaries.find(s => s.additions.some(a => a.name === name));
+      const addition = sample?.additions.find(a => a.name === name);
+      additionMetadata[name] = { isStatutory: addition?.isStatutory || false };
+    });
+
     const totals: any = {
       basicSalary: 0,
       otAmount: 0,
@@ -304,6 +313,7 @@ export class TemplatesDataService {
       salaries: processedSalaries,
       additionColumns,
       deductionColumns,
+      additionMetadata,
       totals,
     };
   }
