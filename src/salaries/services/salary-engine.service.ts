@@ -107,7 +107,7 @@ export class SalaryEngineService {
 
     let totalOtAmount = 0;
     let totalHolidayPayAmount = 0;
-    const dynamicOtMap: Record<string, { hours: number; amount: number; type: string }> = {};
+    const dynamicOtMap: Record<string, { hours: number; amount: number; label: string }> = {};
     const holidayPayMap: Record<
       string,
       { hours: number; amount: number; holidayName: string; affectTotalEarnings: boolean }
@@ -115,13 +115,13 @@ export class SalaryEngineService {
 
     sessions.forEach((session: ExtendedAttendanceSession) => {
       const ot = this.overtimeService.calculateOvertime(session, otHourlyRate, payrollConfig);
-      if (ot.type !== 'NONE' && ot.matchedRule) {
+      if (ot.hasOt && ot.matchedRule) {
         // Route earnings-affecting portion → Holiday Pay
         if (ot.earningsAffectingAmount > 0) {
           const holidayName = ot.matchedRule.isHoliday
             ? (session.payrollHoliday || session.workHoliday)?.name || 'Holiday OT'
-            : 'Off Day OT';
-          const holidayKey = `${ot.matchedRule.id || 'holiday'}-${session.date.toISOString()}`;
+            : ot.matchedRule.name;
+          const holidayKey = `${ot.matchedRule.id}-${session.date.toISOString()}`;
 
           if (!holidayPayMap[holidayKey]) {
             holidayPayMap[holidayKey] = {
@@ -137,21 +137,22 @@ export class SalaryEngineService {
           totalHolidayPayAmount += ot.earningsAffectingAmount;
         }
 
-        // Route non-earnings portion → Regular OT
+        // Route non-earnings portion → Regular OT, grouped by rule
         if (ot.nonEarningsAffectingAmount > 0) {
-          if (!dynamicOtMap[ot.type]) {
-            dynamicOtMap[ot.type] = { hours: 0, amount: 0, type: ot.type };
+          const ruleKey = ot.matchedRule.id;
+          if (!dynamicOtMap[ruleKey]) {
+            dynamicOtMap[ruleKey] = { hours: 0, amount: 0, label: ot.matchedRule.name };
           }
           const nonEarningsHours = ot.amount > 0 ? ot.hours * (ot.nonEarningsAffectingAmount / ot.amount) : 0;
-          dynamicOtMap[ot.type].hours += nonEarningsHours;
-          dynamicOtMap[ot.type].amount += ot.nonEarningsAffectingAmount;
+          dynamicOtMap[ruleKey].hours += nonEarningsHours;
+          dynamicOtMap[ruleKey].amount += ot.nonEarningsAffectingAmount;
           totalOtAmount += ot.nonEarningsAffectingAmount;
         }
       }
     });
 
-    const otBreakdown = Object.entries(dynamicOtMap).map(([_, data]) => ({
-      type: data.type,
+    const otBreakdown = Object.values(dynamicOtMap).map((data) => ({
+      type: data.label,
       hours: data.hours,
       amount: data.amount,
     }));

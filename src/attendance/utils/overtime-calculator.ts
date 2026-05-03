@@ -15,7 +15,7 @@ export interface OvertimeRule {
 export interface OvertimeResult {
   hours: number;
   amount: number;
-  type: 'NONE' | 'NORMAL' | 'DOUBLE' | 'TRIPLE';
+  hasOt: boolean;
   earningsAffectingAmount: number;
   nonEarningsAffectingAmount: number;
   matchedRule?: OvertimeRule;
@@ -101,14 +101,14 @@ export function calculateOvertimeAmount(
   workMinutes: number,
   hourlyRate: number,
   rule: OvertimeRule,
-): { hours: number; amount: number; type: 'NONE' | 'NORMAL' | 'DOUBLE' | 'TRIPLE'; earningsAffectingAmount: number; nonEarningsAffectingAmount: number } {
+): { hours: number; amount: number; hasOt: boolean; earningsAffectingAmount: number; nonEarningsAffectingAmount: number } {
   if (!rule.otEnabled) {
-    return { hours: 0, amount: 0, type: 'NONE', earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
+    return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
   }
 
   const eligibleMinutes = Math.max(0, workMinutes - rule.startAfterMinutes);
   if (eligibleMinutes <= 0) {
-    return { hours: 0, amount: 0, type: 'NONE', earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
+    return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
   }
 
   let totalOtAmount = 0;
@@ -136,18 +136,10 @@ export function calculateOvertimeAmount(
     }
   }
 
-  // Determine OT type based on multiplier
-  let type: 'NONE' | 'NORMAL' | 'DOUBLE' | 'TRIPLE' = 'NORMAL';
-  const baseMultiplier = sortedTiers[0]?.multiplier || 1;
-  if (baseMultiplier >= 3.0) type = 'TRIPLE';
-  else if (baseMultiplier >= 2.0) type = 'DOUBLE';
-  else if (baseMultiplier >= 1.0) type = 'NORMAL';
-  else type = 'NONE';
-
   return {
     hours: eligibleMinutes / 60,
     amount: totalOtAmount,
-    type,
+    hasOt: true,
     earningsAffectingAmount,
     nonEarningsAffectingAmount,
   };
@@ -167,7 +159,7 @@ export function calculateOvertimeForSession(
   const matchedRule = findMatchingOvertimeRule(workDayStatus, isHoliday, holidayFlags, otRules);
 
   if (!matchedRule || !matchedRule.otEnabled) {
-    return { hours: 0, amount: 0, type: 'NONE', earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
+    return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
   }
 
   const otResult = calculateOvertimeAmount(workMinutes, hourlyRate, matchedRule);

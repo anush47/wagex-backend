@@ -11,7 +11,7 @@ export class SalaryOvertimeService {
     payrollConfig: any,
   ): OvertimeResult {
     if (!session.workMinutes || session.workMinutes <= 0) {
-      return { hours: 0, amount: 0, type: 'NONE', earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
+      return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
     }
 
     const calculationMethod = payrollConfig?.calculationMethod || PayrollCalculationMethod.FIXED_MONTHLY_SALARY;
@@ -19,7 +19,7 @@ export class SalaryOvertimeService {
       calculationMethod === PayrollCalculationMethod.SHIFT_ATTENDANCE_FLAT ||
       calculationMethod === PayrollCalculationMethod.DAILY_ATTENDANCE_FLAT
     ) {
-      return { hours: 0, amount: 0, type: 'NONE', earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
+      return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
     }
 
     const otRules = (payrollConfig?.otRules as any[]) || [];
