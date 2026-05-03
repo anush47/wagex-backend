@@ -470,6 +470,11 @@ export class TemplatesDataService {
 
     const monthYear = format(new Date(record.year, record.month - 1, 1), 'MMMM yyyy');
 
+    const firstSal = record.salaries[0];
+    const firstSalComponents = (firstSal?.components as any[]) || [];
+    const epfEmployeePercentage = firstSalComponents.find((c: any) => c.systemType === 'EPF_EMPLOYEE')?.value || 8;
+    const epfEmployerPercentage = firstSalComponents.find((c: any) => c.systemType === 'EPF_EMPLOYER')?.value || 12;
+
     return {
       company,
       month: record.month,
@@ -478,6 +483,8 @@ export class TemplatesDataService {
       epfRecord: record,
       salaries,
       totals,
+      epfEmployeePercentage,
+      epfEmployerPercentage,
     };
   }
 
@@ -530,6 +537,10 @@ export class TemplatesDataService {
 
     const monthYear = format(new Date(record.year, record.month - 1, 1), 'MMMM yyyy');
 
+    const firstEtfSal = record.salaries[0];
+    const firstEtfSalComponents = (firstEtfSal?.components as any[]) || [];
+    const etfPercentage = firstEtfSalComponents.find((c: any) => c.systemType === 'ETF_EMPLOYER')?.value || 3;
+
     return {
       company,
       month: record.month,
@@ -538,6 +549,7 @@ export class TemplatesDataService {
       etfRecord: record,
       salaries,
       totals,
+      etfPercentage,
     };
   }
 }

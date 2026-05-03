@@ -408,6 +408,7 @@ export class TemplatesService implements OnModuleInit {
             noPayBreakdown: [],
             taxAmount: 0,
             advanceDeduction: 0,
+            liableEarnings: 106750,
             netSalary: 97910,
             status: 'APPROVED',
             remarks: 'Standard monthly payroll run',
@@ -475,6 +476,7 @@ export class TemplatesService implements OnModuleInit {
               "EPF": basic * 0.08,
               "Staff Welfare": 500
             },
+            liableEarnings: basic + 15000 + 5000 + 4250 + ot,
           };
         };
 
@@ -483,6 +485,7 @@ export class TemplatesService implements OnModuleInit {
           company: commonCompany,
           month: 3,
           year: 2026,
+          monthYear: 'MARCH 2026',
           periodStartDate: '2026-03-01',
           periodEndDate: '2026-03-31',
           additionColumns: additionNames,
@@ -499,6 +502,7 @@ export class TemplatesService implements OnModuleInit {
             noPayAmount: salaries.reduce((s, r) => s + r.noPayAmount, 0),
             additionAmounts: Object.fromEntries(additionNames.map(n => [n, salaries.reduce((s, r) => s + (r.additionAmounts[n] || 0), 0)])),
             deductionAmounts: Object.fromEntries(deductionNames.map(n => [n, salaries.reduce((s, r) => s + (r.deductionAmounts[n] || 0), 0)])),
+            liableEarnings: salaries.reduce((s, r) => s + r.liableEarnings, 0),
           },
         };
       }
@@ -587,6 +591,7 @@ export class TemplatesService implements OnModuleInit {
             netSalary: basic + 24250 - basic * 0.08 - 500,
             epfEmployee: basic * 0.08,
             epfEmployer: basic * 0.12,
+            liableEarnings: basic + 24250,
             payDate: '2026-03-31',
             status: 'APPROVED',
           };
@@ -595,6 +600,7 @@ export class TemplatesService implements OnModuleInit {
           company: commonCompany,
           month: 3,
           year: 2026,
+          monthYear: 'MARCH 2026',
           periodStartDate: '2026-03-01',
           periodEndDate: '2026-03-31',
           payDate: '2026-03-31',
@@ -621,7 +627,11 @@ export class TemplatesService implements OnModuleInit {
             totalEmployeeContribution: epfSalaries.reduce((s, r) => s + r.epfEmployee, 0),
             totalEmployerContribution: epfSalaries.reduce((s, r) => s + r.epfEmployer, 0),
             totalContribution: epfSalaries.reduce((s, r) => s + r.epfEmployee + r.epfEmployer, 0),
+            liableEarnings: epfSalaries.reduce((s, r) => s + r.liableEarnings, 0),
+            count: epfSalaries.length,
           },
+          epfEmployeePercentage: 8,
+          epfEmployerPercentage: 12,
         };
       }
 
@@ -641,6 +651,7 @@ export class TemplatesService implements OnModuleInit {
             grossEarnings: basic + 24250,
             netSalary: basic + 24250 - basic * 0.08 - 500,
             etfEmployer: basic * 0.03,
+            liableEarnings: basic + 24250,
             payDate: '2026-03-31',
             status: 'APPROVED',
           };
@@ -649,6 +660,7 @@ export class TemplatesService implements OnModuleInit {
           company: commonCompany,
           month: 3,
           year: 2026,
+          monthYear: 'MARCH 2026',
           periodStartDate: '2026-03-01',
           periodEndDate: '2026-03-31',
           payDate: '2026-03-31',
@@ -670,7 +682,10 @@ export class TemplatesService implements OnModuleInit {
           salaries: etfSalaries,
           totals: {
             totalContribution: etfSalaries.reduce((s, r) => s + r.etfEmployer, 0),
+            liableEarnings: etfSalaries.reduce((s, r) => s + r.liableEarnings, 0),
+            count: etfSalaries.length,
           },
+          etfPercentage: 3,
         };
       }
 
