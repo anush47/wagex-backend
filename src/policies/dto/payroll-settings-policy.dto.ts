@@ -45,6 +45,10 @@ export class OvertimeTierDto {
   @ApiProperty({ example: 1.5, description: 'Multiplier for this tier' })
   @IsNumber()
   multiplier: number;
+
+  @ApiProperty({ example: true, description: 'Whether OT within this tier affects total earnings for statutory calculations', default: true })
+  @IsBoolean()
+  affectTotalEarnings: boolean;
 }
 
 export class OvertimeRuleDto {
@@ -85,13 +89,6 @@ export class OvertimeRuleDto {
   @Type(() => OvertimeTierDto)
   tiers: OvertimeTierDto[];
 
-  @ApiPropertyOptional({
-    description: 'Whether OT from this rule affects total earnings for statutory calculations',
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  affectTotalEarnings?: boolean = true;
 }
 
 export class PayrollSettingsConfigDto {

@@ -199,7 +199,6 @@ export class PoliciesService {
       name,
       key: apiKey,
       createdAt: new Date().toISOString(),
-      enabled: true,
     };
 
     if (!settings.attendance.apiKeys) {

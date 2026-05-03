@@ -116,9 +116,8 @@ export class SalaryEngineService {
     sessions.forEach((session: ExtendedAttendanceSession) => {
       const ot = this.overtimeService.calculateOvertime(session, otHourlyRate, payrollConfig);
       if (ot.type !== 'NONE' && ot.matchedRule) {
-        const goesToHolidayPay = ot.matchedRule.affectTotalEarnings !== false;
-
-        if (goesToHolidayPay) {
+        // Route earnings-affecting portion → Holiday Pay
+        if (ot.earningsAffectingAmount > 0) {
           const holidayName = ot.matchedRule.isHoliday
             ? (session.payrollHoliday || session.workHoliday)?.name || 'Holiday OT'
             : 'Off Day OT';
@@ -132,16 +131,21 @@ export class SalaryEngineService {
               affectTotalEarnings: true,
             };
           }
-          holidayPayMap[holidayKey].hours += ot.hours;
-          holidayPayMap[holidayKey].amount += ot.amount;
-          totalHolidayPayAmount += ot.amount;
-        } else {
+          const earningsHours = ot.amount > 0 ? ot.hours * (ot.earningsAffectingAmount / ot.amount) : 0;
+          holidayPayMap[holidayKey].hours += earningsHours;
+          holidayPayMap[holidayKey].amount += ot.earningsAffectingAmount;
+          totalHolidayPayAmount += ot.earningsAffectingAmount;
+        }
+
+        // Route non-earnings portion → Regular OT
+        if (ot.nonEarningsAffectingAmount > 0) {
           if (!dynamicOtMap[ot.type]) {
             dynamicOtMap[ot.type] = { hours: 0, amount: 0, type: ot.type };
           }
-          dynamicOtMap[ot.type].hours += ot.hours;
-          dynamicOtMap[ot.type].amount += ot.amount;
-          totalOtAmount += ot.amount;
+          const nonEarningsHours = ot.amount > 0 ? ot.hours * (ot.nonEarningsAffectingAmount / ot.amount) : 0;
+          dynamicOtMap[ot.type].hours += nonEarningsHours;
+          dynamicOtMap[ot.type].amount += ot.nonEarningsAffectingAmount;
+          totalOtAmount += ot.nonEarningsAffectingAmount;
         }
       }
     });

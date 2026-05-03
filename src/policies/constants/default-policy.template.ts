@@ -70,8 +70,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         holidayTypes: [],
         otEnabled: true,
         startAfterMinutes: 480, // 8 hours = 480 minutes
-        tiers: [{ thresholdMinutes: 0, multiplier: 1.5 }],
-        affectTotalEarnings: false, // Regular OT does NOT affect EPF/ETF base
+        tiers: [{ thresholdMinutes: 0, multiplier: 1.5, affectTotalEarnings: false }],
       },
       {
         id: 'ot-rule-off-day',
@@ -81,8 +80,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         holidayTypes: [],
         otEnabled: true,
         startAfterMinutes: 0, // OT from first minute
-        tiers: [{ thresholdMinutes: 0, multiplier: 2.0 }],
-        affectTotalEarnings: true, // Off Day OT affects EPF/ETF base (goes to Holiday Pay)
+        tiers: [{ thresholdMinutes: 0, multiplier: 2.0, affectTotalEarnings: true }],
       },
       {
         id: 'ot-rule-half-day',
@@ -92,8 +90,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         holidayTypes: [],
         otEnabled: true,
         startAfterMinutes: 360, // OT after 6 hours
-        tiers: [{ thresholdMinutes: 0, multiplier: 1.5 }],
-        affectTotalEarnings: false,
+        tiers: [{ thresholdMinutes: 0, multiplier: 1.5, affectTotalEarnings: false }],
       },
       {
         id: 'ot-rule-holiday-public',
@@ -103,8 +100,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         holidayTypes: ['PUBLIC', 'MERCANTILE', 'BANK'],
         otEnabled: true,
         startAfterMinutes: 0, // OT from first minute
-        tiers: [{ thresholdMinutes: 0, multiplier: 3.0 }],
-        affectTotalEarnings: true, // Public Holiday OT affects EPF/ETF base
+        tiers: [{ thresholdMinutes: 0, multiplier: 3.0, affectTotalEarnings: true }],
       },
     ],
   },
