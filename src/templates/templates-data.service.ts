@@ -203,7 +203,7 @@ export class TemplatesDataService {
       company: salary.employee.company,
       month: salary.month,
       year: salary.year,
-      monthYear: salary.month && salary.year ? format(new Date(salary.year, salary.month - 1, 1), 'MMMM - yyyy') : '',
+      monthYear: salary.month && salary.year ? format(new Date(salary.year, salary.month - 1, 1), 'MMMM yyyy') : '',
       periodStartDate: format(new Date(salary.periodStartDate), 'yyyy-MM-dd'),
       periodEndDate: format(new Date(salary.periodEndDate), 'yyyy-MM-dd'),
       payDate: format(new Date(salary.payDate), 'yyyy-MM-dd'),
@@ -301,7 +301,7 @@ export class TemplatesDataService {
     const firstSal = rawSalaries[0];
     const periodStartDate = firstSal ? format(new Date(firstSal.periodStartDate), 'yyyy-MM-dd') : '';
     const periodEndDate = firstSal ? format(new Date(firstSal.periodEndDate), 'yyyy-MM-dd') : '';
-    const monthYear = format(new Date(year, month - 1, 1), 'MMMM - yyyy').toUpperCase();
+    const monthYear = format(new Date(year, month - 1, 1), 'MMMM yyyy').toUpperCase();
 
     return {
       company,
@@ -468,7 +468,7 @@ export class TemplatesDataService {
       liableEarnings: salaries.reduce((sum, s) => sum + s.liableEarnings, 0),
     };
 
-    const monthYear = format(new Date(record.year, record.month - 1, 1), 'MMMM - yyyy');
+    const monthYear = format(new Date(record.year, record.month - 1, 1), 'MMMM yyyy');
 
     return {
       company,
@@ -528,7 +528,7 @@ export class TemplatesDataService {
       liableEarnings: salaries.reduce((sum, s) => sum + s.liableEarnings, 0),
     };
 
-    const monthYear = format(new Date(record.year, record.month - 1, 1), 'MMMM - yyyy');
+    const monthYear = format(new Date(record.year, record.month - 1, 1), 'MMMM yyyy');
 
     return {
       company,
