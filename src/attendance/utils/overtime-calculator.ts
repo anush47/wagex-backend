@@ -17,7 +17,9 @@ export interface OvertimeResult {
   amount: number;
   hasOt: boolean;
   earningsAffectingAmount: number;
+  earningsAffectingMinutes: number;
   nonEarningsAffectingAmount: number;
+  nonEarningsAffectingMinutes: number;
   matchedRule?: OvertimeRule;
 }
 
@@ -101,19 +103,21 @@ export function calculateOvertimeAmount(
   workMinutes: number,
   hourlyRate: number,
   rule: OvertimeRule,
-): { hours: number; amount: number; hasOt: boolean; earningsAffectingAmount: number; nonEarningsAffectingAmount: number } {
+): { hours: number; amount: number; hasOt: boolean; earningsAffectingAmount: number; earningsAffectingMinutes: number; nonEarningsAffectingAmount: number; nonEarningsAffectingMinutes: number } {
   if (!rule.otEnabled) {
-    return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
+    return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, earningsAffectingMinutes: 0, nonEarningsAffectingAmount: 0, nonEarningsAffectingMinutes: 0 };
   }
 
   const eligibleMinutes = Math.max(0, workMinutes - rule.startAfterMinutes);
   if (eligibleMinutes <= 0) {
-    return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
+    return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, earningsAffectingMinutes: 0, nonEarningsAffectingAmount: 0, nonEarningsAffectingMinutes: 0 };
   }
 
   let totalOtAmount = 0;
   let earningsAffectingAmount = 0;
+  let earningsAffectingMinutes = 0;
   let nonEarningsAffectingAmount = 0;
+  let nonEarningsAffectingMinutes = 0;
   const sortedTiers = [...rule.tiers].sort((a, b) => a.thresholdMinutes - b.thresholdMinutes);
 
   for (let i = 0; i < sortedTiers.length; i++) {
@@ -123,7 +127,6 @@ export function calculateOvertimeAmount(
     const tierStartInRule = tier.thresholdMinutes;
     const tierEndInRule = nextTier ? nextTier.thresholdMinutes : Infinity;
 
-    // How much of the eligible OT falls into this tier window?
     const segmentStart = Math.max(0, tierStartInRule);
     const segmentEnd = Math.min(eligibleMinutes, tierEndInRule);
 
@@ -131,8 +134,13 @@ export function calculateOvertimeAmount(
       const minutesInTier = segmentEnd - segmentStart;
       const tierAmount = (minutesInTier / 60) * hourlyRate * tier.multiplier;
       totalOtAmount += tierAmount;
-      if (tier.affectTotalEarnings) earningsAffectingAmount += tierAmount;
-      else nonEarningsAffectingAmount += tierAmount;
+      if (tier.affectTotalEarnings) {
+        earningsAffectingAmount += tierAmount;
+        earningsAffectingMinutes += minutesInTier;
+      } else {
+        nonEarningsAffectingAmount += tierAmount;
+        nonEarningsAffectingMinutes += minutesInTier;
+      }
     }
   }
 
@@ -141,7 +149,9 @@ export function calculateOvertimeAmount(
     amount: totalOtAmount,
     hasOt: true,
     earningsAffectingAmount,
+    earningsAffectingMinutes,
     nonEarningsAffectingAmount,
+    nonEarningsAffectingMinutes,
   };
 }
 
@@ -159,7 +169,7 @@ export function calculateOvertimeForSession(
   const matchedRule = findMatchingOvertimeRule(workDayStatus, isHoliday, holidayFlags, otRules);
 
   if (!matchedRule || !matchedRule.otEnabled) {
-    return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, nonEarningsAffectingAmount: 0 };
+    return { hours: 0, amount: 0, hasOt: false, earningsAffectingAmount: 0, earningsAffectingMinutes: 0, nonEarningsAffectingAmount: 0, nonEarningsAffectingMinutes: 0 };
   }
 
   const otResult = calculateOvertimeAmount(workMinutes, hourlyRate, matchedRule);

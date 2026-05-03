@@ -110,7 +110,7 @@ export class SalaryEngineService {
     const dynamicOtMap: Record<string, { hours: number; amount: number; label: string }> = {};
     const holidayPayMap: Record<
       string,
-      { hours: number; amount: number; holidayName: string; affectTotalEarnings: boolean }
+      { hours: number; amount: number; holidayName: string; holidayDate: string; affectTotalEarnings: boolean }
     > = {};
 
     sessions.forEach((session: ExtendedAttendanceSession) => {
@@ -128,11 +128,11 @@ export class SalaryEngineService {
               hours: 0,
               amount: 0,
               holidayName,
+              holidayDate: session.date.toISOString(),
               affectTotalEarnings: true,
             };
           }
-          const earningsHours = ot.amount > 0 ? ot.hours * (ot.earningsAffectingAmount / ot.amount) : 0;
-          holidayPayMap[holidayKey].hours += earningsHours;
+          holidayPayMap[holidayKey].hours += ot.earningsAffectingMinutes / 60;
           holidayPayMap[holidayKey].amount += ot.earningsAffectingAmount;
           totalHolidayPayAmount += ot.earningsAffectingAmount;
         }
@@ -143,8 +143,7 @@ export class SalaryEngineService {
           if (!dynamicOtMap[ruleKey]) {
             dynamicOtMap[ruleKey] = { hours: 0, amount: 0, label: ot.matchedRule.name };
           }
-          const nonEarningsHours = ot.amount > 0 ? ot.hours * (ot.nonEarningsAffectingAmount / ot.amount) : 0;
-          dynamicOtMap[ruleKey].hours += nonEarningsHours;
+          dynamicOtMap[ruleKey].hours += ot.nonEarningsAffectingMinutes / 60;
           dynamicOtMap[ruleKey].amount += ot.nonEarningsAffectingAmount;
           totalOtAmount += ot.nonEarningsAffectingAmount;
         }
