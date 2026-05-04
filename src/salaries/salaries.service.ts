@@ -206,6 +206,7 @@ export class SalariesService {
           },
           approvedBy: { select: { fullName: true } },
           payments: true,
+          sessions: true,
           epfRecords: { select: { id: true } },
           etfRecords: { select: { id: true } },
         },
@@ -326,6 +327,7 @@ export class SalariesService {
           payments: {
             orderBy: { date: 'desc' },
           },
+          sessions: true,
         },
       }),
       this.prisma.salary.count({ where }),
@@ -346,6 +348,7 @@ export class SalariesService {
       include: {
         employee: true,
         payments: true,
+        sessions: true,
         approvedBy: { select: { fullName: true } },
         epfRecords: true,
         etfRecords: true,
