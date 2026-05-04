@@ -1,5 +1,7 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { MAX_FILE_SIZE_BYTES } from './storage/storage.constants';
@@ -41,6 +43,15 @@ import { HttpLoggerMiddleware } from './common/middleware/logger.middleware';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'public'),
+      serveRoot: '/static',
+      serveStaticOptions: {
+        setHeaders: (res) => {
+          res.set('Access-Control-Allow-Origin', '*');
+        },
+      },
+    }),
     MulterModule.register({
       storage: memoryStorage(),
       limits: { fileSize: MAX_FILE_SIZE_BYTES },

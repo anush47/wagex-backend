@@ -21,6 +21,8 @@ const NO_ORIGIN_ALLOWED_PREFIXES = [
   '/v1/auth',
   // Browser auto-probes (Chrome DevTools, etc.)
   '/.well-known',
+  // Static assets (logos for emails, etc.)
+  '/static',
 ];
 
 function isNoOriginAllowed(path: string): boolean {
@@ -49,6 +51,9 @@ export function buildCorsMiddleware() {
   return (req: Request, res: Response, next: NextFunction) => {
     cors({
       origin: (origin, callback) => {
+        // Allow all origins for static assets (e.g. email logos)
+        if (req.path.startsWith('/static')) return callback(null, true);
+
         if (!origin) {
           if (isNoOriginAllowed(req.path)) return callback(null, true);
           return callback(new ForbiddenException('CORS: Origin header is required for this endpoint'));

@@ -28,7 +28,11 @@ async function bootstrap() {
   );
 
   // Security Headers
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   // Standardized Response & Error Handling
   const httpAdapter = app.get(HttpAdapterHost);
