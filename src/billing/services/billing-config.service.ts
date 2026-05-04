@@ -13,19 +13,39 @@ export class BillingConfigService {
   }
 
   /** Returns company-specific config if it exists, otherwise falls back to the default.
-   *  Always includes the live employee count for the company, and an `isCustom` flag. */
+   *  Always includes the live employee count for the company, and an `isCustom` flag.
+   *  If overrideActive is false, it merges the Global Default values. */
   async getForCompany(companyId: string) {
-    const billing = await this.prisma.companyBilling.findUnique({ where: { companyId } });
-    if (billing) return { ...billing, isCustom: true };
+    const [billing, def, employeeCount] = await Promise.all([
+      this.prisma.companyBilling.findUnique({ where: { companyId } }),
+      this.getDefault(),
+      this.prisma.employee.count({ where: { companyId, status: 'ACTIVE' } }),
+    ]);
 
-    const def = await this.getDefault();
     if (!def) throw new NotFoundException('No billing config found and no default has been seeded');
 
-    const employeeCount = await this.prisma.employee.count({
-      where: { companyId, status: 'ACTIVE' },
-    });
+    // Case 1: No billing row at all or Override is NOT active
+    // We use the Global Default values, but keep the company-specific status (if it exists)
+    if (!billing || !billing.overrideActive) {
+      return {
+        ...def, // Take prices, tiers, discounts from Default
+        id: billing?.id || def.id, // Use company-specific ID if it exists, else default ID
+        companyId,
+        isCustom: false,
+        overrideActive: false,
+        employeeCount,
+        suspensionLevel: billing?.suspensionLevel || 'NONE',
+        gracePeriodMonths: billing?.gracePeriodMonths || def.gracePeriodMonths,
+        notes: billing?.notes || null,
+      };
+    }
 
-    return { ...def, companyId, isCustom: false, employeeCount };
+    // Case 2: Custom Billing exists and Override IS active
+    return { 
+      ...billing, 
+      isCustom: true, 
+      employeeCount 
+    };
   }
 
   /** Explicitly create a company-specific config by copying the current default.
@@ -125,34 +145,40 @@ export class BillingConfigService {
       where.AND = conditions;
     }
 
-    const [total, companies] = await Promise.all([
+    const [total, companies, def] = await Promise.all([
       this.prisma.company.count({ where }),
       this.prisma.company.findMany({
         where,
         select: { 
           id: true, 
           name: true,
-          companyBilling: {
-            select: {
-              id: true,
-              suspensionLevel: true,
-              basePriceLkr: true,
-              employeeCount: true,
-              overrideActive: true,
-            }
-          }
+          companyBilling: true, // Get full billing row for merging
         },
         orderBy: { name: 'asc' },
         skip,
         take: limit,
       }),
+      this.getDefault(),
     ]);
 
-    const data = companies.map((c) => ({
-      company: { id: c.id, name: c.name },
-      billing: c.companyBilling,
-      hasCustomConfig: !!c.companyBilling,
-    }));
+    const data = companies.map((c) => {
+      const billing = c.companyBilling;
+      
+      // If no custom billing OR override is NOT active, show the default values to admin
+      const effectiveBilling = (!billing || !billing.overrideActive) ? {
+        ...(def || {}),
+        id: billing?.id || def?.id,
+        overrideActive: false,
+        employeeCount: billing?.employeeCount || 0,
+        suspensionLevel: billing?.suspensionLevel || 'NONE',
+      } : billing;
+
+      return {
+        company: { id: c.id, name: c.name },
+        billing: effectiveBilling,
+        hasCustomConfig: !!billing?.overrideActive,
+      };
+    });
 
     return {
       data,
