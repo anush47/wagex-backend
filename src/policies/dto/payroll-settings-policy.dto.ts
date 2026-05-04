@@ -23,11 +23,6 @@ export enum LateDeductionType {
   FIXED_AMOUNT = 'FIXED_AMOUNT',
 }
 
-export enum OvertimeCalculationMethod {
-  BASIC_DIVISOR = 'BASIC_DIVISOR',
-  GROSS_DIVISOR = 'GROSS_DIVISOR',
-  FIXED_HOURLY = 'FIXED_HOURLY',
-}
 
 export enum OvertimeDayType {
   WORKING_DAY = 'WORKING_DAY',
@@ -172,15 +167,6 @@ export class PayrollSettingsConfigDto {
   lateDeductionGraceMinutes?: number = 0;
 
   // Overtime Settings
-  @ApiPropertyOptional({ enum: OvertimeCalculationMethod })
-  @IsOptional()
-  @IsEnum(OvertimeCalculationMethod)
-  otCalculationMethod?: OvertimeCalculationMethod = OvertimeCalculationMethod.BASIC_DIVISOR;
-
-  @ApiPropertyOptional({ example: 200 })
-  @IsOptional()
-  @IsNumber()
-  otDivisor?: number = 200;
 
   @ApiPropertyOptional({ enum: LateDeductionType, example: LateDeductionType.DIVISOR_BASED })
   @IsOptional()

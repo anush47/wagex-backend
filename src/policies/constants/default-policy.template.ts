@@ -3,7 +3,6 @@ import {
   PayCycleFrequency,
   PayrollCalculationMethod,
   LateDeductionType,
-  OvertimeCalculationMethod,
   OvertimeDayType,
 } from '../dto/payroll-settings-policy.dto';
 import { ShiftSelectionPolicy } from '../dto/shifts-policy.dto';
@@ -31,7 +30,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
     runDay: 'LAST',
     cutoffDaysBeforePayDay: 5,
     calculationMethod: PayrollCalculationMethod.HOURLY_ATTENDANCE_WITH_OT,
-    baseRateDivisor: 25,
+    baseRateDivisor: 30,
 
     // Deduction Rules
     autoDeductUnpaidLeaves: false,
@@ -47,8 +46,6 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
     lateDeductionGraceMinutes: 0,
 
     // Overtime Configuration
-    otCalculationMethod: OvertimeCalculationMethod.BASIC_DIVISOR,
-    otDivisor: 200,
     otHourlyType: LateDeductionType.DIVISOR_BASED,
     otHourlyValue: 8,
     otNormalRate: 1.5,
