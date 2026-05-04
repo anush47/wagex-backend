@@ -24,5 +24,13 @@ export class DashboardController {
   async getAdminStats() {
     return this.dashboardService.getAdminStats();
   }
+
+  @Get('company/:id')
+  @Roles(Role.EMPLOYER, Role.ADMIN)
+  @ApiOperation({ summary: 'Get dashboard stats for a specific company' })
+  async getCompanyStats(@Request() req: any) {
+    const companyId = req.params.id;
+    return this.dashboardService.getCompanyDashboardStats(companyId);
+  }
 }
 

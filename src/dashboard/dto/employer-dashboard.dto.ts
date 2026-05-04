@@ -8,7 +8,7 @@ export class EmployerDashboardDto {
     present: number;
     late: number;
     absent: number;
-    total: number;
+    totalEmployees: number;
   };
   recentActivity: Array<{
     id: string;

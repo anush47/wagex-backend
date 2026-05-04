@@ -134,6 +134,27 @@ export class AttendanceManualController {
     await this.manualService.updateEventType(id, eventType);
     return { success: true };
   }
+
+  @Get('overview')
+  @Roles(Role.EMPLOYER, Role.ADMIN)
+  @ApiOperation({ summary: 'Get daily attendance overview' })
+  async getOverview(@Query('companyId') companyId: string, @Query('date') date?: string) {
+    if (!companyId) throw new BadRequestException('companyId is required');
+    return this.queryService.getOverview(companyId, date);
+  }
+
+  @Get('stats')
+  @Roles(Role.EMPLOYER, Role.ADMIN)
+  @ApiOperation({ summary: 'Get attendance statistics for a period' })
+  async getStats(
+    @Query('companyId') companyId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('employeeId') employeeId?: string,
+  ) {
+    if (!companyId) throw new BadRequestException('companyId is required');
+    return this.queryService.getStats(companyId, { startDate, endDate, employeeId });
+  }
 }
 
 // ============================================

@@ -41,6 +41,13 @@ export class SalaryEngineService {
     attendanceEnd?: Date,
     payDate?: Date,
     policySnapshot?: PolicySettingsDto,
+    contextData?: {
+      employee?: any;
+      sessions?: any[];
+      leaves?: any[];
+      advanceAdjustments?: any[];
+      existingSalary?: any;
+    },
   ): Promise<
     SalaryPreview & {
       sessions: any[];
@@ -61,9 +68,9 @@ export class SalaryEngineService {
     const policy = policySnapshot ?? (await this.policiesService.getEffectivePolicy(employeeId));
     if (!policy) throw new NotFoundException('Policy not found for employee');
 
-    const employee = await this.prisma.employee.findUnique({
+    const employee = contextData?.employee ?? (await this.prisma.employee.findUnique({
       where: { id: employeeId },
-    });
+    }));
     if (!employee) throw new NotFoundException(`Employee ${employeeId} not found`);
 
     const payrollConfig = policy.payrollConfiguration;
@@ -84,7 +91,7 @@ export class SalaryEngineService {
 
     const dailyRate = employeeBaseSalary / baseRateDivisor;
 
-    const sessions = await this.prisma.attendanceSession.findMany({
+    const sessions = contextData?.sessions ?? (await this.prisma.attendanceSession.findMany({
       where: {
         employeeId,
         date: { gte: aStart, lte: aEnd },
@@ -103,7 +110,7 @@ export class SalaryEngineService {
         payrollHoliday: true,
         workHoliday: true,
       },
-    });
+    }));
 
     let totalOtAmount = 0;
     let totalHolidayPayAmount = 0;
@@ -191,14 +198,14 @@ export class SalaryEngineService {
       { type: 'UNPAID_LEAVE', count: 0, amount: 0, reason: 'Approved unpaid leave' },
     ];
 
-    const approvedLeaves = await this.prisma.leaveRequest.findMany({
+    const approvedLeaves = contextData?.leaves ?? (await this.prisma.leaveRequest.findMany({
       where: {
         employeeId,
         status: LeaveStatus.APPROVED,
         startDate: { lte: aEnd },
         endDate: { gte: aStart },
       },
-    });
+    }));
 
     const unpaidLeaveTypeIds = ((policy.leaves?.leaveTypes as unknown as LeaveTypeDto[]) || [])
       .filter((lt) => lt.isPaid === false)
@@ -288,10 +295,10 @@ export class SalaryEngineService {
       otBreakdown,
     );
 
-    const advanceAdjustments = await this.advancesService.getActiveDeductions(employeeId, periodStart, periodEnd);
+    const advanceAdjustments = contextData?.advanceAdjustments ?? (await this.advancesService.getActiveDeductions(employeeId, periodStart, periodEnd));
     const totalAdvanceDeduction = advanceAdjustments.reduce((sum, adj) => sum + adj.amount, 0);
 
-    const existingSalary = await this.prisma.salary.findUnique({
+    const existingSalary = contextData?.existingSalary ?? (await this.prisma.salary.findUnique({
       where: {
         employeeId_periodStartDate_periodEndDate: {
           employeeId,
@@ -299,7 +306,7 @@ export class SalaryEngineService {
           periodEndDate: periodEnd,
         },
       },
-    });
+    }));
 
     const hPayAdjustment = existingSalary?.holidayPayAdjustment || 0;
     const otAdj = existingSalary?.otAdjustment || 0;
@@ -372,27 +379,101 @@ export class SalaryEngineService {
 
     const policySnapshots = await this.policiesService.resolveBulkPolicies(targetEmployees.map((e) => e.id));
 
-    const previews: any[] = [];
-    for (const emp of targetEmployees) {
-      try {
-        const preview = await this.calculatePreview(
-          companyId,
-          periodStart,
-          periodEnd,
-          emp.id,
-          attendanceStart,
-          attendanceEnd,
-          payDate,
-          policySnapshots.get(emp.id),
-        );
-        previews.push({
-          ...preview,
-          policyId: emp.policyId || 'DEFAULT',
-        });
-      } catch (error: any) {
-        this.logger.error(`Error calculating salary for employee ${emp.id}: ${error.message as string}`);
-      }
-    }
+    // BULK DATA FETCHING
+    const targetEmployeeIds = targetEmployees.map((e) => e.id);
+    const aStart = attendanceStart || periodStart;
+    const aEnd = attendanceEnd || periodEnd;
+
+    const [allSessions, allLeaves, allAdvanceAdjustments, allExistingSalaries] = await Promise.all([
+      this.prisma.attendanceSession.findMany({
+        where: {
+          employeeId: { in: targetEmployeeIds },
+          date: { gte: aStart, lte: aEnd },
+          OR: [
+            { salaryId: null },
+            {
+              salary: {
+                periodStartDate: periodStart,
+                periodEndDate: periodEnd,
+                status: SalaryStatus.DRAFT,
+              },
+            },
+          ],
+        },
+        include: { payrollHoliday: true, workHoliday: true },
+      }),
+      this.prisma.leaveRequest.findMany({
+        where: {
+          employeeId: { in: targetEmployeeIds },
+          status: LeaveStatus.APPROVED,
+          startDate: { lte: aEnd },
+          endDate: { gte: aStart },
+        },
+      }),
+      // Assuming getActiveDeductionsBulk is optimized or we just use raw prisma
+      this.prisma.salaryAdvance.findMany({
+        where: {
+          employeeId: { in: targetEmployeeIds },
+          remainingAmount: { gt: 0 },
+        },
+      }),
+      this.prisma.salary.findMany({
+        where: {
+          employeeId: { in: targetEmployeeIds },
+          periodStartDate: periodStart,
+          periodEndDate: periodEnd,
+        },
+      }),
+    ]);
+
+    // PARALLEL CALCULATION
+    const results = await Promise.all(
+      targetEmployees.map(async (emp) => {
+        try {
+          const empSessions = allSessions.filter((s) => s.employeeId === emp.id);
+          const empLeaves = allLeaves.filter((l) => l.employeeId === emp.id);
+          const existingSalary = allExistingSalaries.find((s) => s.employeeId === emp.id);
+          
+          // Map advance adjustments for this employee
+          const empAdvances = allAdvanceAdjustments.filter((a) => a.employeeId === emp.id);
+          const activeAdjustments: any[] = [];
+          const toDay = (d: Date | string) => new Date(d).toISOString().split('T')[0];
+          const periodStartDay = toDay(periodStart);
+
+          empAdvances.forEach((adv) => {
+            const schedule = (adv.deductionSchedule as any[]) || [];
+            const matchingInst = schedule.find((s) => toDay(s.periodStartDate) === periodStartDay && !s.isDeducted);
+            if (matchingInst) {
+              activeAdjustments.push({ advanceId: adv.id, amount: matchingInst.amount, installmentId: matchingInst.id });
+            }
+          });
+
+          const preview = await this.calculatePreview(
+            companyId,
+            periodStart,
+            periodEnd,
+            emp.id,
+            attendanceStart,
+            attendanceEnd,
+            payDate,
+            policySnapshots.get(emp.id),
+            {
+              employee: emp,
+              sessions: empSessions,
+              leaves: empLeaves,
+              advanceAdjustments: activeAdjustments,
+              existingSalary: existingSalary,
+            },
+          );
+          return { ...preview, policyId: emp.policyId || 'DEFAULT' };
+        } catch (error: any) {
+          this.logger.error(`Error calculating salary for employee ${emp.id}: ${error.message as string}`);
+          return null;
+        }
+      }),
+    );
+
+    const previews = results.filter((p) => p !== null);
 
     const grouped = groupBy(previews, 'policyId');
     return Object.entries(grouped).map(([policyId, items]) => ({

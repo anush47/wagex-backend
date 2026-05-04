@@ -67,6 +67,23 @@ export class EmployeesController {
     return this.employeesService.findAll(queryDto.companyId, queryDto, req.user);
   }
 
+  @Get('used-numbers')
+  @Roles(Role.ADMIN, Role.EMPLOYER)
+  @ApiOperation({ summary: 'Get list of used employee numbers' })
+  async getUsedNumbers(@Query('companyId') companyId: string, @Request() req: RequestWithUserNamespace.RequestWithUser) {
+    const user = req.user;
+
+    // Tenancy Check
+    if (user.role === Role.EMPLOYER) {
+      const hasAccess = user.memberships?.some((m) => m.companyId === companyId);
+      if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this company.');
+      }
+    }
+
+    return this.employeesService.getUsedEmployeeNumbers(companyId);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.EMPLOYER)
   @ApiOperation({ summary: 'Get employee by ID' })
@@ -209,20 +226,5 @@ export class EmployeesController {
     return this.employeesService.deprovisionUser(id);
   }
 
-  @Get('used-numbers')
-  @Roles(Role.ADMIN, Role.EMPLOYER)
-  @ApiOperation({ summary: 'Get list of used employee numbers' })
-  async getUsedNumbers(@Query('companyId') companyId: string, @Request() req: RequestWithUserNamespace.RequestWithUser) {
-    const user = req.user;
 
-    // Tenancy Check
-    if (user.role === Role.EMPLOYER) {
-      const hasAccess = user.memberships?.some((m) => m.companyId === companyId);
-      if (!hasAccess) {
-        throw new ForbiddenException('You do not have access to this company.');
-      }
-    }
-
-    return this.employeesService.getUsedEmployeeNumbers(companyId);
-  }
 }
