@@ -41,7 +41,7 @@ export class BillingStatusService {
     if (count === 0) {
       throw new ForbiddenException(
         `No billing invoice purchased for period ending ${format(periodEndDate, 'yyyy-MM-dd')}. ` +
-        `Please purchase the invoice for month(s): ${months.join(', ')}.`,
+        `Please purchase the invoice for one of the month(s): ${months.join(', ')}.`,
       );
     }
   }

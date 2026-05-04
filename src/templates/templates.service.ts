@@ -202,7 +202,10 @@ export class TemplatesService implements OnModuleInit {
   }
 
   /** Resolve companyId + periodEndDate from template type + resourceId and check billing. */
-  private async assertBillingForTemplate(type: DocumentType, resourceId: string): Promise<void> {
+  private async assertBillingForTemplate(type: DocumentType, resourceId: string, query: any = {}, user?: any): Promise<void> {
+    // Admin bypass: Admins can always render/generate documents
+    if (user?.role === 'ADMIN') return;
+
     if (type === DocumentType.PAYSLIP) {
       let salary: { periodEndDate: Date | null; employee: { companyId: string } | null } | null = null;
       try {
@@ -228,8 +231,34 @@ export class TemplatesService implements OnModuleInit {
       const [companyId, month, year] = parts;
       const periodEnd = this.billingStatusService.periodEndFromMonthYear(Number(month), Number(year));
       await this.billingStatusService.assertBillingForPeriodEnd(companyId, periodEnd);
+    } else if (type === DocumentType.ATTENDANCE_REPORT) {
+      // compositeId format: companyId_employeeId_startDate_endDate or just companyId
+      const parts = resourceId.split('_');
+      const companyId = parts[0];
+      const endDateStr = parts[3] || query.endDate;
+      
+      if (companyId && endDateStr) {
+        await this.billingStatusService.assertBillingForPeriodEnd(companyId, new Date(endDateStr));
+      }
+    } else if (type === DocumentType.EPF_FORM) {
+      const record = await this.prisma.epfRecord.findUnique({
+        where: { id: resourceId },
+        select: { companyId: true, month: true, year: true },
+      });
+      if (record) {
+        const periodEnd = this.billingStatusService.periodEndFromMonthYear(record.month, record.year);
+        await this.billingStatusService.assertBillingForPeriodEnd(record.companyId, periodEnd);
+      }
+    } else if (type === DocumentType.ETF_FORM) {
+      const record = await this.prisma.etfRecord.findUnique({
+        where: { id: resourceId },
+        select: { companyId: true, month: true, year: true },
+      });
+      if (record) {
+        const periodEnd = this.billingStatusService.periodEndFromMonthYear(record.month, record.year);
+        await this.billingStatusService.assertBillingForPeriodEnd(record.companyId, periodEnd);
+      }
     }
-    // Other document types (ATTENDANCE etc.) are not period-billed — no check needed
   }
 
   async render(templateId: string, resourceId: string, query: any = {}, user?: any) {
@@ -247,7 +276,7 @@ export class TemplatesService implements OnModuleInit {
     }
 
     // Billing check: enforce invoice purchase for period-based document types
-    await this.assertBillingForTemplate(template.type, resourceId);
+    await this.assertBillingForTemplate(template.type, resourceId, query, user);
 
     const data = await this.dataService.getData(template.type, resourceId, query);
     
