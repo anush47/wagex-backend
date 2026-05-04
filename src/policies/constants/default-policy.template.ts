@@ -31,7 +31,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
     runDay: 'LAST',
     cutoffDaysBeforePayDay: 5,
     calculationMethod: PayrollCalculationMethod.HOURLY_ATTENDANCE_WITH_OT,
-    baseRateDivisor: 30,
+    baseRateDivisor: 25,
 
     // Deduction Rules
     autoDeductUnpaidLeaves: false,
@@ -80,7 +80,10 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         holidayTypes: [],
         otEnabled: true,
         startAfterMinutes: 0, // OT from first minute
-        tiers: [{ thresholdMinutes: 0, multiplier: 2.0, affectTotalEarnings: true }],
+        tiers: [
+          { thresholdMinutes: 0, multiplier: 1.0, affectTotalEarnings: true },
+          { thresholdMinutes: 480, multiplier: 3.0, affectTotalEarnings: false },
+        ],
       },
       {
         id: 'ot-rule-half-day',
@@ -100,7 +103,10 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         holidayTypes: ['PUBLIC', 'MERCANTILE', 'BANK'],
         otEnabled: true,
         startAfterMinutes: 0, // OT from first minute
-        tiers: [{ thresholdMinutes: 0, multiplier: 3.0, affectTotalEarnings: true }],
+        tiers: [
+          { thresholdMinutes: 0, multiplier: 1.0, affectTotalEarnings: true },
+          { thresholdMinutes: 240, multiplier: 1.0, affectTotalEarnings: false },
+        ],
       },
     ],
   },
@@ -113,23 +119,23 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
       {
         id: 'shift-standard',
         name: 'Standard Shift',
-        startTime: '09:00',
+        startTime: '08:00',
         endTime: '17:00',
         breakTime: 60,
-        minStartTime: '08:00',
-        maxOutTime: '20:00',
-        gracePeriodLate: 15,
-        gracePeriodEarly: 0,
+        minStartTime: '05:00',
+        maxOutTime: '23:00',
+        gracePeriodLate: 5,
+        gracePeriodEarly: 5,
         useShiftStartAsClockIn: false,
         autoClockOut: false,
       },
     ],
     defaultShiftId: 'shift-standard',
-    selectionPolicy: ShiftSelectionPolicy.FIXED,
+    selectionPolicy: ShiftSelectionPolicy.CLOSEST_START_TIME,
   },
 
   // ════════════════════════════════════════════════════════════════════════
-  // WORKING DAYS (5-day work week - Mon to Fri)
+  // WORKING DAYS (5.5-day work week - Mon to Fri Full, Sat Half)
   // ════════════════════════════════════════════════════════════════════════
   workingDays: {
     defaultPattern: {
@@ -138,7 +144,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
       WED: { type: WorkDayType.FULL },
       THU: { type: WorkDayType.FULL },
       FRI: { type: WorkDayType.FULL },
-      SAT: { type: WorkDayType.OFF },
+      SAT: { type: WorkDayType.HALF },
       SUN: { type: WorkDayType.OFF },
     },
     isDynamic: false,
@@ -148,7 +154,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
   // ATTENDANCE CONFIGURATION
   // ════════════════════════════════════════════════════════════════════════
   attendance: {
-    allowSelfCheckIn: true,
+    allowSelfCheckIn: false,
     requireLocation: false,
     requireDeviceInfo: false,
     geofencing: {
@@ -188,7 +194,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         accrualFrequency: AccrualFrequency.YEARLY,
         accrualMethod: AccrualMethod.PRO_RATA,
         minDelayBetweenRequestsDays: 0,
-        minNoticeDays: 7,
+        minNoticeDays: 0,
         canApplyBackdated: false,
         maxConsecutiveDays: 14,
         requireDocuments: false,
@@ -214,7 +220,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         accrualFrequency: AccrualFrequency.YEARLY,
         accrualMethod: AccrualMethod.PRO_RATA,
         minDelayBetweenRequestsDays: 0,
-        minNoticeDays: 1,
+        minNoticeDays: 0,
         canApplyBackdated: false,
         maxConsecutiveDays: 3,
         requireDocuments: false,
@@ -253,6 +259,18 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         affectsTotalEarnings: true,
         employerValue: 3, // Employer contribution: 3% of total earnings
       },
+      {
+        id: '53ee5479-668f-4844-b0fa-bc998ce207b4',
+        name: 'Holiday Pay',
+        category: PayrollComponentCategory.ADDITION,
+        type: PayrollComponentType.FLAT_AMOUNT,
+        value: 0,
+        systemType: PayrollComponentSystemType.HOLIDAY_PAY,
+        isStatutory: true,
+        employerValue: 0,
+        affectsTotalEarnings: true,
+      },
     ],
   },
+  calendarId: '8871f149-7acc-4cab-b0da-c0ac57343a42',
 };
