@@ -4,7 +4,7 @@ import { BillingConfigService } from './billing-config.service';
 import { GetInvoicesQueryDto } from '../dto/billing.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
-interface EmployeeTier { upTo: number; priceLkr: number; }
+interface EmployeeTier { upTo: number; pricePerEmployee: number; }
 interface ServiceAddon { name: string; priceLkr: number; active: boolean; }
 interface MonthDiscount { months: number; discountPct: number; }
 
@@ -23,14 +23,39 @@ export class InvoiceService {
     const discounts = (billing.multiMonthDiscounts as MonthDiscount[]) || [];
     const employeeCount = billing.employeeCount as number;
 
-    let basePriceLkr = Number(billing.basePriceLkr);
-    if (tiers.length > 0) {
-      const tier = tiers.find((t) => employeeCount <= t.upTo);
-      basePriceLkr = tier ? tier.priceLkr : tiers[tiers.length - 1].priceLkr;
+    const basePriceLkr = Number(billing.basePriceLkr);
+    const baseLimit = Number(billing.baseEmployeeLimit || 0);
+
+    let calculatedBasePriceLkr = basePriceLkr;
+    let remainingEmployees = Math.max(0, employeeCount - baseLimit);
+
+    // Progressive tiered calculation
+    // Sort tiers by upTo just in case
+    const sortedTiers = [...tiers].sort((a, b) => a.upTo - b.upTo);
+    
+    let lastUpTo = baseLimit;
+    for (const tier of sortedTiers) {
+      if (remainingEmployees <= 0) break;
+      
+      const tierSize = tier.upTo - lastUpTo;
+      const countInThisTier = Math.min(remainingEmployees, tierSize);
+      
+      if (countInThisTier > 0) {
+        calculatedBasePriceLkr += countInThisTier * Number(tier.pricePerEmployee);
+        remainingEmployees -= countInThisTier;
+      }
+      lastUpTo = tier.upTo;
+    }
+
+    // If there are still remaining employees after all tiers, 
+    // use the last tier's rate or a default (here we use the last tier's rate)
+    if (remainingEmployees > 0 && sortedTiers.length > 0) {
+      const lastTier = sortedTiers[sortedTiers.length - 1];
+      calculatedBasePriceLkr += remainingEmployees * Number(lastTier.pricePerEmployee);
     }
 
     const addonPriceLkr = services.filter((s) => s.active).reduce((sum, s) => sum + s.priceLkr, 0);
-    const subtotalPerMonth = basePriceLkr + addonPriceLkr;
+    const subtotalPerMonth = calculatedBasePriceLkr + addonPriceLkr;
     const subtotal = subtotalPerMonth * monthCount;
 
     const discount = discounts
@@ -39,7 +64,7 @@ export class InvoiceService {
     const discountPct = discount?.discountPct ?? 0;
     const discountLkr = Math.round(subtotal * (discountPct / 100));
 
-    return { basePriceLkr, addonPriceLkr, discountLkr, totalLkr: subtotal - discountLkr };
+    return { basePriceLkr: calculatedBasePriceLkr, addonPriceLkr, discountLkr, totalLkr: subtotal - discountLkr };
   }
 
   async createInvoices(companyId: string, billingPeriods: string[], createdByUserId: string) {

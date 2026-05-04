@@ -586,6 +586,7 @@ model CompanyBilling {
   companyId           String?         @unique
   isDefault           Boolean         @default(false)
   basePriceLkr        Decimal         @default(3000) @db.Decimal(10, 2)
+  baseEmployeeLimit   Int             @default(5)
   employeeTiers       Json            @default("[]")
   services            Json            @default("[]")
   multiMonthDiscounts Json            @default("[]")

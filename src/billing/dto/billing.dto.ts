@@ -5,6 +5,7 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class UpdateBillingConfigDto {
   @IsOptional() @IsNumber() basePriceLkr?: number;
+  @IsOptional() @IsNumber() baseEmployeeLimit?: number;
   @IsOptional() @IsArray() employeeTiers?: any[];
   @IsOptional() @IsArray() services?: any[];
   @IsOptional() @IsArray() multiMonthDiscounts?: any[];

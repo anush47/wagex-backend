@@ -46,6 +46,7 @@ export class BillingConfigService {
         companyId,
         isDefault: false,
         basePriceLkr: def.basePriceLkr,
+        baseEmployeeLimit: def.baseEmployeeLimit,
         employeeTiers: def.employeeTiers as any,
         services: def.services as any,
         multiMonthDiscounts: def.multiMonthDiscounts as any,
@@ -165,22 +166,39 @@ export class BillingConfigService {
   }
 
   async ensureDefaultExists() {
-    const existing = await this.getDefault();
-    if (existing) return existing;
+    const defaultData = {
+      basePriceLkr: 3000,
+      baseEmployeeLimit: 5,
+      employeeTiers: [
+        { upTo: 10, pricePerEmployee: 600 },
+        { upTo: 15, pricePerEmployee: 500 }
+      ],
+      services: [],
+      multiMonthDiscounts: [
+        { months: 3, discountPct: 5 },
+        { months: 6, discountPct: 10 },
+        { months: 12, discountPct: 15 },
+      ],
+      gracePeriodMonths: 2,
+      suspensionLevel: 'NONE' as any,
+    };
+
+    const existing = await this.prisma.companyBilling.findFirst({
+      where: { isDefault: true, companyId: null },
+    });
+
+    if (existing) {
+      return this.prisma.companyBilling.update({
+        where: { id: existing.id },
+        data: defaultData,
+      });
+    }
+
     return this.prisma.companyBilling.create({
       data: {
+        ...defaultData,
         isDefault: true,
         companyId: null,
-        basePriceLkr: 3000,
-        employeeTiers: [],
-        services: [],
-        multiMonthDiscounts: [
-          { months: 3, discountPct: 5 },
-          { months: 6, discountPct: 10 },
-          { months: 12, discountPct: 15 },
-        ],
-        gracePeriodMonths: 2,
-        suspensionLevel: 'NONE',
       },
     });
   }
