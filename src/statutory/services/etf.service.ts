@@ -149,6 +149,9 @@ export class EtfService {
         skip,
         take: limit,
         orderBy: [{ year: 'desc' }, { month: 'desc' }],
+        include: {
+          salaries: true,
+        },
       }),
       this.prisma.etfRecord.count({ where }),
     ]);

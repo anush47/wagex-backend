@@ -188,6 +188,9 @@ export class EpfService {
         skip,
         take: limit,
         orderBy: [{ year: 'desc' }, { month: 'desc' }],
+        include: {
+          salaries: true,
+        },
       }),
       this.prisma.epfRecord.count({ where }),
     ]);
