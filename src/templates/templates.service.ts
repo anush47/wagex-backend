@@ -438,6 +438,7 @@ export class TemplatesService implements OnModuleInit {
           taxAmount: 0,
           advanceDeduction: 0,
           liableEarnings: 106750,
+          totalAdditions: 21750,
           netSalary: 97910,
           totalDeductions: 8840,
           epfEmployee: 8340,
