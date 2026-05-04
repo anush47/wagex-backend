@@ -148,6 +148,8 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
       SUN: { type: WorkDayType.OFF },
     },
     isDynamic: false,
+    workingCalendar: '8871f149-7acc-4cab-b0da-c0ac57343a42',
+    payrollCalendar: '8871f149-7acc-4cab-b0da-c0ac57343a42',
   },
 
   // ════════════════════════════════════════════════════════════════════════
@@ -272,5 +274,4 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
       },
     ],
   },
-  calendarId: '8871f149-7acc-4cab-b0da-c0ac57343a42',
 };
