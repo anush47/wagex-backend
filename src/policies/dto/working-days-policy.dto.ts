@@ -50,9 +50,4 @@ export class WorkingDaysConfigDto {
   @IsOptional()
   @IsString()
   payrollCalendar?: string;
-
-  @ApiPropertyOptional({ description: 'Default affect total earnings setting for working days', default: true })
-  @IsOptional()
-  @IsBoolean()
-  affectTotalEarnings?: boolean = true;
 }

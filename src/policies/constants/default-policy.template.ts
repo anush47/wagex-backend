@@ -6,7 +6,7 @@ import {
   OvertimeDayType,
 } from '../dto/payroll-settings-policy.dto';
 import { ShiftSelectionPolicy } from '../dto/shifts-policy.dto';
-import { WorkDayType } from '../dto/working-days-policy.dto';
+import { WorkDayType, HalfDayShift } from '../dto/working-days-policy.dto';
 import { GeofencingEnforcement, ApprovalPolicyMode } from '../dto/attendance-policy.dto';
 import { Gender } from '../../common/enums/employee.enum';
 import { EmploymentType } from '../../common/enums/employee.enum';
@@ -124,7 +124,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
         gracePeriodLate: 5,
         gracePeriodEarly: 5,
         useShiftStartAsClockIn: false,
-        autoClockOut: false,
+        autoClockOut: true,
       },
     ],
     defaultShiftId: 'shift-standard',
@@ -141,7 +141,7 @@ export const DEFAULT_POLICY_SETTINGS: PolicySettingsDto = {
       WED: { type: WorkDayType.FULL },
       THU: { type: WorkDayType.FULL },
       FRI: { type: WorkDayType.FULL },
-      SAT: { type: WorkDayType.HALF },
+      SAT: { type: WorkDayType.HALF, halfDayShift: HalfDayShift.FIRST },
       SUN: { type: WorkDayType.OFF },
     },
     isDynamic: false,
